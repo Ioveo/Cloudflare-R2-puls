@@ -1,46 +1,138 @@
 <template>
-<main class="drive-shell" @click="closeContext" @contextmenu.prevent="openContext(null, $event)" @dragenter.prevent="onDragEnter" @dragover.prevent @dragleave="onDragLeave" @drop.prevent="onDrop">
+<div class="studio-app" @click="closeContext" @contextmenu.prevent="openContext(null, $event)" @dragenter.prevent="onDragEnter" @dragover.prevent @dragleave="onDragLeave" @drop.prevent="onDrop">
+  <!-- Left Glassmorphism Sidebar -->
+  <aside class="studio-sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark"><i class="ph ph-cube-focus"></i></span>
+      <div class="brand-text">
+        <strong>FlareDrive</strong>
+        <span class="status-dot"><i class="dot"></i> 直连中</span>
+      </div>
+    </div>
+
+    <!-- Category Navigation Menu -->
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">媒体 Showcase 库</div>
+      
+      <button class="nav-item" :class="{ active: filterCategory === 'all' }" @click="selectCategory('all')">
+        <i class="ph ph-squares-four"></i>
+        <span>概览大厅</span>
+        <span class="count-pill">{{ totalItemCount }}</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: filterCategory === 'image' }" @click="selectCategory('image')">
+        <i class="ph ph-image"></i>
+        <span>照片图库</span>
+        <span v-if="categoryCounts.image" class="count-pill highlight">{{ categoryCounts.image }}</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: filterCategory === 'video' }" @click="selectCategory('video')">
+        <i class="ph ph-film-strip"></i>
+        <span>高清影音</span>
+        <span v-if="categoryCounts.video" class="count-pill highlight">{{ categoryCounts.video }}</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: filterCategory === 'audio' }" @click="selectCategory('audio')">
+        <i class="ph ph-music-notes"></i>
+        <span>音乐曲库</span>
+        <span v-if="categoryCounts.audio" class="count-pill highlight">{{ categoryCounts.audio }}</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: filterCategory === 'archive' }" @click="selectCategory('archive')">
+        <i class="ph ph-package"></i>
+        <span>压缩归档</span>
+        <span v-if="categoryCounts.archive" class="count-pill highlight">{{ categoryCounts.archive }}</span>
+      </button>
+
+      <button class="nav-item" :class="{ active: filterCategory === 'document' }" @click="selectCategory('document')">
+        <i class="ph ph-file-text"></i>
+        <span>文档资料</span>
+        <span v-if="categoryCounts.document" class="count-pill">{{ categoryCounts.document }}</span>
+      </button>
+
+      <div class="nav-divider"></div>
+
+      <!-- Scope Switcher Toggle -->
+      <div class="scope-toggle-card">
+        <div class="scope-title">
+          <i class="ph ph-globe-hemisphere-east"></i>
+          <span>跨目录全盘自动归类</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" v-model="autoGlobalScan" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </nav>
+
+    <!-- Bottom User / Logout Bar -->
+    <footer class="sidebar-footer">
+      <div class="user-pill" title="存储桶绑定与凭证">
+        <i class="ph ph-user-circle"></i>
+        <span>已安全验证</span>
+      </div>
+      <button class="logout-icon-btn" type="button" title="退出登录" @click="logout">
+        <i class="ph ph-sign-out"></i>
+      </button>
+    </footer>
+  </aside>
+
+  <!-- Main Content Body -->
+  <main class="studio-main">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="返回文件库首页"><span class="brand-mark"><i class="ph ph-cube-focus"></i></span><span>数字资源站</span></a>
       <label class="search-box">
         <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-        <input v-model.trim="search" type="search" placeholder="搜索当前目录资源" aria-label="搜索当前目录资源" />
+        <input v-model.trim="search" type="search" placeholder="搜索文件、视频、压缩包..." aria-label="搜索当前目录资源" />
         <button v-if="search" class="icon-button small" type="button" title="清除搜索" @click="search = ''">×</button>
       </label>
+
       <div class="topbar-actions">
         <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
-        <button class="icon-button" type="button" title="刷新" @click="fetchFiles"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
+        <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
         <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
       </div>
     </header>
+
     <section class="workspace">
-      <!-- Portal Hero Showcase Section -->
-      <div v-if="!cwd && !search" class="portal-hero">
+      <!-- Portal Hero Banner -->
+      <div class="portal-hero">
         <div class="hero-content">
-          <span class="hero-tag"><i class="ph ph-sparkle"></i> 个人数字资源站 · STUDIO</span>
-          <h1>个人云端 Showcase 展厅</h1>
-          <p>智能直连 · 在线影音播放 · 归档解压预览 · 全速传输</p>
-          <div class="hero-chips">
-            <button class="chip" :class="{ active: filterCategory === 'all' }" @click="filterCategory = 'all'"><i class="ph ph-squares-four"></i> 全部资源</button>
-            <button class="chip" :class="{ active: filterCategory === 'image' }" @click="filterCategory = 'image'"><i class="ph ph-image"></i> 照片壁纸</button>
-            <button class="chip" :class="{ active: filterCategory === 'video' }" @click="filterCategory = 'video'"><i class="ph ph-film-strip"></i> 影音视频</button>
-            <button class="chip" :class="{ active: filterCategory === 'audio' }" @click="filterCategory = 'audio'"><i class="ph ph-music-notes"></i> 音乐播放</button>
-            <button class="chip" :class="{ active: filterCategory === 'archive' }" @click="filterCategory = 'archive'"><i class="ph ph-package"></i> 压缩归档</button>
+          <div class="hero-header-row">
+            <span class="hero-tag"><i class="ph ph-sparkle"></i> SHOWCASE STUDIO</span>
+            <span v-if="autoGlobalScan && filterCategory !== 'all'" class="scan-tag"><i class="ph ph-radar"></i> 全盘自动聚合模式</span>
           </div>
+          <h1>{{ categoryMeta.title }}</h1>
+          <p>{{ categoryMeta.desc }}</p>
         </div>
       </div>
 
+      <!-- Workspace Heading / Breadcrumbs -->
       <div class="workspace-heading">
         <div>
           <nav class="breadcrumbs" aria-label="当前位置"><button type="button" @click="goToFolder('')">首页</button><template v-for="(part, index) in pathParts" :key="`${part}-${index}`"><span aria-hidden="true">/</span><button type="button" @click="goToFolder(pathUntil(index))">{{ part }}</button></template></nav>
-          <h1>{{ currentFolderName }}</h1><p>{{ itemCountText }}</p>
+          <h2>{{ currentFolderName }}</h2><p>{{ itemCountText }}</p>
         </div>
         <div class="view-controls" aria-label="视图设置"><button class="view-button" :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'"><i class="ph ph-squares-four" aria-hidden="true"></i></button><button class="view-button" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'"><i class="ph ph-list-bullets" aria-hidden="true"></i></button></div>
       </div>
+
+      <!-- Loading skeleton -->
       <section v-if="loading" class="file-grid loading-grid" :class="viewMode"><div v-for="item in 8" :key="item" class="file-skeleton"></div></section>
-      <section v-else-if="!filteredFiles.length && !filteredFolders.length" class="empty-state"><div class="empty-icon"><i class="ph ph-folder-open"></i></div><h2>{{ search ? '没有匹配的文件' : '这个目录还是空的' }}</h2><p>{{ search ? '尝试使用其他关键词进行搜索。' : '拖放文件到这里，或使用右下角的上传按钮。' }}</p><button v-if="!search" class="primary-button" type="button" @click="showUploadPopup = true"><i class="ph ph-upload-simple"></i> 上传文件</button></section>
+
+      <!-- Empty state -->
+      <section v-else-if="!filteredFiles.length && !filteredFolders.length" class="empty-state">
+        <div class="empty-icon"><i class="ph ph-folder-open"></i></div>
+        <h2>{{ search ? '没有匹配的资源' : '当前分类暂无文件' }}</h2>
+        <p>{{ search ? '尝试更换关键词重试。' : '拖放文件至此区域，或点击右下角上传。' }}</p>
+        <button v-if="!search" class="primary-button" type="button" @click="showUploadPopup = true"><i class="ph ph-upload-simple"></i> 上传文件</button>
+      </section>
+
+      <!-- File Grid -->
       <section v-else class="file-grid" :class="viewMode">
-        <article v-if="cwd" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)"><div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div><div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div></article>
+        <article v-if="cwd && filterCategory === 'all'" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
+          <div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div>
+          <div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div>
+        </article>
+
         <article v-for="folder in filteredFolders" :key="folder" class="file-card folder-card" tabindex="0" @click="goToFolder(folder)" @keydown.enter="goToFolder(folder)" @contextmenu.stop.prevent="openContext(folder, $event)">
           <div class="file-symbol folder-symbol"><i class="ph ph-folder-simple-star"></i></div>
           <div class="file-main">
@@ -49,6 +141,7 @@
           </div>
           <button class="more-button" type="button" title="更多操作" @click.stop="openContext(folder, $event)"><i class="ph ph-dots-three-outline"></i></button>
         </article>
+
         <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) || isVideo(file) ? 'file-card--photo' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')]" tabindex="0" @click="openFile(file)" @keydown.enter="openFile(file)" @contextmenu.stop.prevent="openContext(file, $event)">
           <div v-if="isImage(file) || isVideo(file)" class="photo-preview">
             <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
@@ -70,15 +163,18 @@
         </article>
       </section>
     </section>
+
+    <!-- Modals & Progress Overlays -->
     <Transition name="fade">
       <div v-if="isDragging" class="drag-overlay" @drop.prevent="onDrop">
         <div class="drag-content">
           <div class="drag-icon"><i class="ph ph-cloud-arrow-up"></i></div>
           <h3>释放鼠标立即上传</h3>
-          <p>文件将直接保存至「{{ currentFolderName }}」</p>
+          <p>文件将保存至「{{ currentFolderName }}」</p>
         </div>
       </div>
     </Transition>
+
     <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
     <button class="upload-button" type="button" title="上传或新建" @click="showUploadPopup = true"><i class="ph ph-plus"></i><span>新建</span></button>
     <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
@@ -88,6 +184,7 @@
     <MediaPlayerModal :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
     <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
   </main>
+</div>
 </template>
 
 <script>
@@ -111,43 +208,133 @@ function loadAuthCredentials() {
   }
 }
 export default {
-  data: () => ({ cwd: new URL(window.location).searchParams.get("p") || "", storageId: new URL(window.location).searchParams.get("storage") || "default", storageOptions: [{ id: "default", label: "主存储" }], files: [], folders: [], clipboard: null, focusedItem: null, contextPosition: { x: 0, y: 0 }, loading: false, order: "name-asc", search: "", filterCategory: "all", viewMode: localStorage.getItem("drive-view") || "grid", showContextMenu: false, showMenu: false, showUploadPopup: false, uploadProgress: null, uploadFileName: "", speedText: "", uploadQueue: [], isUploading: false, isDragging: false, lightbox: { visible: false, index: 0 }, mediaPlayer: { visible: false, index: 0 }, archiveModal: { visible: false, file: null }, authCredentials: loadAuthCredentials(), dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" }, dialogAction: null }),
+  data: () => ({
+    cwd: new URL(window.location).searchParams.get("p") || "",
+    storageId: new URL(window.location).searchParams.get("storage") || "default",
+    storageOptions: [{ id: "default", label: "主存储" }],
+    files: [],
+    folders: [],
+    globalFiles: [],
+    globalFilesLoaded: false,
+    autoGlobalScan: true, // Auto cross-directory aggregation enabled by default!
+    filterCategory: "all",
+    clipboard: null,
+    focusedItem: null,
+    contextPosition: { x: 0, y: 0 },
+    loading: false,
+    order: "name-asc",
+    search: "",
+    viewMode: localStorage.getItem("drive-view") || "grid",
+    showContextMenu: false,
+    showMenu: false,
+    showUploadPopup: false,
+    uploadProgress: null,
+    uploadFileName: "",
+    speedText: "",
+    uploadQueue: [],
+    isUploading: false,
+    isDragging: false,
+    lightbox: { visible: false, index: 0 },
+    mediaPlayer: { visible: false, index: 0 },
+    archiveModal: { visible: false, file: null },
+    authCredentials: loadAuthCredentials(),
+    dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" },
+    dialogAction: null
+  }),
   computed: {
     menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴", value: "paste", disabled: !this.clipboard }, { text: "退出登录", value: "logout" }]; },
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
     contextActions() { if (!this.focusedItem) return [{ id: "upload", label: "上传文件", icon: "ph-upload-simple" }, { id: "create-folder", label: "新建文件夹", icon: "ph-folder-plus" }, { id: "paste", label: "粘贴", icon: "ph-clipboard", disabled: !this.clipboard }, { id: "logout", label: "退出登录", icon: "ph-sign-out", danger: true }]; if (typeof this.focusedItem === "string") return [{ id: "open", label: "打开文件夹", icon: "ph-folder-open" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }]; return [{ id: "preview", label: "查看/播放", icon: "ph-eye" }, { id: "download", label: "下载", icon: "ph-download-simple" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "rename", label: "重命名", icon: "ph-pencil-simple" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件", icon: "ph-trash", danger: true }]; },
     pathParts() { return this.cwd.split("/").filter(Boolean); }, parentPath() { return this.cwd.replace(/[^/]+\/$/, ""); }, currentFolderName() { return this.pathParts.at(-1) || "资源总览"; }, itemCountText() { const count = this.filteredFiles.length + this.filteredFolders.length; return `${count} 个资源项目${this.search ? " · 搜索结果" : ""}`; },
+    totalItemCount() { return this.files.length + this.folders.length; },
+    
+    categoryMeta() {
+      const map = {
+        all: { title: "个人云端 Showcase 展厅", desc: "直连存储 · 在线影音播放 · 归档解压预览 · 全速传输" },
+        image: { title: "🖼️ 高清照片与壁纸集锦", desc: "跨目录全盘智能扫描 · 点击即刻开启沉浸式全屏幻灯片" },
+        video: { title: "🎬 4K 影音与视频画廊", desc: "跨目录全盘自动归类 · 智能倍速播放与独立音视频模组" },
+        audio: { title: "🎵 无损音乐与唱片曲库", desc: "跨目录全盘自动归类 · 包含 3D 黑胶唱片视效与动态频谱" },
+        archive: { title: "📦 压缩包与归档资源", desc: "跨目录全盘自动归类 · 支持在线解压检视 ZIP/RAR 目录树" },
+        document: { title: "📄 文档与办公资料", desc: "跨目录全盘自动归类 · PDF / Word / Markdown / 电子书" },
+      };
+      return map[this.filterCategory] || map.all;
+    },
+
+    sourceFileList() {
+      if (this.autoGlobalScan && this.filterCategory !== "all" && this.globalFilesLoaded) {
+        return this.globalFiles;
+      }
+      return this.files;
+    },
+
     filteredFiles() {
       const query = this.search.toLocaleLowerCase();
-      return this.files.filter((file) => {
+      return this.sourceFileList.filter((file) => {
         const nameMatch = !query || this.fileName(file.key).toLocaleLowerCase().includes(query);
         if (!nameMatch) return false;
         if (this.filterCategory === "image") return this.isImage(file);
         if (this.filterCategory === "video") return this.isVideo(file);
         if (this.filterCategory === "audio") return this.isAudio(file);
         if (this.filterCategory === "archive") return this.isArchive(file);
+        if (this.filterCategory === "document") return this.isDocument(file);
         return true;
       });
     },
+
     filteredFolders() {
       const query = this.search.toLocaleLowerCase();
       if (this.filterCategory !== "all") return [];
       return this.folders.filter((folder) => !query || this.folderName(folder).toLocaleLowerCase().includes(query));
     },
+
+    categoryCounts() {
+      const list = this.autoGlobalScan && this.globalFilesLoaded ? this.globalFiles : this.files;
+      const counts = { image: 0, video: 0, audio: 0, archive: 0, document: 0 };
+      for (const f of list) {
+        if (this.isImage(f)) counts.image++;
+        else if (this.isVideo(f)) counts.video++;
+        else if (this.isAudio(f)) counts.audio++;
+        else if (this.isArchive(f)) counts.archive++;
+        else if (this.isDocument(f)) counts.document++;
+      }
+      return counts;
+    },
+
     imageItems() { return this.filteredFiles.filter(this.isImage).map((f) => ({ name: this.fileName(f.key), url: this.rawPath(f.key), file: f })); },
     mediaItems() { return this.filteredFiles.filter(this.isMedia).map((f) => ({ name: this.fileName(f.key), url: this.rawPath(f.key), file: f })); },
   },
   methods: {
+    selectCategory(cat) {
+      this.filterCategory = cat;
+      if (cat !== "all" && this.autoGlobalScan && !this.globalFilesLoaded) {
+        this.fetchGlobalFiles();
+      }
+    },
+
+    async fetchGlobalFiles() {
+      this.loading = true;
+      try {
+        const items = await this.getAllItems("");
+        this.globalFiles = items.filter((item) => !item.key.endsWith("_$folder$"));
+        this.globalFilesLoaded = true;
+      } catch (err) {
+        console.warn("Global scan failed", err);
+      } finally {
+        this.loading = false;
+      }
+    },
+
     isImage(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("image/")) return true; return /\.(jpg|jpeg|png|gif|webp|avif|svg|bmp|heic|ico)$/i.test(file.key || ""); },
     isVideo(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("video/")) return true; return /\.(mp4|webm|mkv|mov|m4v|avi|flv|wmv|3gp)$/i.test(file.key || ""); },
     isAudio(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("audio/")) return true; return /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma|aiff|alac)$/i.test(file.key || ""); },
     isArchive(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("zip") || type.includes("rar") || type.includes("compressed") || type.includes("tar") || type.includes("archive")) return true; return /\.(zip|rar|7z|tar|gz|bz2|xz|iso|dmg|apk|exe|deb|pkg)$/i.test(file.key || ""); },
+    isDocument(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("pdf") || type.includes("word") || type.includes("document") || type.includes("text")) return true; return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|json|csv|epub)$/i.test(file.key || ""); },
     isMedia(file) { return this.isVideo(file) || this.isAudio(file); },
     archiveExt(file) { const ext = (file.key || "").split(".").pop(); return ext ? ext.toUpperCase() : "ZIP"; },
     imageUrl(file) { if (file.customMetadata?.thumbnail) return `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(this.storageId)}`; return this.rawPath(file.key); },
     openFile(file) {
       if (typeof file === "string") {
-        const found = this.files.find((f) => f.key === file);
+        const found = (this.autoGlobalScan ? this.globalFiles : this.files).find((f) => f.key === file);
         if (found) file = found;
       }
       if (this.isImage(file)) {
@@ -174,7 +361,7 @@ export default {
       this.preview(this.rawPath(file.key));
     },
     onDragEnter(e) { if (e.dataTransfer?.types?.includes("Files")) this.isDragging = true; }, onDragLeave(e) { if (e.clientX === 0 || e.clientY === 0) this.isDragging = false; },
-    fileName(key) { return key.split("/").filter(Boolean).pop() || key; }, folderName(folder) { return folder.split("/").filter(Boolean).pop() || "文件"; }, pathUntil(index) { return `${this.pathParts.slice(0, index + 1).join("/")}/`; }, goToFolder(path) { this.cwd = path; }, formatDate(value) { return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }, rawPath(key) { const path = `/raw/${key}`; return this.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(this.storageId)}`; }, authHeaders() { if (!this.authCredentials) return {}; return { Authorization: `Basic ${btoa(`${this.authCredentials.username}:${this.authCredentials.password}`)}` }; }, storageHeaders() { return { "x-storage-id": this.storageId, ...this.authHeaders() }; }, copyLink(link) { navigator.clipboard.writeText(new URL(link, window.location.origin).toString()); this.closeContext(); }, openContext(item, event) { this.focusedItem = item; const width = 218; const height = 270; this.contextPosition = { x: Math.min(event?.clientX || 24, window.innerWidth - width - 12), y: Math.min(event?.clientY || 80, window.innerHeight - height - 12) }; this.showContextMenu = true; }, closeContext() { this.showContextMenu = false; },
+    fileName(key) { return key.split("/").filter(Boolean).pop() || key; }, folderName(folder) { return folder.split("/").filter(Boolean).pop() || "文件"; }, pathUntil(index) { return `${this.pathParts.slice(0, index + 1).join("/")}/`; }, goToFolder(path) { this.filterCategory = "all"; this.cwd = path; }, formatDate(value) { return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }, rawPath(key) { const path = `/raw/${key}`; return this.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(this.storageId)}`; }, authHeaders() { if (!this.authCredentials) return {}; return { Authorization: `Basic ${btoa(`${this.authCredentials.username}:${this.authCredentials.password}`)}` }; }, storageHeaders() { return { "x-storage-id": this.storageId, ...this.authHeaders() }; }, copyLink(link) { navigator.clipboard.writeText(new URL(link, window.location.origin).toString()); this.closeContext(); }, openContext(item, event) { this.focusedItem = item; const width = 218; const height = 270; this.contextPosition = { x: Math.min(event?.clientX || 24, window.innerWidth - width - 12), y: Math.min(event?.clientY || 80, window.innerHeight - height - 12) }; this.showContextMenu = true; }, closeContext() { this.showContextMenu = false; },
     openDialog(options, action) { this.dialog = { visible: true, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options }; this.dialogAction = action; }, closeDialog() { this.dialog.visible = false; this.dialogAction = null; }, onDialogSubmit(value) { const action = this.dialogAction; this.closeDialog(); action?.(value); },
     async login(credentials) { const response = await fetch("/api/write/test", { headers: { Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` } }); if (!response.ok) { this.dialogAction = (nextCredentials) => this.login(nextCredentials); this.dialog = { ...this.dialog, visible: true, error: "账号或密码不合规" }; return; } this.authCredentials = credentials; localStorage.setItem("drive-auth", JSON.stringify(credentials)); sessionStorage.setItem("drive-auth", JSON.stringify(credentials)); },
     logout() { localStorage.removeItem("drive-auth"); sessionStorage.removeItem("drive-auth"); this.authCredentials = null; location.reload(); },
@@ -265,7 +452,12 @@ export default {
     async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
     async getAllItems(prefix) { const response = await fetch(`/api/children/${prefix}`, { headers: this.storageHeaders() }); const data = await response.json(); const items = [...(data.value || [])]; for (const folder of data.folders || []) { items.push({ key: `${folder}_$folder$` }); items.push(...await this.getAllItems(folder)); } return items; }, uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },
   },
-  watch: { cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · 数字资源站`; }, immediate: true }, storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.fetchFiles(); }, viewMode(value) { localStorage.setItem("drive-view", value); } },
-  created() { this.fetchStorages(); window.addEventListener("popstate", () => { const url = new URL(window.location); this.cwd = url.searchParams.get("p") || ""; this.storageId = url.searchParams.get("storage") || "default"; }); }, components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal },
+  watch: {
+    cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · FlareDrive Studio`; }, immediate: true },
+    storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.fetchFiles(); },
+    viewMode(value) { localStorage.setItem("drive-view", value); }
+  },
+  created() { this.fetchStorages(); window.addEventListener("popstate", () => { const url = new URL(window.location); this.cwd = url.searchParams.get("p") || ""; this.storageId = url.searchParams.get("storage") || "default"; }); },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal },
 };
 </script>
