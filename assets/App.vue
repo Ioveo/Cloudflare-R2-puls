@@ -325,6 +325,7 @@
     <MediaPlayerModal :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
     <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
     <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
+    <ShareModal :visible="shareModal.visible" :file="shareModal.file" :raw-url="shareModal.rawUrl" @close="shareModal.visible = false" />
   </main>
 </div>
 </template>
@@ -342,6 +343,7 @@ import MediaPlayerModal from "./MediaPlayerModal.vue?v=13.0";
 import ArchiveModal from "./ArchiveModal.vue";
 import HotkeysModal from "./HotkeysModal.vue";
 import CatLogo from "./CatLogo.vue";
+import ShareModal from "./ShareModal.vue";
 
 function loadAuthCredentials() {
   try {
@@ -383,6 +385,7 @@ export default {
     mediaPlayer: { visible: false, index: 0 },
     archiveModal: { visible: false, file: null },
     showHotkeysModal: false,
+    shareModal: { visible: false, file: null, rawUrl: "" },
     authCredentials: loadAuthCredentials(),
     dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options },
     dialogAction: null
@@ -660,7 +663,11 @@ export default {
         return this.preview(this.rawPath(item.key || item));
       }
       if (action === "download") { const link = document.createElement("a"); link.href = this.rawPath(item.key); link.download = this.fileName(item.key); link.click(); return; }
-      if (action === "copy-link") return this.copyLink(typeof item === "string" ? `/?p=${encodeURIComponent(item)}&storage=${encodeURIComponent(this.storageId)}` : this.rawPath(item.key));
+      if (action === "copy-link" || action === "share") {
+        const targetFile = typeof item === "object" ? item : { key: item };
+        this.shareModal = { visible: true, file: targetFile, rawUrl: typeof item === "string" ? `/?p=${encodeURIComponent(item)}&storage=${encodeURIComponent(this.storageId)}` : this.rawPath(item.key) };
+        return;
+      }
       if (action === "rename") return this.renameFile(item.key);
       if (action === "move") return this.moveFile(typeof item === "string" ? `${item}_$folder$` : item.key);
       if (action === "delete") return this.removeFile(typeof item === "string" ? `${item}_$folder$` : item.key);
@@ -770,6 +777,6 @@ export default {
   unmounted() {
     window.removeEventListener("keydown", this.onGlobalKeydown);
   },
-  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal },
 };
 </script>
