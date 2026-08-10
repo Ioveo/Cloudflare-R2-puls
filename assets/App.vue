@@ -94,6 +94,9 @@
 
       <div class="topbar-actions">
         <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
+        <button class="icon-button theme-toggle-btn" type="button" :title="theme === 'dark' ? '切换为浅色模式' : '切换为深色模式'" @click="toggleTheme">
+          <i class="ph" :class="theme === 'dark' ? 'ph-moon-stars-fill' : 'ph-sun-dim-fill'"></i>
+        </button>
         <button class="icon-button" type="button" title="快捷键指南 (?)" @click="showHotkeysModal = true"><i class="ph ph-keyboard"></i></button>
         <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
         <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
@@ -375,6 +378,7 @@ export default {
     cwd: new URL(window.location).searchParams.get("p") || "",
     storageId: new URL(window.location).searchParams.get("storage") || "default",
     storageOptions: [{ id: "default", label: "主存储" }],
+    theme: localStorage.getItem("drive-theme") || "dark",
     files: [],
     folders: [],
     globalFiles: [],
@@ -409,7 +413,7 @@ export default {
     dialogAction: null
   }),
   computed: {
-    menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴项目", value: "paste", disabled: !this.clipboard }, { text: "退出登录", value: "logout" }]; },
+    menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴项目", value: "paste", disabled: !this.clipboard }, { text: this.theme === "dark" ? "切换为浅色模式" : "切换为暗色模式", value: "toggle-theme" }, { text: "退出登录", value: "logout" }]; },
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
     contextActions() {
       if (!this.focusedItem) return [
@@ -796,7 +800,7 @@ export default {
         this.loading = false;
       }
     },
-    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
+    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); if (value === "toggle-theme") return this.toggleTheme(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
     async pasteFile() {
       if (!this.clipboard || !this.clipboard.item) return;
       const { action, item } = this.clipboard;
@@ -932,13 +936,25 @@ export default {
         this.processUploadQueue();
       }
     },
+    toggleTheme() {
+      this.theme = this.theme === "dark" ? "light" : "dark";
+      localStorage.setItem("drive-theme", this.theme);
+      document.documentElement.setAttribute("data-theme", this.theme);
+    },
   },
   watch: {
+    theme: {
+      handler(val) {
+        document.documentElement.setAttribute("data-theme", val);
+      },
+      immediate: true
+    },
     cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · 天才猫 R2 网盘系统`; }, immediate: true },
     storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.loadCachedGlobalIndex(); this.fetchFiles(); },
     viewMode(value) { localStorage.setItem("drive-view", value); }
   },
   created() {
+    document.documentElement.setAttribute("data-theme", this.theme);
     this.loadCachedGlobalIndex();
     this.fetchStorages();
     window.addEventListener("popstate", () => {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -7,22 +7,29 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>天才猫 R2 网盘系统 · 智能云端 Showcase</title>
+    <script>
+      // Apply theme before DOM rendering to prevent light flicker
+      try {
+        const savedTheme = localStorage.getItem("drive-theme") || "dark";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+      } catch (e) {}
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue3-sfc-loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="prefetch" href="/assets/main.mjs?v=28.0" />
-    <link rel="prefetch" href="/assets/MimeIcon.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/LightboxModal.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/MediaPlayerModal.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/ArchiveModal.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/HotkeysModal.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/CatLogo.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/ShareModal.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/TextEditorModal.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/UploadPopup.vue?v=28.0" />
-    <link rel="prefetch" href="/assets/UploadProgress.vue?v=28.0" />
-    <link rel="stylesheet" href="/assets/main.css?v=28.0" />
+    <link rel="prefetch" href="/assets/main.mjs?v=29.0" />
+    <link rel="prefetch" href="/assets/MimeIcon.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/LightboxModal.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/MediaPlayerModal.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/ArchiveModal.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/HotkeysModal.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/CatLogo.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/ShareModal.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/TextEditorModal.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/UploadPopup.vue?v=29.0" />
+    <link rel="prefetch" href="/assets/UploadProgress.vue?v=29.0" />
+    <link rel="stylesheet" href="/assets/main.css?v=29.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -62,7 +69,7 @@
       const app = Vue.createApp({
         components: {
           App: Vue.defineAsyncComponent(() =>
-            loadModule("/assets/App.vue?v=28.0", options)
+            loadModule("/assets/App.vue?v=29.0", options)
           ),
         },
         template: "<App></App>",
