@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>FlareDrive Studio · 数字资源库</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.2.37/vue.global.min.js"></script>
+    <title>FlareDrive Studio · 高奢云端媒体与资源 Showcase</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue3-sfc-loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="prefetch" href="/assets/main.mjs?v=11.0" />
-    <link rel="prefetch" href="/assets/MimeIcon.vue?v=11.0" />
-    <link rel="prefetch" href="/assets/LightboxModal.vue?v=11.0" />
-    <link rel="prefetch" href="/assets/MediaPlayerModal.vue?v=11.0" />
-    <link rel="prefetch" href="/assets/ArchiveModal.vue?v=11.0" />
-    <link rel="stylesheet" href="/assets/main.css?v=11.0" />
+    <link rel="prefetch" href="/assets/main.mjs?v=12.0" />
+    <link rel="prefetch" href="/assets/MimeIcon.vue?v=12.0" />
+    <link rel="prefetch" href="/assets/LightboxModal.vue?v=12.0" />
+    <link rel="prefetch" href="/assets/MediaPlayerModal.vue?v=12.0" />
+    <link rel="prefetch" href="/assets/ArchiveModal.vue?v=12.0" />
+    <link rel="stylesheet" href="/assets/main.css?v=12.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -36,7 +36,8 @@
       const options = {
         moduleCache: { vue: Vue },
         async getFile(url) {
-          const res = await fetch(url);
+          const fetchUrl = url.includes("?") ? `${url}&_t=${Date.now()}` : `${url}?_t=${Date.now()}`;
+          const res = await fetch(fetchUrl, { cache: "no-store" });
           if (!res.ok)
             throw Object.assign(new Error(res.statusText + " " + url), { res });
           return {
@@ -55,7 +56,7 @@
       const app = Vue.createApp({
         components: {
           App: Vue.defineAsyncComponent(() =>
-            loadModule("/assets/App.vue?v=11.0", options)
+            loadModule("/assets/App.vue?v=12.0", options)
           ),
         },
         template: "<App></App>",
@@ -63,6 +64,5 @@
 
       app.mount("#app");
     </script>
-    <script type="module"></script>
   </body>
 </html>

@@ -456,6 +456,40 @@ input:checked + .slider:before { transform: translateX(16px); }
   padding: 36px 48px 140px;
 }
 
+.workspace.pure-photo-workspace {
+  padding-top: 24px !important;
+}
+
+.pure-photo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding: 14px 24px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.pure-photo-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.4px;
+}
+
+.pure-photo-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: rgba(10, 132, 255, 0.15);
+  border: 1px solid rgba(10, 132, 255, 0.25);
+}
+
 /* VisionOS Ambient Glass Header Banner */
 .portal-hero {
   width: 100%;

@@ -88,14 +88,14 @@
       </label>
 
       <div class="topbar-actions">
-        <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage" in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
+        <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
         <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
         <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
       </div>
     </header>
 
-    <section class="workspace">
-      <!-- Portal Hero Banner & R2 Storage Animated Widget (Hidden in Pure Photo Mode for maximum visual canvas) -->
+    <section class="workspace" :class="{ 'pure-photo-workspace': filterCategory === 'image' }">
+      <!-- Portal Hero Banner & R2 Storage Animated Widget (Hidden in Pure Photo Mode) -->
       <div v-if="filterCategory !== 'image'" class="portal-hero">
         <div class="hero-content">
           <div class="hero-header-row">
@@ -143,13 +143,19 @@
         </div>
       </div>
 
-      <!-- Workspace Heading / Breadcrumbs -->
-      <div class="workspace-heading">
+      <!-- Workspace Heading / Breadcrumbs (Hidden in Pure Photo View for 100% Photo Immersion) -->
+      <div v-if="filterCategory !== 'image'" class="workspace-heading">
         <div>
           <nav class="breadcrumbs" aria-label="当前位置"><button type="button" @click="goToFolder('')">首页</button><template v-for="(part, index) in pathParts" :key="`${part}-${index}`"><span aria-hidden="true">/</span><button type="button" @click="goToFolder(pathUntil(index))">{{ part }}</button></template></nav>
           <h2>{{ currentFolderName }}</h2><p>{{ itemCountText }}</p>
         </div>
         <div class="view-controls" aria-label="视图设置"><button class="view-button" :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'"><i class="ph ph-squares-four" aria-hidden="true"></i></button><button class="view-button" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'"><i class="ph ph-list-bullets" aria-hidden="true"></i></button></div>
+      </div>
+
+      <!-- Minimal Pure Photo Gallery Header Pill -->
+      <div v-else class="pure-photo-header">
+        <span class="pure-photo-title">🖼️ 高清照片库</span>
+        <span class="pure-photo-count">{{ filteredFiles.length }} 张精选原图</span>
       </div>
 
       <!-- Loading skeleton -->
@@ -320,7 +326,7 @@ import UploadProgress from "./UploadProgress.vue";
 import ContextMenu from "./ContextMenu.vue";
 import PromptDialog from "./PromptDialog.vue";
 import LightboxModal from "./LightboxModal.vue";
-import MediaPlayerModal from "./MediaPlayerModal.vue?v=6.0";
+import MediaPlayerModal from "./MediaPlayerModal.vue?v=12.0";
 import ArchiveModal from "./ArchiveModal.vue";
 
 function loadAuthCredentials() {
