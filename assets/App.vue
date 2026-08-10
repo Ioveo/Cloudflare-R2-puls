@@ -316,7 +316,7 @@
     </section>
 
     <!-- Floating Glassmorphism Upload Action Pill -->
-    <button class="upload-button" type="button" title="上传或新建" @click="showUploadPopup = true">
+    <button class="upload-button" type="button" title="上传或新建" @click="openUploadWithAuth">
       <i class="ph ph-plus-bold"></i>
       <span>新建或上传</span>
     </button>
@@ -661,7 +661,28 @@ export default {
     onDragEnter(e) { if (e.dataTransfer?.types?.includes("Files")) this.isDragging = true; }, onDragLeave(e) { if (e.clientX === 0 || e.clientY === 0) this.isDragging = false; },
     fileName(key) { return key.split("/").filter(Boolean).pop() || key; }, folderName(folder) { return folder.split("/").filter(Boolean).pop() || "文件"; }, pathUntil(index) { return `${this.pathParts.slice(0, index + 1).join("/")}/`; }, goToFolder(path) { this.filterCategory = "all"; this.mediaPlayer.visible = false; this.lightbox.visible = false; this.archiveModal.visible = false; this.cwd = path; }, formatDate(value) { return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }, rawPath(key) { const path = `/raw/${key}`; return this.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(this.storageId)}`; }, authHeaders() { if (!this.authCredentials) return {}; return { Authorization: `Basic ${btoa(`${this.authCredentials.username}:${this.authCredentials.password}`)}` }; }, storageHeaders() { return { "x-storage-id": this.storageId, ...this.authHeaders() }; }, copyLink(link) { navigator.clipboard.writeText(new URL(link, window.location.origin).toString()); this.closeContext(); }, openContext(item, event) { this.focusedItem = item; const width = 218; const height = 270; this.contextPosition = { x: Math.min(event?.clientX || 24, window.innerWidth - width - 12), y: Math.min(event?.clientY || 80, window.innerHeight - height - 12) }; this.showContextMenu = true; }, closeContext() { this.showContextMenu = false; },
     openDialog(options, action) { this.dialog = { visible: true, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options }; this.dialogAction = action; }, closeDialog() { this.dialog.visible = false; this.dialogAction = null; }, onDialogSubmit(value) { const action = this.dialogAction; this.closeDialog(); action?.(value); },
-    async login(credentials) { const response = await fetch("/api/write/test", { headers: { Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` } }); if (!response.ok) { this.dialogAction = (nextCredentials) => this.login(nextCredentials); this.dialog = { ...this.dialog, visible: true, error: "账号或密码不合规" }; return; } this.authCredentials = credentials; localStorage.setItem("drive-auth", JSON.stringify(credentials)); sessionStorage.setItem("drive-auth", JSON.stringify(credentials)); },
+    async login(credentials) {
+      try {
+        const response = await fetch("/api/write/test", { headers: { Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` } });
+        if (!response.ok) return false;
+        this.authCredentials = credentials;
+        localStorage.setItem("drive-auth", JSON.stringify(credentials));
+        sessionStorage.setItem("drive-auth", JSON.stringify(credentials));
+        return true;
+      } catch (e) { console.error("Login error", e); return false; }
+    },
+    promptLogin(onSuccess) {
+      this.openDialog(
+        { mode: "login", title: "登录资源站", message: "输入管理员账号和密码", confirmText: "登录" },
+        async (credentials) => {
+          const ok = await this.login(credentials);
+          if (ok) { onSuccess?.(); } else {
+            this.promptLogin(onSuccess);
+            this.$nextTick(() => { this.dialog.error = "账号或密码不合规，请重试"; });
+          }
+        }
+      );
+    },
     logout() { localStorage.removeItem("drive-auth"); sessionStorage.removeItem("drive-auth"); this.authCredentials = null; location.reload(); },
     async runContextAction(action) {
       const item = this.focusedItem;
@@ -767,47 +788,30 @@ export default {
       } catch (error) {
         console.error(`Upload ${file.name} failed`, error);
         if (error?.response?.status === 401) {
-          // 认证失败：把文件放回队列最前面，暂停上传，弹登录框，登录成功后自动重试
           this.uploadQueue.unshift({ basedir, file });
           this.isUploading = false;
           this.uploadProgress = null;
           this.uploadFileName = "";
           this.speedText = "";
-          this.openDialog(
-            { mode: "login", title: "上传需要登录", message: "请输入管理员账号和密码", confirmText: "登录" },
-            async (credentials) => {
-              await this.login(credentials);
-              if (this.authCredentials) {
-                this.isUploading = true;
-                this.processUploadQueue();
-              }
-            }
-          );
+          this.promptLogin(() => { this.isUploading = true; this.processUploadQueue(); });
           return;
         }
       }
       this.processUploadQueue();
     },
-    handleWriteError(error) { if (error?.response?.status === 401) { this.openDialog({ mode: "login", title: "登录资源站", message: "输入 ADMIN 和 PASS 对应的账号密码", confirmText: "登录" }, (credentials) => this.login(credentials)); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); },
+    handleWriteError(error) { if (error?.response?.status === 401) { this.promptLogin(() => { this.fetchFiles(true); }); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); },
     async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(true); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
+    openUploadWithAuth() {
+      if (!this.authCredentials) {
+        this.promptLogin(() => { this.showUploadPopup = true; });
+        return;
+      }
+      this.showUploadPopup = true;
+    },
     uploadFiles(files) {
       if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/";
       this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file })));
       if (!this.isUploading && this.uploadQueue.length) {
-        // 没有凭证时先弹登录，登录成功后再开始上传
-        if (!this.authCredentials) {
-          this.openDialog(
-            { mode: "login", title: "上传需要登录", message: "请输入管理员账号和密码", confirmText: "登录" },
-            async (credentials) => {
-              await this.login(credentials);
-              if (this.authCredentials) {
-                this.isUploading = true;
-                this.processUploadQueue();
-              }
-            }
-          );
-          return;
-        }
         this.isUploading = true;
         this.processUploadQueue();
       }
