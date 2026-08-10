@@ -1,5 +1,5 @@
 import { notFound, parseBucketPath } from "@/utils/bucket";
-import {get_auth_status} from "@/utils/auth";
+import { get_auth_status } from "@/utils/auth";
 
 export async function onRequestPostCreateMultipart(context) {
   const [bucket, path] = parseBucketPath(context);
@@ -9,7 +9,7 @@ export async function onRequestPostCreateMultipart(context) {
 
   const customMetadata: Record<string, string> = {};
   if (request.headers.has("fd-thumbnail"))
-    customMetadata.thumbnail = request.headers.get("fd-thumbnail");
+    customMetadata.thumbnail = request.headers.get("fd-thumbnail")!;
 
   const multipartUpload = await bucket.createMultipartUpload(path, {
     httpMetadata: {
@@ -76,7 +76,7 @@ export async function onRequestPutMultipart(context) {
   const multipartUpload = await bucket.resumeMultipartUpload(path, uploadId);
 
   const partNumber = parseInt(
-    new URLSearchParams(url.search).get("partNumber")
+    new URLSearchParams(url.search).get("partNumber")!
   );
   const uploadedPart = await multipartUpload.uploadPart(
     partNumber,
@@ -92,11 +92,11 @@ export async function onRequestPutMultipart(context) {
 }
 
 export async function onRequestPut(context) {
-  if(!get_auth_status(context)){
+  if (!get_auth_status(context)) {
     return new Response("没有操作权限", {
-        status: 401,
+      status: 401,
     });
-   }
+  }
   const url = new URL(context.request.url);
 
   if (new URLSearchParams(url.search).has("uploadId")) {
@@ -110,21 +110,31 @@ export async function onRequestPut(context) {
 
   let content = request.body;
   const customMetadata: Record<string, string> = {};
+  let contentType = request.headers.get("content-type") || "";
 
   if (request.headers.has("x-amz-copy-source")) {
     const sourceName = decodeURIComponent(
-      request.headers.get("x-amz-copy-source")
+      request.headers.get("x-amz-copy-source")!
     );
     const source = await bucket.get(sourceName);
-    content = source.body;
-    if (source.customMetadata.thumbnail)
-      customMetadata.thumbnail = source.customMetadata.thumbnail;
+    if (source) {
+      content = source.body;
+      if (source.httpMetadata?.contentType) {
+        contentType = source.httpMetadata.contentType;
+      }
+      if (source.customMetadata?.thumbnail) {
+        customMetadata.thumbnail = source.customMetadata.thumbnail;
+      }
+    }
   }
 
   if (request.headers.has("fd-thumbnail"))
-    customMetadata.thumbnail = request.headers.get("fd-thumbnail");
+    customMetadata.thumbnail = request.headers.get("fd-thumbnail")!;
 
-  const obj = await bucket.put(path, content, { customMetadata });
+  const obj = await bucket.put(path, content, {
+    customMetadata,
+    httpMetadata: { contentType: contentType || "application/octet-stream" },
+  });
   const { key, size, uploaded } = obj;
   return new Response(JSON.stringify({ key, size, uploaded }), {
     headers: { "Content-Type": "application/json" },
@@ -132,11 +142,11 @@ export async function onRequestPut(context) {
 }
 
 export async function onRequestDelete(context) {
-  if(!get_auth_status(context)){
+  if (!get_auth_status(context)) {
     return new Response("没有操作权限", {
-        status: 401,
+      status: 401,
     });
-   }
+  }
   const [bucket, path] = parseBucketPath(context);
   if (!bucket) return notFound();
 

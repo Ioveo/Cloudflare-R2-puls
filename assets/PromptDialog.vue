@@ -53,5 +53,35 @@ function submit() {
 </template>
 
 <style scoped>
-.prompt-mask { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:20px; background:rgba(29,29,31,.28); backdrop-filter:blur(18px) saturate(125%); }.prompt-dialog { width:min(390px,100%); padding:24px; color:#1d1d1f; border:1px solid rgba(255,255,255,.92); border-radius:22px; background:rgba(255,255,255,.82); box-shadow:0 28px 70px rgba(29,29,31,.2),inset 0 1px #fff; backdrop-filter:blur(28px) saturate(155%); animation:prompt-in .22s cubic-bezier(.2,.8,.2,1) both; }.prompt-icon { display:grid; width:42px; height:42px; place-items:center; margin-bottom:14px; color:#fff; border-radius:13px; background:#0a84ff; box-shadow:0 8px 18px rgba(10,132,255,.24),inset 0 1px rgba(255,255,255,.45); font-size:21px; }.prompt-dialog h2 { margin:0; font-size:19px; letter-spacing:0; }.prompt-dialog p { margin:8px 0 18px; color:#6e6e73; font-size:13px; line-height:1.5; }.prompt-field { display:grid; gap:7px; margin-top:12px; color:#6e6e73; font-size:12px; }.prompt-field input { width:100%; height:42px; padding:0 12px; color:#1d1d1f; border:1px solid rgba(60,60,67,.16); border-radius:11px; outline:0; background:rgba(255,255,255,.74); box-shadow:inset 0 1px 2px rgba(29,29,31,.04); }.prompt-field input:focus { border-color:rgba(10,132,255,.65); box-shadow:0 0 0 4px rgba(10,132,255,.12); }.prompt-error { display:flex; gap:6px; align-items:center; margin:12px 0 0!important; color:#d70015!important; font-size:12px!important; }.prompt-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:22px; }.prompt-button { min-width:76px; height:38px; padding:0 15px; border-radius:10px; font-size:13px; font-weight:650; transition:transform .16s,background .16s,box-shadow .16s; }.prompt-button:active { transform:scale(.97); }.prompt-button.secondary { color:#515156; background:rgba(118,118,128,.12); }.prompt-button.secondary:hover { background:rgba(118,118,128,.2); }.prompt-button.primary { color:#fff; background:#0a84ff; box-shadow:0 7px 15px rgba(10,132,255,.2),inset 0 1px rgba(255,255,255,.3); }.prompt-button.primary:hover { background:#0071e3; }.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; } @keyframes prompt-in { from { opacity:0; transform:translateY(10px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+.prompt-mask { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:20px; background:rgba(29,29,31,.28); backdrop-filter:blur(18px) saturate(125%); }
+.prompt-dialog { width:min(390px,100%); padding:24px; color:#1d1d1f; border:1px solid rgba(255,255,255,.92); border-radius:22px; background:rgba(255,255,255,.82); box-shadow:0 28px 70px rgba(29,29,31,.2),inset 0 1px #fff; backdrop-filter:blur(28px) saturate(155%); animation:prompt-in .22s cubic-bezier(.2,.8,.2,1) both; }
+.prompt-icon { display:grid; width:42px; height:42px; place-items:center; margin-bottom:14px; color:#fff; border-radius:13px; background:#0a84ff; box-shadow:0 8px 18px rgba(10,132,255,.24),inset 0 1px rgba(255,255,255,.45); font-size:21px; }
+.prompt-dialog h2 { margin:0; font-size:19px; letter-spacing:0; }
+.prompt-dialog p { margin:8px 0 18px; color:#6e6e73; font-size:13px; line-height:1.5; }
+.prompt-field { display:grid; gap:7px; margin-top:12px; color:#6e6e73; font-size:12px; }
+.prompt-field input { width:100%; height:42px; padding:0 12px; color:#1d1d1f; border:1px solid rgba(60,60,67,.16); border-radius:11px; outline:0; background:rgba(255,255,255,.74); box-shadow:inset 0 1px 2px rgba(29,29,31,.04); }
+.prompt-field input:focus { border-color:rgba(10,132,255,.65); box-shadow:0 0 0 4px rgba(10,132,255,.12); }
+.prompt-error { display:flex; gap:6px; align-items:center; margin:12px 0 0!important; color:#d70015!important; font-size:12px!important; }
+.prompt-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:22px; }
+.prompt-button { min-width:76px; height:38px; padding:0 15px; border-radius:10px; font-size:13px; font-weight:650; transition:transform .16s,background .16s,box-shadow .16s; }
+.prompt-button:active { transform:scale(.97); }
+.prompt-button.secondary { color:#515156; background:rgba(118,118,128,.12); }
+.prompt-button.secondary:hover { background:rgba(118,118,128,.2); }
+.prompt-button.primary { color:#fff; background:#0a84ff; box-shadow:0 7px 15px rgba(10,132,255,.2),inset 0 1px rgba(255,255,255,.3); }
+.prompt-button.primary:hover { background:#0071e3; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+
+@media (prefers-color-scheme: dark) {
+  .prompt-mask { background:rgba(0,0,0,.5); }
+  .prompt-dialog { color:#f2f2f7; border-color:rgba(255,255,255,.15); background:rgba(30,30,36,.9); box-shadow:0 28px 70px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.12); }
+  .prompt-dialog p { color:#98989d; }
+  .prompt-field { color:#98989d; }
+  .prompt-field input { color:#f2f2f7; border-color:rgba(255,255,255,.15); background:rgba(255,255,255,.08); }
+  .prompt-field input:focus { border-color:rgba(10,132,255,.8); box-shadow:0 0 0 4px rgba(10,132,255,.2); }
+  .prompt-button.secondary { color:#a1a1a6; background:rgba(255,255,255,.1); }
+  .prompt-button.secondary:hover { background:rgba(255,255,255,.18); }
+  .prompt-error { color:#ff453a!important; }
+}
+
+@keyframes prompt-in { from { opacity:0; transform:translateY(10px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
 </style>

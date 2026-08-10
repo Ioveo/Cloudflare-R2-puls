@@ -26,10 +26,23 @@
       <section v-else class="file-grid" :class="viewMode">
         <article v-if="cwd" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)"><div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div><div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div></article>
         <article v-for="folder in filteredFolders" :key="folder" class="file-card folder-card" tabindex="0" @click="goToFolder(folder)" @keydown.enter="goToFolder(folder)" @contextmenu.stop.prevent="openContext(folder, $event)"><div class="file-symbol folder-symbol"><i class="ph ph-folder-simple"></i></div><div class="file-main"><strong>{{ folderName(folder) }}</strong><span>文件夹</span></div><button class="more-button" type="button" title="更多操作" @click.stop="openContext(folder, $event)"><i class="ph ph-dots-three-outline"></i></button></article>
-        <article v-for="file in filteredFiles" :key="file.key" class="file-card file-card--document" tabindex="0" @click="preview(rawPath(file.key))" @keydown.enter="preview(rawPath(file.key))" @contextmenu.stop.prevent="openContext(file, $event)"><MimeIcon :content-type="file.httpMetadata.contentType" :thumbnail="file.customMetadata.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" /><div class="file-main"><strong>{{ fileName(file.key) }}</strong><span>{{ formatDate(file.uploaded) }}</span></div><footer class="file-footer"><span>大小</span><strong>{{ formatSize(file.size) }}</strong></footer><button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button></article>
+        <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) ? 'file-card--photo' : 'file-card--document']" tabindex="0" @click="preview(rawPath(file.key))" @keydown.enter="preview(rawPath(file.key))" @contextmenu.stop.prevent="openContext(file, $event)">
+          <div v-if="isImage(file)" class="photo-preview">
+            <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+          </div>
+          <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
+          <div class="file-main">
+            <strong>{{ fileName(file.key) }}</strong>
+            <span>{{ formatDate(file.uploaded) }}</span>
+          </div>
+          <footer class="file-footer">
+            <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+          </footer>
+          <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+        </article>
       </section>
     </section>
-    <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" />
+    <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
     <button class="upload-button" type="button" title="上传或新建" @click="showUploadPopup = true"><i class="ph ph-plus"></i><span>新建</span></button>
     <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
     <ContextMenu :visible="showContextMenu" :x="contextPosition.x" :y="contextPosition.y" :title="contextTitle" :actions="contextActions" @close="closeContext" @select="runContextAction" />
@@ -50,7 +63,7 @@ function loadAuthCredentials() {
   try { return JSON.parse(sessionStorage.getItem("drive-auth") || "null"); } catch { return null; }
 }
 export default {
-  data: () => ({ cwd: new URL(window.location).searchParams.get("p") || "", storageId: new URL(window.location).searchParams.get("storage") || "default", storageOptions: [{ id: "default", label: "主存储" }], files: [], folders: [], clipboard: null, focusedItem: null, contextPosition: { x: 0, y: 0 }, loading: false, order: "name-asc", search: "", viewMode: localStorage.getItem("drive-view") || "grid", showContextMenu: false, showMenu: false, showUploadPopup: false, uploadProgress: null, uploadFileName: "", uploadQueue: [], isUploading: false, authCredentials: loadAuthCredentials(), dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" }, dialogAction: null }),
+  data: () => ({ cwd: new URL(window.location).searchParams.get("p") || "", storageId: new URL(window.location).searchParams.get("storage") || "default", storageOptions: [{ id: "default", label: "主存储" }], files: [], folders: [], clipboard: null, focusedItem: null, contextPosition: { x: 0, y: 0 }, loading: false, order: "name-asc", search: "", viewMode: localStorage.getItem("drive-view") || "grid", showContextMenu: false, showMenu: false, showUploadPopup: false, uploadProgress: null, uploadFileName: "", speedText: "", uploadQueue: [], isUploading: false, authCredentials: loadAuthCredentials(), dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" }, dialogAction: null }),
   computed: {
     menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴", value: "paste", disabled: !this.clipboard }]; },
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
@@ -59,6 +72,7 @@ export default {
     filteredFiles() { const query = this.search.toLocaleLowerCase(); return this.files.filter((file) => !query || this.fileName(file.key).toLocaleLowerCase().includes(query)); }, filteredFolders() { const query = this.search.toLocaleLowerCase(); return this.folders.filter((folder) => !query || this.folderName(folder).toLocaleLowerCase().includes(query)); },
   },
   methods: {
+    isImage(file) { const type = file.httpMetadata?.contentType || ""; if (type.startsWith("image/")) return true; return /\.(jpg|jpeg|png|gif|webp|avif|svg|bmp|heic|ico)$/i.test(file.key || ""); }, imageUrl(file) { if (file.customMetadata?.thumbnail) return `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(this.storageId)}`; return this.rawPath(file.key); },
     fileName(key) { return key.split("/").filter(Boolean).pop() || key; }, folderName(folder) { return folder.split("/").filter(Boolean).pop() || "文件"; }, pathUntil(index) { return `${this.pathParts.slice(0, index + 1).join("/")}/`; }, goToFolder(path) { this.cwd = path; }, formatDate(value) { return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }, rawPath(key) { const path = `/raw/${key}`; return this.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(this.storageId)}`; }, authHeaders() { if (!this.authCredentials) return {}; return { Authorization: `Basic ${btoa(`${this.authCredentials.username}:${this.authCredentials.password}`)}` }; }, storageHeaders() { return { "x-storage-id": this.storageId, ...this.authHeaders() }; }, copyLink(link) { navigator.clipboard.writeText(new URL(link, window.location.origin).toString()); this.closeContext(); }, openContext(item, event) { this.focusedItem = item; const width = 218; const height = 270; this.contextPosition = { x: Math.min(event?.clientX || 24, window.innerWidth - width - 12), y: Math.min(event?.clientY || 80, window.innerHeight - height - 12) }; this.showContextMenu = true; }, closeContext() { this.showContextMenu = false; },
     openDialog(options, action) { this.dialog = { visible: true, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options }; this.dialogAction = action; }, closeDialog() { this.dialog.visible = false; this.dialogAction = null; }, onDialogSubmit(value) { const action = this.dialogAction; this.closeDialog(); action?.(value); },
     async login(credentials) { const response = await fetch("/api/write/test", { headers: { Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` } }); if (!response.ok) { this.dialogAction = (nextCredentials) => this.login(nextCredentials); this.dialog = { ...this.dialog, visible: true, error: "账号或密码不正确" }; return; } this.authCredentials = credentials; sessionStorage.setItem("drive-auth", JSON.stringify(credentials)); },
@@ -69,7 +83,63 @@ export default {
     async fetchFiles() { this.loading = true; try { const response = await fetch(`/api/children/${this.cwd}`, { headers: this.storageHeaders() }); const items = await response.json(); this.files = items.value || []; this.folders = items.folders || []; this.sortItems(); } catch (error) { console.error("Fetch files failed", error); this.files = []; this.folders = []; } finally { this.loading = false; } },
     formatSize(size) { const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(filePath) { window.open(filePath, "_blank", "noopener"); },
     async pasteFile() { if (!this.clipboard) return; this.openDialog({ title: "粘贴文件", message: "可以修改文件名，留空使用原名称", initialValue: this.fileName(this.clipboard), confirmText: "粘贴" }, async (name) => { if (!name) name = this.fileName(this.clipboard); try { await this.copyPaste(this.clipboard, `${this.cwd}${name}`); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
-    async processUploadQueue() { if (!this.uploadQueue.length) { await this.fetchFiles(); this.uploadProgress = null; this.uploadFileName = ""; this.isUploading = false; return; } const { basedir, file } = this.uploadQueue.shift(); this.uploadFileName = file.name; let thumbnailDigest = null; if (file.type.startsWith("image/") || file.type === "video/mp4") { try { const thumbnail = await generateThumbnail(file); thumbnailDigest = await blobDigest(thumbnail); await axios.put(`/api/write/items/_$flaredrive$/thumbnails/${thumbnailDigest}.png`, thumbnail, { headers: this.storageHeaders() }); } catch (error) { console.warn("Thumbnail generation failed", error); } } try { const headers = { ...this.storageHeaders(), ...(thumbnailDigest ? { "fd-thumbnail": thumbnailDigest } : {}) }; const onUploadProgress = ({ loaded, total }) => { this.uploadProgress = total ? (loaded * 100) / total : 0; }; if (file.size >= MULTIPART_THRESHOLD) await multipartUpload(`${basedir}${file.name}`, file, { headers, onUploadProgress }); else await axios.put(`/api/write/items/${basedir}${file.name}`, file, { headers, onUploadProgress }); } catch (error) { this.handleWriteError(error); console.error(`Upload ${file.name} failed`, error); } this.processUploadQueue(); },
+    async processUploadQueue() {
+      if (!this.uploadQueue.length) {
+        await this.fetchFiles();
+        this.uploadProgress = null;
+        this.uploadFileName = "";
+        this.speedText = "";
+        this.isUploading = false;
+        return;
+      }
+      const { basedir, file } = this.uploadQueue.shift();
+      this.uploadFileName = file.name;
+      this.uploadProgress = 0;
+      this.speedText = "准备中...";
+      let thumbnailDigest = null;
+      if (file.type.startsWith("image/") || file.type === "video/mp4") {
+        try {
+          const thumbnail = await generateThumbnail(file);
+          thumbnailDigest = await blobDigest(thumbnail);
+          await axios.put(`/api/write/items/_$flaredrive$/thumbnails/${thumbnailDigest}.png`, thumbnail, {
+            headers: { ...this.storageHeaders(), "Content-Type": "image/png" }
+          });
+        } catch (error) {
+          console.warn("Thumbnail generation failed", error);
+        }
+      }
+      try {
+        const contentType = file.type || "application/octet-stream";
+        const headers = {
+          ...this.storageHeaders(),
+          "Content-Type": contentType,
+          ...(thumbnailDigest ? { "fd-thumbnail": thumbnailDigest } : {})
+        };
+        let lastLoaded = 0;
+        let lastTime = Date.now();
+        const onUploadProgress = ({ loaded, total }) => {
+          this.uploadProgress = total ? (loaded * 100) / total : 0;
+          const now = Date.now();
+          const timeDiff = (now - lastTime) / 1000;
+          if (timeDiff >= 0.5 && loaded > lastLoaded) {
+            const bytesDiff = loaded - lastLoaded;
+            const bps = bytesDiff / timeDiff;
+            this.speedText = `${this.formatSize(bps)}/s`;
+            lastLoaded = loaded;
+            lastTime = now;
+          }
+        };
+        if (file.size >= MULTIPART_THRESHOLD) {
+          await multipartUpload(`${basedir}${file.name}`, file, { headers, onUploadProgress });
+        } else {
+          await axios.put(`/api/write/items/${basedir}${file.name}`, file, { headers, onUploadProgress });
+        }
+      } catch (error) {
+        this.handleWriteError(error);
+        console.error(`Upload ${file.name} failed`, error);
+      }
+      this.processUploadQueue();
+    },
     handleWriteError(error) { if (error?.response?.status === 401) { this.openDialog({ mode: "login", title: "登录文件库", message: "输入 ADMIN 和 PASS 对应的账号密码", confirmText: "登录" }, (credentials) => this.login(credentials)); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除文件", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名文件", message: "输入新的文件名", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
     async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
     async getAllItems(prefix) { const response = await fetch(`/api/children/${prefix}`, { headers: this.storageHeaders() }); const data = await response.json(); const items = [...(data.value || [])]; for (const folder of data.folders || []) { items.push({ key: `${folder}_$folder$` }); items.push(...await this.getAllItems(folder)); } return items; }, uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },

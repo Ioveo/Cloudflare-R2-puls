@@ -13,9 +13,14 @@ function isStorageDefinition(value: unknown): value is Partial<StorageDefinition
   return Boolean(value) && typeof value === "object";
 }
 
+function safePublicUrl(value: unknown): string {
+  if (typeof value !== "string" || !value.trim() || value.trim() === "undefined") return "";
+  return value.trim().replace(/\/$/, "");
+}
+
 export function getStorageDefinitions(env: Record<string, unknown>): StorageDefinition[] {
   const defaultBinding = isR2Bucket(env.R2) ? "R2" : "BUCKET";
-  const defaults = [{ id: "default", label: "主存储", binding: defaultBinding, publicUrl: String(env.PUBURL || "") }];
+  const defaults = [{ id: "default", label: "主存储", binding: defaultBinding, publicUrl: safePublicUrl(env.PUBURL) }];
   const source = env.STORAGES;
   if (typeof source !== "string" || !source.trim()) return defaults;
 
@@ -47,7 +52,7 @@ export function getStorage(context) {
   const configuredBucket = context.env[definition.binding];
   const fallbackBucket = [context.env[driveId], context.env.R2, context.env.BUCKET].find(isR2Bucket);
   const bucket = isR2Bucket(configuredBucket) ? configuredBucket : fallbackBucket;
-  const publicUrl = definition.publicUrl || context.env.PUBURL || "";
+  const publicUrl = definition.publicUrl || safePublicUrl(context.env.PUBURL);
   return { bucket, publicUrl, definition };
 }
 
