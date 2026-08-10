@@ -94,9 +94,9 @@
       </div>
     </header>
 
-    <section class="workspace" :class="{ 'pure-photo-workspace': filterCategory === 'image' }">
-      <!-- Portal Hero Banner & R2 Storage Animated Widget (Hidden in Pure Photo Mode) -->
-      <div v-if="filterCategory !== 'image'" class="portal-hero">
+    <section class="workspace" :class="{ 'pure-gallery-workspace': filterCategory !== 'all' }">
+      <!-- Portal Hero Banner & R2 Storage Animated Widget (ONLY shown in General Overview Hall) -->
+      <div v-if="filterCategory === 'all'" class="portal-hero">
         <div class="hero-content">
           <div class="hero-header-row">
             <span class="hero-tag"><i class="ph ph-sparkle"></i> SHOWCASE STUDIO</span>
@@ -143,19 +143,14 @@
         </div>
       </div>
 
-      <!-- Workspace Heading / Breadcrumbs (Hidden in Pure Photo View for 100% Photo Immersion) -->
-      <div v-if="filterCategory !== 'image'" class="workspace-heading">
+      <!-- Workspace Heading / Breadcrumbs -->
+      <div class="workspace-heading">
         <div>
           <nav class="breadcrumbs" aria-label="当前位置"><button type="button" @click="goToFolder('')">首页</button><template v-for="(part, index) in pathParts" :key="`${part}-${index}`"><span aria-hidden="true">/</span><button type="button" @click="goToFolder(pathUntil(index))">{{ part }}</button></template></nav>
-          <h2>{{ currentFolderName }}</h2><p>{{ itemCountText }}</p>
+          <h2>{{ filterCategory === 'all' ? currentFolderName : categoryMeta.title }}</h2>
+          <p>{{ itemCountText }}</p>
         </div>
         <div class="view-controls" aria-label="视图设置"><button class="view-button" :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'"><i class="ph ph-squares-four" aria-hidden="true"></i></button><button class="view-button" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'"><i class="ph ph-list-bullets" aria-hidden="true"></i></button></div>
-      </div>
-
-      <!-- Minimal Pure Photo Gallery Header Pill -->
-      <div v-else class="pure-photo-header">
-        <span class="pure-photo-title">🖼️ 高清照片库</span>
-        <span class="pure-photo-count">{{ filteredFiles.length }} 张精选原图</span>
       </div>
 
       <!-- Loading skeleton -->
@@ -197,7 +192,7 @@
           @keydown.enter="openFile(file)"
           @contextmenu.stop.prevent="openContext(file, $event)"
         >
-          <!-- 1. PURE HD PHOTO WATERFALL / MASONRY CARD (NO CARD BOX, NO BOTTOM METADATA BOX) -->
+          <!-- 1. PURE FULL HD PHOTO WATERFALL / MASONRY CARD (ALWAYS HIGH RESOLUTION RAW PATH, NO CARD BOX) -->
           <template v-if="isImage(file)">
             <div class="photo-preview-pure">
               <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
@@ -326,7 +321,7 @@ import UploadProgress from "./UploadProgress.vue";
 import ContextMenu from "./ContextMenu.vue";
 import PromptDialog from "./PromptDialog.vue";
 import LightboxModal from "./LightboxModal.vue";
-import MediaPlayerModal from "./MediaPlayerModal.vue?v=12.0";
+import MediaPlayerModal from "./MediaPlayerModal.vue?v=13.0";
 import ArchiveModal from "./ArchiveModal.vue";
 
 function loadAuthCredentials() {
@@ -578,7 +573,11 @@ export default {
     isDocument(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("pdf") || type.includes("word") || type.includes("document") || type.includes("text")) return true; return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|json|csv|epub)$/i.test(file.key || ""); },
     isMedia(file) { return this.isVideo(file) || this.isAudio(file); },
     archiveExt(file) { const ext = (file.key || "").split(".").pop(); return ext ? ext.toUpperCase() : "ZIP"; },
-    imageUrl(file) { if (file.customMetadata?.thumbnail) return `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(this.storageId)}`; return this.rawPath(file.key); },
+    imageUrl(file) {
+      if (this.isImage(file)) return this.rawPath(file.key);
+      if (file.customMetadata?.thumbnail) return `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(this.storageId)}`;
+      return this.rawPath(file.key);
+    },
     openFile(file) {
       if (typeof file === "string") {
         const found = (this.autoGlobalScan ? this.sourceFileList : this.files).find((f) => f.key === file);
