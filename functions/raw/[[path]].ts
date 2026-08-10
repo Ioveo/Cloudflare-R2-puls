@@ -1,9 +1,12 @@
-import { notFound, parseBucketPath } from "@/utils/bucket";
+import { getStorage, notFound, parseBucketPath } from "@/utils/bucket";
 
 export async function onRequestGet(context) {
   const [bucket, path] = parseBucketPath(context);
   if (!bucket) return notFound();
-  const url = context.env["PUBURL"] + "/" + context.request.url.split("/raw/")[1]
+  const { publicUrl } = getStorage(context);
+  if (!publicUrl) return notFound();
+  const rawPath = new URL(context.request.url).pathname.split("/raw/")[1];
+  const url = publicUrl.replace(/\/$/, "") + "/" + rawPath;
 
   var response =await fetch(new Request(url, {
     body: context.request.body,
