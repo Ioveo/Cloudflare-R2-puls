@@ -765,14 +765,53 @@ export default {
           await axios.put(`/api/write/items/${basedir}${file.name}`, file, { headers, onUploadProgress });
         }
       } catch (error) {
-        this.handleWriteError(error);
         console.error(`Upload ${file.name} failed`, error);
+        if (error?.response?.status === 401) {
+          // 认证失败：把文件放回队列最前面，暂停上传，弹登录框，登录成功后自动重试
+          this.uploadQueue.unshift({ basedir, file });
+          this.isUploading = false;
+          this.uploadProgress = null;
+          this.uploadFileName = "";
+          this.speedText = "";
+          this.openDialog(
+            { mode: "login", title: "上传需要登录", message: "请输入管理员账号和密码", confirmText: "登录" },
+            async (credentials) => {
+              await this.login(credentials);
+              if (this.authCredentials) {
+                this.isUploading = true;
+                this.processUploadQueue();
+              }
+            }
+          );
+          return;
+        }
       }
       this.processUploadQueue();
     },
     handleWriteError(error) { if (error?.response?.status === 401) { this.openDialog({ mode: "login", title: "登录资源站", message: "输入 ADMIN 和 PASS 对应的账号密码", confirmText: "登录" }, (credentials) => this.login(credentials)); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); },
     async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(true); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
-    uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },
+    uploadFiles(files) {
+      if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/";
+      this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file })));
+      if (!this.isUploading && this.uploadQueue.length) {
+        // 没有凭证时先弹登录，登录成功后再开始上传
+        if (!this.authCredentials) {
+          this.openDialog(
+            { mode: "login", title: "上传需要登录", message: "请输入管理员账号和密码", confirmText: "登录" },
+            async (credentials) => {
+              await this.login(credentials);
+              if (this.authCredentials) {
+                this.isUploading = true;
+                this.processUploadQueue();
+              }
+            }
+          );
+          return;
+        }
+        this.isUploading = true;
+        this.processUploadQueue();
+      }
+    },
   },
   watch: {
     cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · 天才猫 R2 网盘系统`; }, immediate: true },
