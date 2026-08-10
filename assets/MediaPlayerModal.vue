@@ -241,32 +241,33 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
     <div v-if="visible && currentItem" class="media-container" :class="{ 'is-minimized': isMinimized }">
       <!-- Fullscreen / Large Modal Mask -->
       <div v-if="!isMinimized" class="media-mask" @click.self="close">
-        <header class="media-header">
-          <div class="media-info">
-            <span class="media-badge">{{ extTag }}</span>
-            <span class="media-title">{{ currentItem.name }}</span>
-            <span v-if="fileSizeText" class="file-size-badge">{{ fileSizeText }}</span>
-            <span v-if="items.length > 1" class="media-counter">{{ index + 1 }} / {{ items.length }}</span>
-          </div>
-          <div class="media-actions">
-            <button v-if="items.length > 1" class="header-btn" :class="{ active: showPlaylist }" type="button" title="播放列表" @click="showPlaylist = !showPlaylist">
-              <i class="ph ph-queue"></i>
-            </button>
-            <button v-if="isAudio" class="header-btn" type="button" title="迷你浮动播放器" @click="isMinimized = true">
-              <i class="ph ph-arrows-in-line-down"></i>
-            </button>
-            <a class="header-btn" :href="currentItem.url" download title="下载媒体文件">
-              <i class="ph ph-download-simple"></i>
-            </a>
-            <button class="header-btn close-btn" type="button" title="关闭 (Esc)" @click="close">
-              <i class="ph ph-x"></i>
-            </button>
-          </div>
-        </header>
 
         <main class="media-body">
           <!-- AUDIO PLAYER VIEW -->
           <div v-if="isAudio" class="audio-view">
+            <!-- Audio Header Bar -->
+            <header class="audio-header">
+              <div class="media-info">
+                <span class="media-badge">{{ extTag }}</span>
+                <span class="media-title">{{ currentItem.name }}</span>
+                <span v-if="fileSizeText" class="file-size-badge">{{ fileSizeText }}</span>
+              </div>
+              <div class="media-actions">
+                <button v-if="items.length > 1" class="header-btn" :class="{ active: showPlaylist }" type="button" title="播放列表" @click="showPlaylist = !showPlaylist">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm10 0l6 4-6 4v-8z"/></svg>
+                </button>
+                <button class="header-btn" type="button" title="迷你浮动播放器" @click="isMinimized = true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                </button>
+                <a class="header-btn" :href="currentItem.url" download title="下载媒体文件">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                </a>
+                <button class="header-btn close-btn" type="button" title="关闭 (Esc)" @click="close">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+            </header>
+
             <div class="ambient-glow"></div>
             
             <!-- Vinyl Album Artwork -->
@@ -274,7 +275,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
               <div class="vinyl-disc" :class="{ spinning: isPlaying }">
                 <div class="vinyl-grooves"></div>
                 <div class="vinyl-center">
-                  <i class="ph ph-music-notes vinyl-icon"></i>
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                   <div class="vinyl-dot"></div>
                 </div>
               </div>
@@ -316,26 +317,28 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
               <!-- Main Control Bar -->
               <div class="audio-controls">
                 <button class="ctrl-btn sub" type="button" :title="'循环模式: ' + loopMode" @click="toggleLoop">
-                  <i v-if="loopMode === 'one'" class="ph ph-repeat-once active-icon"></i>
-                  <i v-else-if="loopMode === 'all'" class="ph ph-repeat active-icon"></i>
-                  <i v-else class="ph ph-shuffle"></i>
+                  <span v-if="loopMode === 'one'" class="active-icon">🔂</span>
+                  <span v-else-if="loopMode === 'all'" class="active-icon">🔁</span>
+                  <span v-else>🔀</span>
                 </button>
 
                 <button class="ctrl-btn" type="button" title="上一首 (←)" @click="prev">
-                  <i class="ph ph-skip-back"></i>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
                 </button>
 
                 <button class="ctrl-btn main-play" type="button" :title="isPlaying ? '暂停' : '播放'" @click="togglePlay">
-                  <i :class="['ph', isPlaying ? 'ph-pause-fill' : 'ph-play-fill']"></i>
+                  <svg v-if="!isPlaying" viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <svg v-else viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 </button>
 
                 <button class="ctrl-btn" type="button" title="下一首 (→)" @click="next">
-                  <i class="ph ph-skip-forward"></i>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
                 </button>
 
                 <div class="volume-box">
                   <button class="ctrl-btn sub" type="button" title="静音切换" @click="toggleMute">
-                    <i :class="['ph', isMuted || volume === 0 ? 'ph-speaker-x' : 'ph-speaker-high']"></i>
+                    <svg v-if="!isMuted && volume > 0" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                    <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
                   </button>
                   <input
                     type="range"
@@ -362,16 +365,37 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             ></audio>
           </div>
 
-          <!-- CINEMA CUSTOM VIDEO PLAYER VIEW -->
+          <!-- CINEMA Bilibili / YouTube STYLE OVERLAY VIDEO PLAYER VIEW -->
           <div v-else-if="isVideo" class="video-view">
             <div
               ref="videoContainerRef"
-              class="video-container"
+              class="video-cinema-frame"
               :class="{ 'controls-hidden': !showVideoControls && isPlaying }"
               @mousemove="onMouseMoveVideo"
               @mouseleave="showVideoControls = false"
             >
-              <!-- Video Tag (No native controls) -->
+              <!-- Integrated Glass Top Header -->
+              <header class="video-overlay-header" @click.stop>
+                <div class="media-info">
+                  <span class="media-badge">{{ extTag }}</span>
+                  <span class="media-title">{{ currentItem.name }}</span>
+                  <span v-if="fileSizeText" class="file-size-badge">{{ fileSizeText }}</span>
+                  <span v-if="items.length > 1" class="media-counter">{{ index + 1 }} / {{ items.length }}</span>
+                </div>
+                <div class="media-actions">
+                  <button v-if="items.length > 1" class="cinema-top-btn" :class="{ active: showPlaylist }" type="button" title="播放列表" @click="showPlaylist = !showPlaylist">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm10 0l6 4-6 4v-8z"/></svg>
+                  </button>
+                  <a class="cinema-top-btn" :href="currentItem.url" download title="下载视频">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                  </a>
+                  <button class="cinema-top-btn close-btn" type="button" title="关闭 (Esc)" @click="close">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                  </button>
+                </div>
+              </header>
+
+              <!-- Video Screen -->
               <video
                 ref="videoRef"
                 class="cinema-video"
@@ -387,16 +411,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                 @pause="onPause"
               ></video>
 
-              <!-- Center Big Play/Pause Indicator Overlay -->
+              <!-- Center Big Play Indicator Overlay -->
               <Transition name="scale-fade">
                 <div v-if="!isPlaying" class="center-play-overlay" @click="togglePlay">
-                  <div class="big-play-btn"><i class="ph ph-play-fill"></i></div>
+                  <div class="big-play-btn">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  </div>
                 </div>
               </Transition>
 
-              <!-- Cinema Custom Floating Control Bar -->
-              <div class="video-cinema-bar" @click.stop>
-                <!-- Scrubber Progress Bar with Tooltip -->
+              <!-- Integrated Bottom Overlay Cinema Control Bar -->
+              <div class="video-overlay-bar" @click.stop>
+                <!-- Interactive Timeline Scrubber -->
                 <div class="video-seeker-container" @mousemove="onHoverSeek" @mouseleave="hoverSeekTime = null">
                   <span v-if="hoverSeekTime" class="seek-tooltip" :style="{ left: hoverSeekPos + 'px' }">{{ hoverSeekTime }}</span>
                   <input
@@ -414,13 +440,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                 <div class="cinema-controls-row">
                   <div class="left-ctrls">
                     <button class="cinema-btn" type="button" :title="isPlaying ? '暂停' : '播放'" @click="togglePlay">
-                      <i :class="['ph', isPlaying ? 'ph-pause-fill' : 'ph-play-fill']"></i>
+                      <svg v-if="!isPlaying" viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                      <svg v-else viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </button>
                     <button v-if="items.length > 1" class="cinema-btn" type="button" title="上一个视频" @click="prev">
-                      <i class="ph ph-skip-back-fill"></i>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
                     </button>
                     <button v-if="items.length > 1" class="cinema-btn" type="button" title="下一个视频" @click="next">
-                      <i class="ph ph-skip-forward-fill"></i>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
                     </button>
 
                     <div class="time-display">
@@ -447,8 +474,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
                     <!-- Volume Control -->
                     <div class="volume-slider-group">
-                      <button class="cinema-btn" type="button" title="静音" @click="toggleMute">
-                        <i :class="['ph', isMuted || volume === 0 ? 'ph-speaker-x-fill' : 'ph-speaker-high-fill']"></i>
+                      <button class="cinema-btn" type="button" title="静音切换" @click="toggleMute">
+                        <svg v-if="!isMuted && volume > 0" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                        <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
                       </button>
                       <input
                         type="range"
@@ -463,12 +491,13 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
                     <!-- PiP -->
                     <button class="cinema-btn" type="button" title="画中画模式" @click="togglePiP">
-                      <i class="ph ph-screencast"></i>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 11h-8v6h8v-6zm4-8H1c-.55 0-1 .45-1 1v16c0 .55.45 1 1 1h22c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zm-2 16H3V5h18v14z"/></svg>
                     </button>
 
                     <!-- Fullscreen -->
                     <button class="cinema-btn" type="button" :title="isFullscreen ? '退出全屏' : '全屏模式 (F)'" @click="toggleFullscreen">
-                      <i :class="['ph', isFullscreen ? 'ph-arrows-in-simple' : 'ph-arrows-out-simple']"></i>
+                      <svg v-if="!isFullscreen" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                      <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
                     </button>
                   </div>
                 </div>
@@ -491,7 +520,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                   :class="{ active: idx === index }"
                   @click="playTrack(idx)"
                 >
-                  <i :class="['ph', idx === index ? (isPlaying ? 'ph-equalizer' : 'ph-pause') : (isAudio ? 'ph-music-note' : 'ph-film-strip')]"></i>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                   <span class="track-name">{{ item.name }}</span>
                 </li>
               </ul>
@@ -503,7 +532,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       <!-- MINIMIZED BOTTOM-RIGHT DOCK PLAYER (for Audio) -->
       <div v-else class="mini-dock">
         <div class="mini-disc" :class="{ spinning: isPlaying }" @click="isMinimized = false">
-          <i class="ph ph-music-notes"></i>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
         </div>
         <div class="mini-info" @click="isMinimized = false">
           <strong class="mini-title">{{ currentItem.name }}</strong>
@@ -511,13 +540,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         </div>
         <div class="mini-controls">
           <button class="mini-btn" type="button" @click="togglePlay">
-            <i :class="['ph', isPlaying ? 'ph-pause-fill' : 'ph-play-fill']"></i>
+            <svg v-if="!isPlaying" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           </button>
           <button class="mini-btn" type="button" title="展开界面" @click="isMinimized = false">
-            <i class="ph ph-arrows-out-line-up"></i>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
           </button>
           <button class="mini-btn close" type="button" title="关闭播放器" @click="close">
-            <i class="ph ph-x"></i>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           </button>
         </div>
       </div>
@@ -545,21 +575,46 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 10, 14, 0.95);
-  backdrop-filter: blur(36px) saturate(200%);
+  background: rgba(8, 8, 12, 0.95);
+  backdrop-filter: blur(40px) saturate(200%);
   color: #fff;
   animation: fade-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.media-header {
+.media-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+}
+
+/* Audio Header & View */
+.audio-view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 500px;
+  padding: 36px 36px 40px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 32px;
+  background: rgba(28, 28, 38, 0.65);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.7), inset 0 1px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(30px);
+}
+
+.audio-header {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 0 24px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .media-info {
@@ -582,26 +637,19 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 .file-size-badge {
   padding: 2px 7px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 11px;
   font-family: ui-monospace, monospace;
 }
 
 .media-title {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.media-counter {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  max-width: 200px;
 }
 
 .media-actions {
@@ -612,59 +660,25 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 .header-btn {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 20px;
-  text-decoration: none;
+  background: rgba(255, 255, 255, 0.1);
   border: 0;
   cursor: pointer;
   transition: all 0.18s;
 }
 
-.header-btn.active {
-  background: rgba(10, 132, 255, 0.8);
-  color: #fff;
-}
-
 .header-btn:hover {
   color: #fff;
-  background: rgba(10, 132, 255, 0.6);
-  transform: scale(1.05);
+  background: rgba(10, 132, 255, 0.7);
+  transform: scale(1.06);
 }
 
 .header-btn.close-btn:hover {
-  background: rgba(255, 69, 58, 0.6);
-}
-
-.media-body {
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  overflow: hidden;
-}
-
-/* Audio Player View */
-.audio-view {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  width: 100%;
-  max-width: 480px;
-  padding: 40px 32px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 32px;
-  background: rgba(30, 30, 40, 0.55);
-  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.6), inset 0 1px rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(24px);
+  background: rgba(255, 69, 58, 0.8);
 }
 
 .ambient-glow {
@@ -672,11 +686,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 260px;
-  height: 260px;
+  width: 280px;
+  height: 280px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(10, 132, 255, 0.35) 0%, rgba(94, 92, 230, 0.15) 50%, transparent 75%);
-  filter: blur(40px);
+  background: radial-gradient(circle, rgba(10, 132, 255, 0.4) 0%, rgba(94, 92, 230, 0.2) 50%, transparent 75%);
+  filter: blur(45px);
   pointer-events: none;
   z-index: 0;
 }
@@ -728,7 +742,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   place-items: center;
   box-shadow: 0 4px 16px rgba(10, 132, 255, 0.5);
   color: #fff;
-  font-size: 22px;
 }
 
 .vinyl-dot {
@@ -840,35 +853,35 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   height: 44px;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
   border: 0;
-  font-size: 20px;
   cursor: pointer;
   transition: all 0.18s;
 }
 
 .ctrl-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   transform: scale(1.08);
 }
 
 .ctrl-btn.sub {
   width: 38px;
   height: 38px;
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .active-icon {
   color: #0a84ff;
+  font-size: 18px;
 }
 
 .ctrl-btn.main-play {
-  width: 62px;
-  height: 62px;
+  width: 60px;
+  height: 60px;
   background: linear-gradient(135deg, #0a84ff, #0071e3);
-  font-size: 28px;
+  color: #fff;
   box-shadow: 0 10px 28px rgba(10, 132, 255, 0.45);
 }
 
@@ -890,28 +903,27 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   cursor: pointer;
 }
 
-/* CINEMA CUSTOM VIDEO PLAYER STYLES */
+/* CINEMA Bilibili / YouTube STYLE OVERLAY VIDEO PLAYER */
 .video-view {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   width: 100%;
-  max-width: 1100px;
   height: 100%;
 }
 
-.video-container {
+.video-cinema-frame {
   position: relative;
-  width: 100%;
-  height: 100%;
-  max-height: calc(100vh - 120px);
+  width: 92vw;
+  max-width: 1440px;
+  height: 86vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #000;
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .cinema-video {
@@ -921,57 +933,95 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   cursor: pointer;
 }
 
+/* Video Header Top Overlay */
+.video-overlay-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 70%, transparent 100%);
+  z-index: 25;
+  transition: opacity 0.3s ease;
+}
+
+.cinema-top-btn {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.18s;
+}
+
+.cinema-top-btn:hover {
+  background: rgba(10, 132, 255, 0.8);
+  transform: scale(1.08);
+}
+
+.cinema-top-btn.close-btn:hover {
+  background: rgba(255, 69, 58, 0.85);
+}
+
 /* Center Play Overlay */
 .center-play-overlay {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(2px);
   cursor: pointer;
   z-index: 10;
 }
 
 .big-play-btn {
   display: grid;
-  width: 76px;
-  height: 76px;
+  width: 80px;
+  height: 80px;
   place-items: center;
   border-radius: 50%;
   background: linear-gradient(135deg, #0a84ff, #5e5ce6);
   color: #fff;
-  font-size: 36px;
-  box-shadow: 0 12px 36px rgba(10, 132, 255, 0.6);
-  transition: transform 0.2s;
+  box-shadow: 0 14px 40px rgba(10, 132, 255, 0.65);
+  transition: transform 0.2s ease;
+}
+
+.big-play-btn svg {
+  margin-left: 4px;
 }
 
 .center-play-overlay:hover .big-play-btn {
   transform: scale(1.15);
 }
 
-/* Cinema Custom Floating Control Bar */
-.video-cinema-bar {
+/* Cinema Custom Bottom Overlay Control Bar */
+.video-overlay-bar {
   position: absolute;
-  bottom: 16px;
-  left: 20px;
-  right: 20px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 20;
-  padding: 12px 20px 14px;
-  border-radius: 20px;
-  background: rgba(18, 18, 24, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(28px) saturate(180%);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  padding: 24px 24px 18px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.5) 65%, transparent 100%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.video-container.controls-hidden .video-cinema-bar {
+.video-cinema-frame.controls-hidden .video-overlay-bar,
+.video-cinema-frame.controls-hidden .video-overlay-header {
   opacity: 0;
-  transform: translateY(20px);
   pointer-events: none;
 }
 
@@ -979,7 +1029,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 .video-seeker-container {
   position: relative;
   width: 100%;
-  height: 10px;
+  height: 12px;
   display: flex;
   align-items: center;
 }
@@ -998,7 +1048,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   height: 6px;
   border-radius: 3px;
   background: linear-gradient(90deg, #0a84ff, #5e5ce6);
-  box-shadow: 0 0 10px rgba(10, 132, 255, 0.7);
+  box-shadow: 0 0 12px rgba(10, 132, 255, 0.8);
   pointer-events: none;
 }
 
@@ -1008,22 +1058,22 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   width: 100%;
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .seek-tooltip {
   position: absolute;
-  top: -32px;
+  top: -34px;
   transform: translateX(-50%);
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.92);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 
 .cinema-controls-row {
@@ -1040,15 +1090,15 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 .cinema-btn {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   place-items: center;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
   border: 0;
-  font-size: 19px;
   cursor: pointer;
+  backdrop-filter: blur(10px);
   transition: all 0.18s;
 }
 
@@ -1058,17 +1108,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 
 .time-display {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 650;
   color: #fff;
   font-variant-numeric: tabular-nums;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  margin-left: 6px;
 }
 
-.time-display .sep { color: rgba(255, 255, 255, 0.4); }
-.time-display .total { color: rgba(255, 255, 255, 0.55); }
+.time-display .sep { color: rgba(255, 255, 255, 0.45); }
+.time-display .total { color: rgba(255, 255, 255, 0.6); }
 
 /* Speed Menu */
 .speed-menu-wrapper {
@@ -1076,42 +1127,43 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 
 .cinema-pill-btn {
-  padding: 6px 14px;
+  padding: 7px 16px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.14);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
+  backdrop-filter: blur(10px);
   transition: all 0.18s;
 }
 
 .cinema-pill-btn:hover {
-  background: rgba(10, 132, 255, 0.8);
+  background: rgba(10, 132, 255, 0.85);
 }
 
 .speed-dropdown {
   position: absolute;
-  bottom: 42px;
+  bottom: 46px;
   right: 0;
   width: 110px;
   padding: 6px;
   border-radius: 14px;
-  background: rgba(24, 24, 32, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(20px);
+  background: rgba(20, 20, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(24px);
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
 .speed-option {
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 12px;
   font-weight: 600;
   border: 0;
@@ -1120,7 +1172,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 
 .speed-option:hover {
-  background: rgba(10, 132, 255, 0.2);
+  background: rgba(10, 132, 255, 0.25);
   color: #0a84ff;
 }
 
@@ -1136,7 +1188,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 
 .cinema-vol-bar {
-  width: 60px;
+  width: 70px;
   height: 4px;
   accent-color: #0a84ff;
   cursor: pointer;
@@ -1148,28 +1200,28 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   top: 0;
   right: 0;
   bottom: 0;
-  width: 320px;
-  background: rgba(20, 20, 26, 0.96);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  width: 340px;
+  background: rgba(18, 18, 24, 0.96);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(30px);
   display: flex;
   flex-direction: column;
-  z-index: 30;
-  box-shadow: -15px 0 35px rgba(0,0,0,0.5);
+  z-index: 35;
+  box-shadow: -15px 0 35px rgba(0,0,0,0.6);
 }
 
 .playlist-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 18px 22px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .playlist-header h3 {
   margin: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .icon-close {
@@ -1192,10 +1244,10 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 10px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
@@ -1206,7 +1258,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 
 .playlist-item.active {
-  background: rgba(10, 132, 255, 0.2);
+  background: rgba(10, 132, 255, 0.25);
   color: #0a84ff;
   font-weight: 600;
 }
@@ -1239,7 +1291,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   background: linear-gradient(135deg, #0a84ff, #5e5ce6);
   display: grid;
   place-items: center;
-  font-size: 19px;
   cursor: pointer;
 }
 
@@ -1283,7 +1334,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
   border: 0;
-  font-size: 16px;
   cursor: pointer;
 }
 

@@ -210,7 +210,7 @@ import UploadProgress from "./UploadProgress.vue";
 import ContextMenu from "./ContextMenu.vue";
 import PromptDialog from "./PromptDialog.vue";
 import LightboxModal from "./LightboxModal.vue";
-import MediaPlayerModal from "./MediaPlayerModal.vue";
+import MediaPlayerModal from "./MediaPlayerModal.vue?v=6.0";
 import ArchiveModal from "./ArchiveModal.vue";
 
 function loadAuthCredentials() {
