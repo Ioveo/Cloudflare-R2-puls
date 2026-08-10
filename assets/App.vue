@@ -6,7 +6,7 @@
       <span class="brand-mark"><i class="ph ph-cube-focus"></i></span>
       <div class="brand-text">
         <strong>FlareDrive</strong>
-        <span class="status-dot"><i class="dot"></i> 直连中</span>
+        <span class="status-dot"><i class="dot"></i> 云端直连中</span>
       </div>
     </div>
 
@@ -14,52 +14,52 @@
     <nav class="sidebar-nav">
       <div class="nav-section-title">媒体 Showcase 库</div>
       
-      <button class="nav-item" :class="{ active: filterCategory === 'all' }" @click="selectCategory('all')">
+      <button class="nav-item nav-all" :class="{ active: filterCategory === 'all' }" @click="selectCategory('all')">
         <i class="ph ph-squares-four"></i>
         <span>概览大厅</span>
         <span class="count-pill">{{ totalItemCount }}</span>
       </button>
 
-      <button class="nav-item" :class="{ active: filterCategory === 'image' }" @click="selectCategory('image')">
+      <button class="nav-item nav-image" :class="{ active: filterCategory === 'image' }" @click="selectCategory('image')">
         <i class="ph ph-image"></i>
         <span>照片图库</span>
-        <span v-if="categoryCounts.image" class="count-pill highlight">{{ categoryCounts.image }}</span>
+        <span class="count-pill highlight-blue">{{ categoryCounts.image }}</span>
       </button>
 
-      <button class="nav-item" :class="{ active: filterCategory === 'video' }" @click="selectCategory('video')">
+      <button class="nav-item nav-video" :class="{ active: filterCategory === 'video' }" @click="selectCategory('video')">
         <i class="ph ph-film-strip"></i>
         <span>高清影音</span>
-        <span v-if="categoryCounts.video" class="count-pill highlight">{{ categoryCounts.video }}</span>
+        <span class="count-pill highlight-purple">{{ categoryCounts.video }}</span>
       </button>
 
-      <button class="nav-item" :class="{ active: filterCategory === 'audio' }" @click="selectCategory('audio')">
+      <button class="nav-item nav-audio" :class="{ active: filterCategory === 'audio' }" @click="selectCategory('audio')">
         <i class="ph ph-music-notes"></i>
         <span>音乐曲库</span>
-        <span v-if="categoryCounts.audio" class="count-pill highlight">{{ categoryCounts.audio }}</span>
+        <span class="count-pill highlight-green">{{ categoryCounts.audio }}</span>
       </button>
 
-      <button class="nav-item" :class="{ active: filterCategory === 'archive' }" @click="selectCategory('archive')">
+      <button class="nav-item nav-archive" :class="{ active: filterCategory === 'archive' }" @click="selectCategory('archive')">
         <i class="ph ph-package"></i>
         <span>压缩归档</span>
-        <span v-if="categoryCounts.archive" class="count-pill highlight">{{ categoryCounts.archive }}</span>
+        <span class="count-pill highlight-amber">{{ categoryCounts.archive }}</span>
       </button>
 
-      <button class="nav-item" :class="{ active: filterCategory === 'document' }" @click="selectCategory('document')">
+      <button class="nav-item nav-document" :class="{ active: filterCategory === 'document' }" @click="selectCategory('document')">
         <i class="ph ph-file-text"></i>
         <span>文档资料</span>
-        <span v-if="categoryCounts.document" class="count-pill">{{ categoryCounts.document }}</span>
+        <span class="count-pill">{{ categoryCounts.document }}</span>
       </button>
 
       <div class="nav-divider"></div>
 
       <!-- Scope Switcher Toggle -->
-      <div class="scope-toggle-card">
+      <div class="scope-toggle-card" title="开启后，在任意子文件夹点击分类均可智能汇总全盘对应文件">
         <div class="scope-title">
           <i class="ph ph-globe-hemisphere-east"></i>
           <span>跨目录全盘自动归类</span>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" v-model="autoGlobalScan" />
+          <input type="checkbox" v-model="autoGlobalScan" @change="onToggleGlobalScan" />
           <span class="slider"></span>
         </label>
       </div>
@@ -68,8 +68,8 @@
     <!-- Bottom User / Logout Bar -->
     <footer class="sidebar-footer">
       <div class="user-pill" title="存储桶绑定与凭证">
-        <i class="ph ph-user-circle"></i>
-        <span>已安全验证</span>
+        <i class="ph ph-shield-check"></i>
+        <span>已验证连接</span>
       </div>
       <button class="logout-icon-btn" type="button" title="退出登录" @click="logout">
         <i class="ph ph-sign-out"></i>
@@ -82,7 +82,7 @@
     <header class="topbar">
       <label class="search-box">
         <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-        <input v-model.trim="search" type="search" placeholder="搜索文件、视频、压缩包..." aria-label="搜索当前目录资源" />
+        <input v-model.trim="search" type="search" placeholder="搜索资源文件名、格式..." aria-label="搜索当前目录资源" />
         <button v-if="search" class="icon-button small" type="button" title="清除搜索" @click="search = ''">×</button>
       </label>
 
@@ -103,6 +103,14 @@
           </div>
           <h1>{{ categoryMeta.title }}</h1>
           <p>{{ categoryMeta.desc }}</p>
+          
+          <!-- Category Quick Badges -->
+          <div class="hero-stat-pills">
+            <span class="hero-pill" @click="selectCategory('image')"><i class="ph ph-image"></i> {{ categoryCounts.image }} 照片</span>
+            <span class="hero-pill" @click="selectCategory('video')"><i class="ph ph-film-strip"></i> {{ categoryCounts.video }} 视频</span>
+            <span class="hero-pill" @click="selectCategory('audio')"><i class="ph ph-music-notes"></i> {{ categoryCounts.audio }} 音乐</span>
+            <span class="hero-pill" @click="selectCategory('archive')"><i class="ph ph-package"></i> {{ categoryCounts.archive }} 归档</span>
+          </div>
         </div>
       </div>
 
@@ -216,7 +224,7 @@ export default {
     folders: [],
     globalFiles: [],
     globalFilesLoaded: false,
-    autoGlobalScan: true, // Auto cross-directory aggregation enabled by default!
+    autoGlobalScan: true,
     filterCategory: "all",
     clipboard: null,
     focusedItem: null,
@@ -261,10 +269,17 @@ export default {
     },
 
     sourceFileList() {
-      if (this.autoGlobalScan && this.filterCategory !== "all" && this.globalFilesLoaded) {
-        return this.globalFiles;
+      if (this.filterCategory === "all") return this.files;
+      const map = new Map();
+      for (const f of this.files) {
+        if (f && f.key) map.set(f.key, f);
       }
-      return this.files;
+      if (this.autoGlobalScan && this.globalFilesLoaded) {
+        for (const f of this.globalFiles) {
+          if (f && f.key) map.set(f.key, f);
+        }
+      }
+      return Array.from(map.values());
     },
 
     filteredFiles() {
@@ -288,7 +303,16 @@ export default {
     },
 
     categoryCounts() {
-      const list = this.autoGlobalScan && this.globalFilesLoaded ? this.globalFiles : this.files;
+      const map = new Map();
+      for (const f of this.files) {
+        if (f && f.key) map.set(f.key, f);
+      }
+      if (this.globalFilesLoaded) {
+        for (const f of this.globalFiles) {
+          if (f && f.key) map.set(f.key, f);
+        }
+      }
+      const list = Array.from(map.values());
       const counts = { image: 0, video: 0, audio: 0, archive: 0, document: 0 };
       for (const f of list) {
         if (this.isImage(f)) counts.image++;
@@ -311,16 +335,38 @@ export default {
       }
     },
 
+    onToggleGlobalScan() {
+      if (this.autoGlobalScan && !this.globalFilesLoaded) {
+        this.fetchGlobalFiles();
+      }
+    },
+
     async fetchGlobalFiles() {
-      this.loading = true;
       try {
         const items = await this.getAllItems("");
-        this.globalFiles = items.filter((item) => !item.key.endsWith("_$folder$"));
+        this.globalFiles = items.filter((item) => item.key && !item.key.endsWith("_$folder$"));
         this.globalFilesLoaded = true;
       } catch (err) {
         console.warn("Global scan failed", err);
-      } finally {
-        this.loading = false;
+      }
+    },
+
+    async getAllItems(prefix = "") {
+      try {
+        const cleanPrefix = prefix ? (prefix.endsWith("/") ? prefix : `${prefix}/`) : "";
+        const response = await fetch(`/api/children/${cleanPrefix}`, { headers: this.storageHeaders() });
+        if (!response.ok) return [];
+        const data = await response.json();
+        const items = [...(data.value || [])];
+        for (const folder of data.folders || []) {
+          items.push({ key: `${folder}_$folder$` });
+          const subItems = await this.getAllItems(folder);
+          items.push(...subItems);
+        }
+        return items;
+      } catch (err) {
+        console.warn("getAllItems failed for prefix:", prefix, err);
+        return [];
       }
     },
 
@@ -334,7 +380,7 @@ export default {
     imageUrl(file) { if (file.customMetadata?.thumbnail) return `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(this.storageId)}`; return this.rawPath(file.key); },
     openFile(file) {
       if (typeof file === "string") {
-        const found = (this.autoGlobalScan ? this.globalFiles : this.files).find((f) => f.key === file);
+        const found = (this.autoGlobalScan ? this.sourceFileList : this.files).find((f) => f.key === file);
         if (found) file = found;
       }
       if (this.isImage(file)) {
@@ -388,7 +434,7 @@ export default {
     sortItems() { const compare = (a, b) => this.order === "size-asc" ? a.size - b.size : this.order === "size-desc" ? b.size - a.size : a.key.localeCompare(b.key, "zh-CN"); this.files.sort(compare); this.folders.sort((a, b) => a.localeCompare(b, "zh-CN")); }, async copyPaste(source, target) { await axios.put(`/api/write/items/${target}`, "", { headers: { ...this.storageHeaders(), "x-amz-copy-source": encodeURIComponent(source) } }); },
     async createFolder() { this.openDialog({ title: "新建文件夹", message: "为文件夹输入一个清晰的名称", confirmText: "创建" }, async (folderName) => { if (!folderName) return; try { await axios.put(`/api/write/items/${this.cwd}${folderName}/_$folder$`, "", { headers: this.storageHeaders() }); this.showUploadPopup = false; this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Create folder failed", error); } }); },
     async fetchStorages() { try { const response = await fetch("/api/storages"); const data = await response.json(); if (Array.isArray(data.storages) && data.storages.length) { this.storageOptions = data.storages; if (!this.storageOptions.some((item) => item.id === this.storageId)) this.storageId = this.storageOptions[0].id; } } catch (error) { console.warn("Storage discovery failed", error); } },
-    async fetchFiles() { this.loading = true; try { const response = await fetch(`/api/children/${this.cwd}`, { headers: this.storageHeaders() }); const items = await response.json(); this.files = items.value || []; this.folders = items.folders || []; this.sortItems(); } catch (error) { console.error("Fetch files failed", error); this.files = []; this.folders = []; } finally { this.loading = false; } },
+    async fetchFiles() { this.loading = true; try { const response = await fetch(`/api/children/${this.cwd}`, { headers: this.storageHeaders() }); const items = await response.json(); this.files = items.value || []; this.folders = items.folders || []; this.sortItems(); if (this.autoGlobalScan && !this.globalFilesLoaded) { this.fetchGlobalFiles(); } } catch (error) { console.error("Fetch files failed", error); this.files = []; this.folders = []; } finally { this.loading = false; } },
     formatSize(size) { const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
     async pasteFile() { if (!this.clipboard) return; this.openDialog({ title: "粘贴文件", message: "可以修改文件名，留空使用原名称", initialValue: this.fileName(this.clipboard), confirmText: "粘贴" }, async (name) => { if (!name) name = this.fileName(this.clipboard); try { await this.copyPaste(this.clipboard, `${this.cwd}${name}`); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
     async processUploadQueue() {
@@ -450,7 +496,7 @@ export default {
     },
     handleWriteError(error) { if (error?.response?.status === 401) { this.openDialog({ mode: "login", title: "登录资源站", message: "输入 ADMIN 和 PASS 对应的账号密码", confirmText: "登录" }, (credentials) => this.login(credentials)); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
     async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
-    async getAllItems(prefix) { const response = await fetch(`/api/children/${prefix}`, { headers: this.storageHeaders() }); const data = await response.json(); const items = [...(data.value || [])]; for (const folder of data.folders || []) { items.push({ key: `${folder}_$folder$` }); items.push(...await this.getAllItems(folder)); } return items; }, uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },
+    uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },
   },
   watch: {
     cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · FlareDrive Studio`; }, immediate: true },
