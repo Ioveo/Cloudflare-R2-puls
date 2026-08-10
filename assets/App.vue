@@ -82,8 +82,9 @@
     <header class="topbar">
       <label class="search-box">
         <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-        <input v-model.trim="search" type="search" placeholder="搜索资源文件名、格式..." aria-label="搜索当前目录资源" />
+        <input ref="searchInputRef" v-model.trim="search" type="search" placeholder="搜索资源文件名、扩展名..." aria-label="搜索当前目录资源" />
         <button v-if="search" class="icon-button small" type="button" title="清除搜索" @click="search = ''">×</button>
+        <kbd class="command-kbd" title="按 Cmd+K 快速搜索">⌘K</kbd>
       </label>
 
       <div class="topbar-actions">
@@ -153,7 +154,7 @@
         <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) || isVideo(file) ? 'file-card--photo' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')]" tabindex="0" @click="openFile(file)" @keydown.enter="openFile(file)" @contextmenu.stop.prevent="openContext(file, $event)">
           <div v-if="isImage(file) || isVideo(file)" class="photo-preview">
             <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-            <div v-if="isVideo(file)" class="video-play-badge"><i class="ph ph-play-fill"></i></div>
+            <div v-if="isVideo(file)" class="video-play-badge"><i class="ph-fill ph-play"></i></div>
           </div>
           <div v-else-if="isArchive(file)" class="archive-card-icon">
             <i class="ph ph-package"></i>
@@ -333,6 +334,13 @@ export default {
     mediaItems() { return this.filteredFiles.filter(this.isMedia).map((f) => ({ name: this.fileName(f.key), url: this.rawPath(f.key), file: f })); },
   },
   methods: {
+    onGlobalKeydown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        this.$refs.searchInputRef?.focus();
+      }
+    },
+
     loadCachedGlobalIndex() {
       try {
         const cacheKey = `flaredrive_index_cache_${this.storageId}`;
@@ -500,13 +508,15 @@ export default {
       this.uploadProgress = 0;
       this.speedText = "准备中...";
       let thumbnailDigest = null;
-      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+      if (file.type.startsWith("image/") || (file.type.startsWith("video/") && file.size < 50 * 1024 * 1024)) {
         try {
           const thumbnail = await generateThumbnail(file);
-          thumbnailDigest = await blobDigest(thumbnail);
-          await axios.put(`/api/write/items/_$flaredrive$/thumbnails/${thumbnailDigest}.png`, thumbnail, {
-            headers: { ...this.storageHeaders(), "Content-Type": "image/png" }
-          });
+          if (thumbnail) {
+            thumbnailDigest = await blobDigest(thumbnail);
+            await axios.put(`/api/write/items/_$flaredrive$/thumbnails/${thumbnailDigest}.png`, thumbnail, {
+              headers: { ...this.storageHeaders(), "Content-Type": "image/png" }
+            });
+          }
         } catch (error) {
           console.warn("Thumbnail generation failed", error);
         }
@@ -552,7 +562,19 @@ export default {
     storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.loadCachedGlobalIndex(); this.fetchFiles(); },
     viewMode(value) { localStorage.setItem("drive-view", value); }
   },
-  created() { this.loadCachedGlobalIndex(); this.fetchStorages(); window.addEventListener("popstate", () => { const url = new URL(window.location); this.cwd = url.searchParams.get("p") || ""; this.storageId = url.searchParams.get("storage") || "default"; }); },
+  created() {
+    this.loadCachedGlobalIndex();
+    this.fetchStorages();
+    window.addEventListener("popstate", () => {
+      const url = new URL(window.location);
+      this.cwd = url.searchParams.get("p") || "";
+      this.storageId = url.searchParams.get("storage") || "default";
+    });
+    window.addEventListener("keydown", this.onGlobalKeydown);
+  },
+  unmounted() {
+    window.removeEventListener("keydown", this.onGlobalKeydown);
+  },
   components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal },
 };
 </script>

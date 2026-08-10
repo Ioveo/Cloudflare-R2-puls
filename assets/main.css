@@ -16,18 +16,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas: #0c0c0f;
+    --canvas: #09090c;
     --surface: rgba(26, 26, 32, 0.68);
     --surface-strong: rgba(36, 36, 44, 0.92);
     --surface-hover: rgba(48, 48, 58, 0.96);
-    --sidebar-bg: rgba(18, 18, 24, 0.85);
+    --sidebar-bg: rgba(16, 16, 22, 0.85);
     --ink: #f2f2f7;
     --muted: #98989d;
     --subtle: #636366;
     --line: rgba(255, 255, 255, 0.12);
     --accent: #0a84ff;
     --accent-gradient: linear-gradient(135deg, #0a84ff, #5e5ce6);
-    --topbar-bg: rgba(12, 12, 15, 0.82);
+    --topbar-bg: rgba(12, 12, 16, 0.82);
     --border-subtle: rgba(255, 255, 255, 0.12);
   }
 }
@@ -37,7 +37,7 @@ body {
   margin: 0;
   color: var(--ink);
   background-color: var(--canvas);
-  background-image: radial-gradient(circle at 15% 15%, rgba(10, 132, 255, 0.05) 0%, transparent 45%), radial-gradient(circle at 85% 85%, rgba(94, 92, 230, 0.05) 0%, transparent 45%);
+  background-image: radial-gradient(circle at 15% 15%, rgba(10, 132, 255, 0.06) 0%, transparent 45%), radial-gradient(circle at 85% 85%, rgba(94, 92, 230, 0.06) 0%, transparent 45%);
   background-attachment: fixed;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -328,28 +328,46 @@ input:checked + .slider:before { transform: translateX(16px); }
   backdrop-filter: blur(24px) saturate(160%);
 }
 
+/* Apple Spotlight Style Command Search Bar */
 .search-box {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 440px;
-  height: 40px;
-  padding: 0 12px;
+  max-width: 480px;
+  height: 42px;
+  padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--surface);
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
 }
 
 .search-box:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15);
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.18), 0 8px 24px rgba(10, 132, 255, 0.12);
   background: var(--surface-strong);
+  transform: translateY(-1px);
 }
 
-.search-box i { color: var(--muted); font-size: 18px; }
-.search-box input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 13px; }
+.search-box i { color: var(--muted); font-size: 19px; }
+.search-box input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 13.5px; font-weight: 500; }
+
+.command-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(120, 120, 128, 0.14);
+  color: var(--muted);
+  font-family: -apple-system, BlinkMacSystemFont, ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  pointer-events: none;
+}
 
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 .icon-button, .view-button { display: grid; width: 38px; height: 38px; place-items: center; color: var(--muted); border-radius: 10px; background: var(--surface); border: 1px solid var(--line); transition: all 0.2s ease; }
@@ -392,17 +410,22 @@ input:checked + .slider:before { transform: translateX(16px); }
   color: #f2f2f7;
 }
 
-/* Workspace Section */
-.workspace { max-width: 1360px; margin: 0 auto; width: 100%; padding: 36px 40px 120px; }
+/* Full-Width Canvas Section */
+.workspace {
+  max-width: 1720px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 32px 40px 140px;
+}
 
 /* Portal Hero Header Banner */
 .portal-hero {
   margin-bottom: 32px;
   padding: 32px 36px;
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(94, 92, 230, 0.08));
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.12), rgba(94, 92, 230, 0.1));
   border: 1px solid rgba(10, 132, 255, 0.2);
-  box-shadow: 0 20px 45px rgba(10, 132, 255, 0.06);
+  box-shadow: 0 20px 45px rgba(10, 132, 255, 0.08);
   position: relative;
   overflow: hidden;
 }
@@ -427,7 +450,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 .view-controls { display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
 
 /* File Grid Container */
-.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
 .file-grid.list { grid-template-columns: 1fr; gap: 8px; }
 
 /* File Cards */
@@ -562,24 +585,25 @@ input:checked + .slider:before { transform: translateX(16px); }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(10, 132, 255, 0.88);
-  color: #fff;
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.9), rgba(94, 92, 230, 0.9));
+  color: #ffffff;
   display: grid;
   place-items: center;
-  font-size: 24px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-  backdrop-filter: blur(10px);
-  transition: transform 0.22s ease, background 0.22s ease;
+  font-size: 22px;
+  box-shadow: 0 10px 30px rgba(10, 132, 255, 0.5);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   pointer-events: none;
-  z-index: 3;
+  z-index: 4;
 }
 
 .file-card--photo:hover .video-play-badge {
   transform: translate(-50%, -50%) scale(1.15);
   background: #0a84ff;
+  box-shadow: 0 12px 36px rgba(10, 132, 255, 0.7);
 }
 
 /* Archive Card Icon & Pill */
