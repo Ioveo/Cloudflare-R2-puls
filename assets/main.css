@@ -671,12 +671,13 @@ input:checked + .slider:before { transform: translateX(16px); }
 .file-footer strong { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--ink); }
 
 /* ------------------------------------------------------------- */
-/* 1. PHOTO WATERFALL / MASONRY GALLERY (.waterfall-mode)       */
+/* 1. PURE HD PHOTO WATERFALL GALLERY (.waterfall-mode)          */
+/* Pure Unsplash / 500px HD Photo View (NO CARD BOX, PURE PHOTO) */
 /* ------------------------------------------------------------- */
 .file-grid.waterfall-mode {
   display: block !important;
   column-count: 4;
-  column-gap: 22px;
+  column-gap: 24px;
 }
 
 @media (max-width: 1600px) { .file-grid.waterfall-mode { column-count: 3; } }
@@ -685,97 +686,125 @@ input:checked + .slider:before { transform: translateX(16px); }
 
 .file-grid.waterfall-mode .file-card {
   break-inside: avoid;
-  margin-bottom: 22px;
-  display: flex !important;
-  flex-direction: column !important;
+  margin-bottom: 24px;
+  display: block !important;
   height: auto !important;
   max-height: none !important;
   min-height: 0 !important;
   padding: 0 !important;
   border-radius: 22px !important;
+  border: 0 !important;
   overflow: hidden !important;
-  background: var(--surface) !important;
-  border: 1px solid var(--line) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05) !important;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  background: transparent !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22) !important;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.file-grid.waterfall-mode .photo-preview {
-  height: auto !important;
+.file-grid.waterfall-mode .file-card:hover {
+  transform: translateY(-5px) scale(1.02) !important;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(10, 132, 255, 0.5) !important;
+}
+
+.file-grid.waterfall-mode .photo-preview-pure {
   position: relative !important;
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 22px !important;
   overflow: hidden !important;
-  border-radius: 22px 22px 0 0;
 }
 
-.file-grid.waterfall-mode .photo-preview img {
+.file-grid.waterfall-mode .photo-preview-pure img {
   width: 100% !important;
   height: auto !important;
   display: block !important;
   object-fit: cover !important;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border-radius: 22px !important;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.file-grid.waterfall-mode .file-card:hover .photo-preview img {
+.file-grid.waterfall-mode .file-card:hover .photo-preview-pure img {
   transform: scale(1.06) !important;
 }
 
 .photo-hover-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.15) 60%, transparent 100%);
+  border-radius: 22px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.2) 45%, rgba(0, 0, 0, 0.45) 100%);
   opacity: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 14px;
-  transition: opacity 0.25s ease;
+  padding: 16px;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 4;
 }
 
-.file-card:hover .photo-hover-overlay { opacity: 1; }
+.file-card:hover .photo-hover-overlay {
+  opacity: 1;
+}
+
+.photo-overlay-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
 .photo-tag-badge {
-  align-self: flex-start;
-  padding: 3px 9px;
-  border-radius: 8px;
-  background: rgba(10, 132, 255, 0.85);
+  padding: 5px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.65);
   color: #fff;
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 12.5px;
+  font-weight: 700;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 85%;
+}
+
+.photo-size-badge {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 11.5px;
+  font-weight: 700;
   backdrop-filter: blur(10px);
+  font-family: ui-monospace, monospace;
+}
+
+.photo-overlay-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .photo-overlay-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  align-self: flex-end;
 }
 
 .overlay-btn {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
   backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.2s ease;
 }
 
 .overlay-btn:hover {
   background: #0a84ff;
+  border-color: #0a84ff;
   transform: scale(1.1);
-}
-
-.file-grid.waterfall-mode .file-card .file-main {
-  padding: 14px 18px 4px 18px !important;
-}
-
-.file-grid.waterfall-mode .file-card .file-footer {
-  padding: 0 18px 14px 18px !important;
-  border-top: none !important;
 }
 
 /* ------------------------------------------------------------- */

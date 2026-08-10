@@ -88,15 +88,15 @@
       </label>
 
       <div class="topbar-actions">
-        <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
+        <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage" in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
         <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
         <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
       </div>
     </header>
 
     <section class="workspace">
-      <!-- Portal Hero Banner & R2 Storage Animated Widget -->
-      <div class="portal-hero">
+      <!-- Portal Hero Banner & R2 Storage Animated Widget (Hidden in Pure Photo Mode for maximum visual canvas) -->
+      <div v-if="filterCategory !== 'image'" class="portal-hero">
         <div class="hero-content">
           <div class="hero-header-row">
             <span class="hero-tag"><i class="ph ph-sparkle"></i> SHOWCASE STUDIO</span>
@@ -191,30 +191,30 @@
           @keydown.enter="openFile(file)"
           @contextmenu.stop.prevent="openContext(file, $event)"
         >
-          <!-- 1. PHOTO WATERFALL / MASONRY CARD -->
+          <!-- 1. PURE HD PHOTO WATERFALL / MASONRY CARD (NO CARD BOX, NO BOTTOM METADATA BOX) -->
           <template v-if="isImage(file)">
-            <div class="photo-preview">
+            <div class="photo-preview-pure">
               <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
               <div class="photo-hover-overlay">
-                <span class="photo-tag-badge">HD 原图</span>
-                <div class="photo-overlay-actions">
-                  <button class="overlay-btn" type="button" title="大图幻灯片预览" @click.stop="openFile(file)">
-                    <i class="ph ph-arrows-out"></i>
-                  </button>
-                  <a class="overlay-btn" :href="rawPath(file.key)" download title="下载原图">
-                    <i class="ph ph-download-simple"></i>
-                  </a>
+                <div class="photo-overlay-top">
+                  <span class="photo-tag-badge">{{ fileName(file.key) }}</span>
+                </div>
+                <div class="photo-overlay-bottom">
+                  <span class="photo-size-badge">{{ formatSize(file.size) }}</span>
+                  <div class="photo-overlay-actions">
+                    <button class="overlay-btn" type="button" title="大图幻灯片预览" @click.stop="openFile(file)">
+                      <i class="ph ph-arrows-out"></i>
+                    </button>
+                    <a class="overlay-btn" :href="rawPath(file.key)" download title="下载原图" @click.stop>
+                      <i class="ph ph-download-simple"></i>
+                    </a>
+                    <button class="overlay-btn" type="button" title="更多选项" @click.stop="openContext(file, $event)">
+                      <i class="ph ph-dots-three-outline"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="file-main">
-              <strong>{{ fileName(file.key) }}</strong>
-              <span>{{ formatDate(file.uploaded) }}</span>
-            </div>
-            <footer class="file-footer">
-              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
-            </footer>
-            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
           </template>
 
           <!-- 2. VIDEO CINEMA STREAMING CARD -->
@@ -362,7 +362,7 @@ export default {
     mediaPlayer: { visible: false, index: 0 },
     archiveModal: { visible: false, file: null },
     authCredentials: loadAuthCredentials(),
-    dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" },
+    dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options },
     dialogAction: null
   }),
   computed: {
