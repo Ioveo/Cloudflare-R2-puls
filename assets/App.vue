@@ -105,33 +105,43 @@
       <div v-if="filterCategory === 'all'" class="portal-hero">
         <div class="hero-content">
           <div class="hero-header-row">
-            <span class="hero-tag"><i class="ph ph-sparkle"></i> SHOWCASE STUDIO</span>
-            <span v-if="autoGlobalScan && filterCategory !== 'all'" class="scan-tag"><i class="ph ph-lightning"></i> 极速缓存索引已就绪</span>
+            <span class="hero-tag"><i class="ph ph-sparkle-fill"></i> 天才猫 AI 云端引擎</span>
+            <span v-if="autoGlobalScan" class="scan-tag"><i class="ph ph-lightning-fill"></i> 全盘秒级索引就绪</span>
           </div>
-          <h1>{{ categoryMeta.title }}</h1>
-          <p>{{ categoryMeta.desc }}</p>
+          <h1>天才猫 R2 智能云端展厅</h1>
+          <p>直连 Cloudflare R2 全球边缘存储 · 在线影音播放 · 归档解压预览 · 全速传输</p>
           
           <!-- Category Quick Badges -->
           <div class="hero-stat-pills">
-            <span class="hero-pill" @click="selectCategory('image')"><i class="ph ph-image"></i> {{ categoryCounts.image }} 照片</span>
-            <span class="hero-pill" @click="selectCategory('video')"><i class="ph ph-film-strip"></i> {{ categoryCounts.video }} 视频</span>
-            <span class="hero-pill" @click="selectCategory('audio')"><i class="ph ph-music-notes"></i> {{ categoryCounts.audio }} 音乐</span>
-            <span class="hero-pill" @click="selectCategory('archive')"><i class="ph ph-package"></i> {{ categoryCounts.archive }} 归档</span>
+            <span class="hero-pill" @click="selectCategory('image')"><i class="ph ph-image-fill"></i> {{ categoryCounts.image }} 照片</span>
+            <span class="hero-pill" @click="selectCategory('video')"><i class="ph ph-film-strip-fill"></i> {{ categoryCounts.video }} 视频</span>
+            <span class="hero-pill" @click="selectCategory('audio')"><i class="ph ph-music-notes-fill"></i> {{ categoryCounts.audio }} 音乐</span>
+            <span class="hero-pill" @click="selectCategory('archive')"><i class="ph ph-package-fill"></i> {{ categoryCounts.archive }} 归档</span>
           </div>
         </div>
 
-        <!-- R2 Storage Usage Animated Card -->
+        <!-- Rebuilt R2 Storage Usage Animated Card -->
         <div class="r2-storage-widget" :title="`R2 存储桶已用 ${formatSize(totalStorageBytes)} · 基于 10GB 免费容量`">
           <div class="storage-widget-header">
             <div class="storage-title">
-              <i class="ph ph-cloud-check"></i>
-              <span>R2 存储容量占用</span>
+              <div class="cloud-icon-box">
+                <i class="ph ph-cloud-arrow-up-fill"></i>
+                <div class="icon-pulse-ring"></div>
+              </div>
+              <div class="storage-text-group">
+                <span class="title-main">R2 存储容量占用</span>
+                <span class="title-sub">Cloudflare R2 Storage</span>
+              </div>
             </div>
-            <span class="storage-value-text">{{ formatSize(totalStorageBytes) }} <sub>/ 10 GB</sub></span>
+            <div class="storage-value-badge">
+              <span class="usage-percent">{{ storagePercent.toFixed(1) }}%</span>
+              <span class="usage-raw">{{ formatSize(totalStorageBytes) }} <sub>/ 10 GB</sub></span>
+            </div>
           </div>
 
           <!-- Multi-Color Segmented Animated Progress Bar -->
           <div class="storage-bar-track">
+            <div class="bar-shimmer"></div>
             <div class="storage-bar-seg seg-image" :style="{ width: (totalStorageBytes ? (categoryBytes.image / totalStorageBytes) * storagePercent : 0) + '%' }" title="照片"></div>
             <div class="storage-bar-seg seg-video" :style="{ width: (totalStorageBytes ? (categoryBytes.video / totalStorageBytes) * storagePercent : 0) + '%' }" title="视频"></div>
             <div class="storage-bar-seg seg-audio" :style="{ width: (totalStorageBytes ? (categoryBytes.audio / totalStorageBytes) * storagePercent : 0) + '%' }" title="音频"></div>
@@ -139,12 +149,12 @@
             <div class="storage-bar-seg seg-document" :style="{ width: (totalStorageBytes ? (categoryBytes.document / totalStorageBytes) * storagePercent : 0) + '%' }" title="文档"></div>
           </div>
 
-          <!-- Legend Breakdown Pills -->
+          <!-- Legend Breakdown Badges -->
           <div class="storage-legend">
-            <span class="legend-dot dot-image">照片 {{ formatSize(categoryBytes.image) }}</span>
-            <span class="legend-dot dot-video">视频 {{ formatSize(categoryBytes.video) }}</span>
-            <span class="legend-dot dot-audio">音频 {{ formatSize(categoryBytes.audio) }}</span>
-            <span class="legend-dot dot-archive">归档 {{ formatSize(categoryBytes.archive) }}</span>
+            <span class="legend-badge badge-image" @click="selectCategory('image')"><i class="ph ph-image-fill"></i> 照片 <strong>{{ formatSize(categoryBytes.image) }}</strong></span>
+            <span class="legend-badge badge-video" @click="selectCategory('video')"><i class="ph ph-film-strip-fill"></i> 视频 <strong>{{ formatSize(categoryBytes.video) }}</strong></span>
+            <span class="legend-badge badge-audio" @click="selectCategory('audio')"><i class="ph ph-music-notes-fill"></i> 音频 <strong>{{ formatSize(categoryBytes.audio) }}</strong></span>
+            <span class="legend-badge badge-archive" @click="selectCategory('archive')"><i class="ph ph-package-fill"></i> 归档 <strong>{{ formatSize(categoryBytes.archive) }}</strong></span>
           </div>
         </div>
       </div>
