@@ -80,12 +80,17 @@
   <!-- Main Content Body -->
   <main class="studio-main">
     <header class="topbar">
-      <label class="search-box">
-        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-        <input ref="searchInputRef" v-model.trim="search" type="search" placeholder="搜索资源文件名、扩展名..." aria-label="搜索当前目录资源" />
-        <button v-if="search" class="icon-button small" type="button" title="清除搜索" @click="search = ''">×</button>
-        <kbd class="command-kbd" title="按 Cmd+K 快速搜索">⌘K</kbd>
-      </label>
+      <!-- Minimal Apple Spotlight Icon Search Button / Expandable Search Pill -->
+      <div class="search-wrapper">
+        <button v-if="!showSearchInput && !search" class="icon-button search-icon-btn" type="button" title="搜索资源 (⌘K)" @click="showSearchInput = true; $nextTick(() => $refs.searchInputRef?.focus())">
+          <i class="ph ph-magnifying-glass"></i>
+        </button>
+        <label v-else class="search-box search-box-expanded">
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input ref="searchInputRef" v-model.trim="search" type="search" placeholder="搜索资源..." aria-label="搜索当前目录资源" @blur="onSearchBlur" />
+          <button class="icon-button small" type="button" title="关闭搜索" @click="search = ''; showSearchInput = false">×</button>
+        </label>
+      </div>
 
       <div class="topbar-actions">
         <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
@@ -143,11 +148,11 @@
         </div>
       </div>
 
-      <!-- Workspace Heading / Breadcrumbs -->
-      <div class="workspace-heading">
+      <!-- Workspace Heading / Breadcrumbs (ONLY shown in General Overview Hall) -->
+      <div v-if="filterCategory === 'all'" class="workspace-heading">
         <div>
           <nav class="breadcrumbs" aria-label="当前位置"><button type="button" @click="goToFolder('')">首页</button><template v-for="(part, index) in pathParts" :key="`${part}-${index}`"><span aria-hidden="true">/</span><button type="button" @click="goToFolder(pathUntil(index))">{{ part }}</button></template></nav>
-          <h2>{{ filterCategory === 'all' ? currentFolderName : categoryMeta.title }}</h2>
+          <h2>{{ currentFolderName }}</h2>
           <p>{{ itemCountText }}</p>
         </div>
         <div class="view-controls" aria-label="视图设置"><button class="view-button" :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'"><i class="ph ph-squares-four" aria-hidden="true"></i></button><button class="view-button" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'"><i class="ph ph-list-bullets" aria-hidden="true"></i></button></div>
@@ -349,6 +354,7 @@ export default {
     loading: false,
     order: "name-asc",
     search: "",
+    showSearchInput: false,
     viewMode: localStorage.getItem("drive-view") || "grid",
     showContextMenu: false,
     showMenu: false,
@@ -491,7 +497,14 @@ export default {
     onGlobalKeydown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        this.$refs.searchInputRef?.focus();
+        this.showSearchInput = true;
+        this.$nextTick(() => this.$refs.searchInputRef?.focus());
+      }
+    },
+
+    onSearchBlur() {
+      if (!this.search) {
+        this.showSearchInput = false;
       }
     },
 
