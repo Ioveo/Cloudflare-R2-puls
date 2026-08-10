@@ -94,6 +94,7 @@
 
       <div class="topbar-actions">
         <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
+        <button class="icon-button" type="button" title="快捷键指南 (?)" @click="showHotkeysModal = true"><i class="ph ph-keyboard"></i></button>
         <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
         <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
       </div>
@@ -313,6 +314,7 @@
     <LightboxModal :visible="lightbox.visible" :items="imageItems" :index="lightbox.index" @close="lightbox.visible = false" @change="lightbox.index = $event" />
     <MediaPlayerModal :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
     <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
+    <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
   </main>
 </div>
 </template>
@@ -328,6 +330,7 @@ import PromptDialog from "./PromptDialog.vue";
 import LightboxModal from "./LightboxModal.vue";
 import MediaPlayerModal from "./MediaPlayerModal.vue?v=13.0";
 import ArchiveModal from "./ArchiveModal.vue";
+import HotkeysModal from "./HotkeysModal.vue";
 
 function loadAuthCredentials() {
   try {
@@ -368,6 +371,7 @@ export default {
     lightbox: { visible: false, index: 0 },
     mediaPlayer: { visible: false, index: 0 },
     archiveModal: { visible: false, file: null },
+    showHotkeysModal: false,
     authCredentials: loadAuthCredentials(),
     dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options },
     dialogAction: null
@@ -499,6 +503,12 @@ export default {
         e.preventDefault();
         this.showSearchInput = true;
         this.$nextTick(() => this.$refs.searchInputRef?.focus());
+      } else if (e.key === "?" || (e.shiftKey && e.key === "?")) {
+        const tag = document.activeElement?.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          e.preventDefault();
+          this.showHotkeysModal = true;
+        }
       }
     },
 
@@ -749,6 +759,6 @@ export default {
   unmounted() {
     window.removeEventListener("keydown", this.onGlobalKeydown);
   },
-  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal },
 };
 </script>
