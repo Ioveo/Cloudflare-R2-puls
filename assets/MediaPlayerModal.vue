@@ -11,6 +11,7 @@ const emit = defineEmits(["close", "change"]);
 
 const audioRef = ref(null);
 const videoRef = ref(null);
+const videoContainerRef = ref(null);
 const isPlaying = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
@@ -19,7 +20,14 @@ const isMuted = ref(false);
 const playbackRate = ref(1);
 const isMinimized = ref(false);
 const showPlaylist = ref(false);
-const loopMode = ref("all"); // 'all', 'one', 'off'
+const loopMode = ref("all");
+const isFullscreen = ref(false);
+const showVideoControls = ref(true);
+const speedMenuOpen = ref(false);
+const hoverSeekTime = ref(null);
+const hoverSeekPos = ref(0);
+
+let hideControlsTimer = null;
 
 const currentItem = computed(() => props.items[props.index] || null);
 
@@ -59,9 +67,7 @@ function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return "00:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  const padM = String(m).padStart(2, "0");
-  const padS = String(s).padStart(2, "0");
-  return `${padM}:${padS}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 function togglePlay() {
@@ -98,6 +104,15 @@ function onSeek(e) {
   currentTime.value = targetTime;
 }
 
+function onHoverSeek(e) {
+  if (!duration.value) return;
+  const rect = e.target.getBoundingClientRect();
+  const offsetX = e.clientX - rect.left;
+  const pct = Math.max(0, Math.min(1, offsetX / rect.width));
+  hoverSeekTime.value = formatTime(pct * duration.value);
+  hoverSeekPos.value = offsetX;
+}
+
 function onVolumeChange(e) {
   const val = Number(e.target.value);
   volume.value = val;
@@ -114,19 +129,49 @@ function toggleMute() {
   }
 }
 
-function changeSpeed() {
-  const rates = [1, 1.25, 1.5, 2, 0.75];
-  const idx = rates.indexOf(playbackRate.value);
-  const nextRate = rates[(idx + 1) % rates.length];
-  playbackRate.value = nextRate;
+function setSpeed(rate) {
+  playbackRate.value = rate;
+  speedMenuOpen.value = false;
   if (activeMediaEl.value) {
-    activeMediaEl.value.playbackRate = nextRate;
+    activeMediaEl.value.playbackRate = rate;
   }
 }
 
 function toggleLoop() {
   const modes = ["all", "one", "off"];
   loopMode.value = modes[(modes.indexOf(loopMode.value) + 1) % modes.length];
+}
+
+function toggleFullscreen() {
+  if (!videoContainerRef.value) return;
+  if (!document.fullscreenElement) {
+    videoContainerRef.value.requestFullscreen().then(() => { isFullscreen.value = true; }).catch(console.warn);
+  } else {
+    document.exitFullscreen().then(() => { isFullscreen.value = false; }).catch(console.warn);
+  }
+}
+
+async function togglePiP() {
+  if (!videoRef.value) return;
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else {
+      await videoRef.value.requestPictureInPicture();
+    }
+  } catch (err) {
+    console.warn("PiP error", err);
+  }
+}
+
+function onMouseMoveVideo() {
+  showVideoControls.value = true;
+  clearTimeout(hideControlsTimer);
+  hideControlsTimer = setTimeout(() => {
+    if (isPlaying.value && !speedMenuOpen.value) {
+      showVideoControls.value = false;
+    }
+  }, 3000);
 }
 
 function onEnded() {
@@ -169,6 +214,7 @@ function close() {
   isPlaying.value = false;
   isMinimized.value = false;
   showPlaylist.value = false;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   emit("close");
 }
 
@@ -178,6 +224,7 @@ function onKeydown(e) {
   else if (e.key === " ") { e.preventDefault(); togglePlay(); }
   else if (e.key === "ArrowLeft") prev();
   else if (e.key === "ArrowRight") next();
+  else if (e.key === "f" || e.key === "F") { if (isVideo.value) toggleFullscreen(); }
 }
 
 watch(() => props.index, () => {
@@ -315,32 +362,117 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             ></audio>
           </div>
 
-          <!-- VIDEO PLAYER VIEW -->
+          <!-- CINEMA CUSTOM VIDEO PLAYER VIEW -->
           <div v-else-if="isVideo" class="video-view">
-            <div class="video-wrapper">
+            <div
+              ref="videoContainerRef"
+              class="video-container"
+              :class="{ 'controls-hidden': !showVideoControls && isPlaying }"
+              @mousemove="onMouseMoveVideo"
+              @mouseleave="showVideoControls = false"
+            >
+              <!-- Video Tag (No native controls) -->
               <video
                 ref="videoRef"
+                class="cinema-video"
                 :src="currentItem.url"
-                controls
                 autoplay
                 playsinline
+                @click="togglePlay"
+                @dblclick="toggleFullscreen"
                 @timeupdate="onTimeUpdate"
                 @loadedmetadata="onLoadedMetadata"
                 @ended="onEnded"
                 @play="onPlay"
                 @pause="onPause"
               ></video>
-            </div>
-            <div class="video-subbar">
-              <button class="speed-btn" type="button" title="切换播放倍速" @click="changeSpeed">
-                <i class="ph ph-gauge"></i> {{ playbackRate }}x 倍速
-              </button>
-              <button v-if="items.length > 1" class="nav-chip" type="button" @click="prev">
-                <i class="ph ph-caret-left"></i> 上一个视频
-              </button>
-              <button v-if="items.length > 1" class="nav-chip" type="button" @click="next">
-                下一个视频 <i class="ph ph-caret-right"></i>
-              </button>
+
+              <!-- Center Big Play/Pause Indicator Overlay -->
+              <Transition name="scale-fade">
+                <div v-if="!isPlaying" class="center-play-overlay" @click="togglePlay">
+                  <div class="big-play-btn"><i class="ph ph-play-fill"></i></div>
+                </div>
+              </Transition>
+
+              <!-- Cinema Custom Floating Control Bar -->
+              <div class="video-cinema-bar" @click.stop>
+                <!-- Scrubber Progress Bar with Tooltip -->
+                <div class="video-seeker-container" @mousemove="onHoverSeek" @mouseleave="hoverSeekTime = null">
+                  <span v-if="hoverSeekTime" class="seek-tooltip" :style="{ left: hoverSeekPos + 'px' }">{{ hoverSeekTime }}</span>
+                  <input
+                    type="range"
+                    class="video-seek-input"
+                    min="0"
+                    :max="duration || 100"
+                    step="0.1"
+                    :value="currentTime"
+                    @input="onSeek"
+                  />
+                  <div class="seek-progress" :style="{ width: (duration ? (currentTime / duration) * 100 : 0) + '%' }"></div>
+                </div>
+
+                <div class="cinema-controls-row">
+                  <div class="left-ctrls">
+                    <button class="cinema-btn" type="button" :title="isPlaying ? '暂停' : '播放'" @click="togglePlay">
+                      <i :class="['ph', isPlaying ? 'ph-pause-fill' : 'ph-play-fill']"></i>
+                    </button>
+                    <button v-if="items.length > 1" class="cinema-btn" type="button" title="上一个视频" @click="prev">
+                      <i class="ph ph-skip-back-fill"></i>
+                    </button>
+                    <button v-if="items.length > 1" class="cinema-btn" type="button" title="下一个视频" @click="next">
+                      <i class="ph ph-skip-forward-fill"></i>
+                    </button>
+
+                    <div class="time-display">
+                      <span>{{ formatTime(currentTime) }}</span>
+                      <span class="sep">/</span>
+                      <span class="total">{{ formatTime(duration) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="right-ctrls">
+                    <!-- Speed Menu -->
+                    <div class="speed-menu-wrapper">
+                      <button class="cinema-pill-btn" type="button" @click="speedMenuOpen = !speedMenuOpen">
+                        {{ playbackRate }}x 倍速
+                      </button>
+                      <Transition name="fade">
+                        <div v-if="speedMenuOpen" class="speed-dropdown">
+                          <button v-for="rate in [2.0, 1.5, 1.25, 1.0, 0.75, 0.5]" :key="rate" class="speed-option" :class="{ active: playbackRate === rate }" @click="setSpeed(rate)">
+                            {{ rate }}x {{ rate === 1.0 ? '(正常)' : '' }}
+                          </button>
+                        </div>
+                      </Transition>
+                    </div>
+
+                    <!-- Volume Control -->
+                    <div class="volume-slider-group">
+                      <button class="cinema-btn" type="button" title="静音" @click="toggleMute">
+                        <i :class="['ph', isMuted || volume === 0 ? 'ph-speaker-x-fill' : 'ph-speaker-high-fill']"></i>
+                      </button>
+                      <input
+                        type="range"
+                        class="cinema-vol-bar"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        :value="isMuted ? 0 : volume"
+                        @input="onVolumeChange"
+                      />
+                    </div>
+
+                    <!-- PiP -->
+                    <button class="cinema-btn" type="button" title="画中画模式" @click="togglePiP">
+                      <i class="ph ph-screencast"></i>
+                    </button>
+
+                    <!-- Fullscreen -->
+                    <button class="cinema-btn" type="button" :title="isFullscreen ? '退出全屏' : '全屏模式 (F)'" @click="toggleFullscreen">
+                      <i :class="['ph', isFullscreen ? 'ph-arrows-in-simple' : 'ph-arrows-out-simple']"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -359,7 +491,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
                   :class="{ active: idx === index }"
                   @click="playTrack(idx)"
                 >
-                  <i :class="['ph', idx === index ? (isPlaying ? 'ph-equalizer' : 'ph-pause') : 'ph-music-note']"></i>
+                  <i :class="['ph', idx === index ? (isPlaying ? 'ph-equalizer' : 'ph-pause') : (isAudio ? 'ph-music-note' : 'ph-film-strip')]"></i>
                   <span class="track-name">{{ item.name }}</span>
                 </li>
               </ul>
@@ -413,7 +545,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 10, 14, 0.94);
+  background: rgba(10, 10, 14, 0.95);
   backdrop-filter: blur(36px) saturate(200%);
   color: #fff;
   animation: fade-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -758,60 +890,256 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   cursor: pointer;
 }
 
-/* Video Player Stylings */
+/* CINEMA CUSTOM VIDEO PLAYER STYLES */
 .video-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 1000px;
+  max-width: 1100px;
   height: 100%;
 }
 
-.video-wrapper {
+.video-container {
   position: relative;
   width: 100%;
-  flex: 1;
+  height: 100%;
+  max-height: calc(100vh - 120px);
   display: flex;
   align-items: center;
   justify-content: center;
   background: #000;
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.video-wrapper video {
+.cinema-video {
   width: 100%;
   height: 100%;
-  max-height: calc(100vh - 160px);
   object-fit: contain;
+  cursor: pointer;
 }
 
-.video-subbar {
+/* Center Play Overlay */
+.center-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.big-play-btn {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  color: #fff;
+  font-size: 36px;
+  box-shadow: 0 12px 36px rgba(10, 132, 255, 0.6);
+  transition: transform 0.2s;
+}
+
+.center-play-overlay:hover .big-play-btn {
+  transform: scale(1.15);
+}
+
+/* Cinema Custom Floating Control Bar */
+.video-cinema-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 20px;
+  right: 20px;
+  z-index: 20;
+  padding: 12px 20px 14px;
+  border-radius: 20px;
+  background: rgba(18, 18, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.video-container.controls-hidden .video-cinema-bar {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+/* Seeker Input with Tooltip */
+.video-seeker-container {
+  position: relative;
+  width: 100%;
+  height: 10px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-top: 14px;
 }
 
-.speed-btn, .nav-chip {
-  padding: 8px 16px;
-  border-radius: 20px;
+.video-seek-input {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  opacity: 0;
+  z-index: 5;
+  cursor: pointer;
+}
+
+.seek-progress {
+  position: absolute;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #0a84ff, #5e5ce6);
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.7);
+  pointer-events: none;
+}
+
+.video-seeker-container::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.seek-tooltip {
+  position: absolute;
+  top: -32px;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.cinema-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.left-ctrls, .right-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cinema-btn {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 0;
+  font-size: 19px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.cinema-btn:hover {
+  background: rgba(10, 132, 255, 0.8);
+  transform: scale(1.08);
+}
+
+.time-display {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-display .sep { color: rgba(255, 255, 255, 0.4); }
+.time-display .total { color: rgba(255, 255, 255, 0.55); }
+
+/* Speed Menu */
+.speed-menu-wrapper {
+  position: relative;
+}
+
+.cinema-pill-btn {
+  padding: 6px 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.18s, transform 0.18s;
+  transition: all 0.18s;
 }
 
-.speed-btn:hover, .nav-chip:hover {
-  background: rgba(10, 132, 255, 0.7);
-  transform: scale(1.05);
+.cinema-pill-btn:hover {
+  background: rgba(10, 132, 255, 0.8);
+}
+
+.speed-dropdown {
+  position: absolute;
+  bottom: 42px;
+  right: 0;
+  width: 110px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(24, 24, 32, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.speed-option {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 600;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.speed-option:hover {
+  background: rgba(10, 132, 255, 0.2);
+  color: #0a84ff;
+}
+
+.speed-option.active {
+  background: #0a84ff;
+  color: #fff;
+}
+
+.volume-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cinema-vol-bar {
+  width: 60px;
+  height: 4px;
+  accent-color: #0a84ff;
+  cursor: pointer;
 }
 
 /* Playlist Drawer */
@@ -826,7 +1154,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   backdrop-filter: blur(30px);
   display: flex;
   flex-direction: column;
-  z-index: 20;
+  z-index: 30;
   box-shadow: -15px 0 35px rgba(0,0,0,0.5);
 }
 
@@ -969,4 +1297,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 .slide-left-enter-active, .slide-left-leave-active { transition: transform 0.25s ease; }
 .slide-left-enter-from, .slide-left-leave-to { transform: translateX(100%); }
+
+.scale-fade-enter-active, .scale-fade-leave-active { transition: all 0.2s ease; }
+.scale-fade-enter-from, .scale-fade-leave-to { opacity: 0; transform: scale(0.85); }
 </style>
