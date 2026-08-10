@@ -7,32 +7,36 @@ export async function generateThumbnail(file) {
   const canvas = document.createElement("canvas");
   canvas.width = THUMBNAIL_SIZE;
   canvas.height = THUMBNAIL_SIZE;
-  var ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d");
 
-  /** @type HTMLImageElement */
   if (file.type.startsWith("image/")) {
     const image = await new Promise((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.src = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = URL.createObjectURL(file);
     });
+    if (!image) return null;
     ctx.drawImage(image, 0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
-  } else if (file.type === "video/mp4") {
-    // Generate thumbnail from video
-    const video = await new Promise(async (resolve, reject) => {
-      const video = document.createElement("video");
-      video.muted = true;
-      video.src = URL.createObjectURL(file);
-      setTimeout(() => reject(new Error("Video load timeout")), 2000);
-      await video.play();
-      await video.pause();
-      video.currentTime = 0;
-      resolve(video);
+  } else if (file.type === "video/mp4" || file.type.startsWith("video/")) {
+    const video = await new Promise((resolve) => {
+      const v = document.createElement("video");
+      v.muted = true;
+      v.src = URL.createObjectURL(file);
+      const timer = setTimeout(() => resolve(null), 2000);
+      v.onloadeddata = () => {
+        clearTimeout(timer);
+        ctx.drawImage(v, 0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        resolve(v);
+      };
+      v.onerror = () => {
+        clearTimeout(timer);
+        resolve(null);
+      };
     });
-    ctx.drawImage(video, 0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+    if (!video) return null;
   }
 
-  /** @type Blob */
   const thumbnailBlob = await new Promise((resolve) =>
     canvas.toBlob((blob) => resolve(blob))
   );
@@ -54,23 +58,24 @@ export async function blobDigest(blob) {
 
 const MEBIBYTE = 1024 * 1024;
 const MIN_PART_SIZE = 5 * MEBIBYTE;
-const DEFAULT_PART_SIZE = 16 * MEBIBYTE;
 const MAX_MULTIPART_PARTS = 10_000;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
 
-// Multipart starts early enough to avoid a single long-lived request for large files.
-export const MULTIPART_THRESHOLD = 32 * MEBIBYTE;
+// Threshold for multipart uploads: lowered to 12MB so files > 12MB immediately gain multi-threaded parallel uploads!
+export const MULTIPART_THRESHOLD = 12 * MEBIBYTE;
 
 function getPartSize(fileSize) {
+  if (fileSize > 1024 * MEBIBYTE) return 32 * MEBIBYTE; // 32MB chunk for >1GB
+  if (fileSize > 256 * MEBIBYTE) return 16 * MEBIBYTE;  // 16MB chunk for >256MB
   const sizeForPartLimit = Math.ceil(fileSize / MAX_MULTIPART_PARTS);
-  return Math.max(DEFAULT_PART_SIZE, MIN_PART_SIZE, sizeForPartLimit);
+  return Math.max(10 * MEBIBYTE, MIN_PART_SIZE, sizeForPartLimit);
 }
 
 function getConcurrentUploads() {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (connection?.saveData || connection?.effectiveType === "2g") return 1;
-  if (connection?.effectiveType === "3g") return 2;
-  return 4;
+  if (connection?.saveData || connection?.effectiveType === "2g") return 2;
+  if (connection?.effectiveType === "3g") return 3;
+  return 6; // Max 6 parallel upload threads for maximum HTTP/2 speed!
 }
 
 function sleep(milliseconds) {
@@ -90,7 +95,7 @@ async function retryUpload(uploadPart) {
     } catch (error) {
       lastError = error;
       if (attempt === MAX_RETRIES || !shouldRetry(error)) throw error;
-      await sleep(400 * 2 ** attempt + Math.random() * 250);
+      await sleep(300 * 2 ** attempt + Math.random() * 200);
     }
   }
   throw lastError;
@@ -102,7 +107,7 @@ async function retryUpload(uploadPart) {
  * @param {Record<string, any>} options
  */
 export async function multipartUpload(key, file, options) {
-  const headers = { ...(options?.headers || {}), "content-type": file.type };
+  const headers = { ...(options?.headers || {}), "content-type": file.type || "application/octet-stream" };
 
   const uploadId = await axios
     .post(`/api/write/items/${key}?uploads`, "", { headers })
