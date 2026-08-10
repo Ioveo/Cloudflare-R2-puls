@@ -4,8 +4,13 @@ type UserRule = {
 };
 
 function allowedPath(path: string, rules: string | string[]) {
+  if (!rules) return true;
   const paths = Array.isArray(rules) ? rules : String(rules || "").split(",");
-  return paths.some((prefix) => prefix === "*" || (prefix && path.startsWith(prefix)));
+  return paths.some((prefix) => {
+    const trimmed = prefix.trim();
+    if (trimmed === "*" || trimmed === "/" || !trimmed) return true;
+    return path.startsWith(trimmed);
+  });
 }
 
 function getRequestPath(context) {
@@ -31,7 +36,7 @@ function getBasicAccount(header: string | null) {
   }
 }
 
-function getJsonUserRule(env, username: string, password: string): UserRule | null {
+function getJsonUserRule(env: Record<string, unknown>, username: string, password: string): UserRule | null {
   if (typeof env.AUTH_USERS !== "string" || !env.AUTH_USERS.trim()) return null;
   try {
     const users = JSON.parse(env.AUTH_USERS);
@@ -45,28 +50,60 @@ function getJsonUserRule(env, username: string, password: string): UserRule | nu
   }
 }
 
-function matchesSimpleCredentials(env, username: string, password: string) {
-  const admin = typeof env.ADMIN === "string" ? env.ADMIN : "";
-  const pass = typeof env.PASS === "string" ? env.PASS : "";
-  return Boolean(admin && pass && username === admin && password === pass);
+function matchesSimpleCredentials(env: Record<string, unknown>, username: string, password: string): boolean {
+  // Support all common Cloudflare Pages / Workers environment variable aliases
+  const adminCandidates = [env.ADMIN, env.ADMIN_USERNAME, env.ADMIN_USER, env.USER, env.USERNAME, env.AUTH_USER];
+  const passCandidates = [env.PASS, env.ADMIN_PASSWORD, env.ADMIN_PASS, env.PASSWORD, env.AUTH_PASS, env.AUTH_PASSWORD];
+
+  for (let i = 0; i < adminCandidates.length; i++) {
+    const a = adminCandidates[i];
+    const p = passCandidates[i];
+    if (typeof a === "string" && typeof p === "string" && a.trim() && p.trim()) {
+      if (username === a.trim() && password === p.trim()) return true;
+    }
+  }
+
+  // Cross-match: ADMIN with any password candidate
+  const adminVal = (typeof env.ADMIN === "string" ? env.ADMIN : "") || (typeof env.ADMIN_USERNAME === "string" ? env.ADMIN_USERNAME : "") || (typeof env.USER === "string" ? env.USER : "");
+  const passVal = (typeof env.PASS === "string" ? env.PASS : "") || (typeof env.ADMIN_PASSWORD === "string" ? env.ADMIN_PASSWORD : "") || (typeof env.PASSWORD === "string" ? env.PASSWORD : "");
+
+  if (adminVal && passVal && username === adminVal.trim() && password === passVal.trim()) {
+    return true;
+  }
+
+  return false;
 }
 
 export function get_auth_status(context) {
+  const url = new URL(context.request.url);
+  const isTestEndpoint = url.pathname.includes("/api/write/test");
   const path = getRequestPath(context);
-  if (path.startsWith("_$flaredrive$/thumbnails/")) return true;
 
-  if (context.env.GUEST && allowedPath(path, context.env.GUEST)) return true;
+  if (!isTestEndpoint && path.startsWith("_$flaredrive$/thumbnails/")) return true;
 
-  const account = getBasicAccount(new Headers(context.request.headers).get("Authorization"));
+  if (!isTestEndpoint && context.env.GUEST && allowedPath(path, context.env.GUEST as string)) return true;
+
+  const account = getBasicAccount(context.request.headers.get("Authorization"));
   if (!account) return false;
 
-  // Simplest setup: ADMIN contains the username and PASS contains the password.
-  if (matchesSimpleCredentials(context.env, account.username, account.password)) return true;
+  // 1. Simple environment variables (ADMIN + PASS, ADMIN_USER + ADMIN_PASS, etc.)
+  if (matchesSimpleCredentials(context.env, account.username, account.password)) {
+    return true;
+  }
 
+  // 2. JSON structured rules (AUTH_USERS)
   const jsonRule = getJsonUserRule(context.env, account.username, account.password);
-  if (jsonRule) return allowedPath(path, jsonRule.paths || "");
+  if (jsonRule) {
+    if (isTestEndpoint) return true;
+    return allowedPath(path, jsonRule.paths || "*");
+  }
 
-  // Backward compatibility with the original `username:password` variable format.
+  // 3. Backward compatibility with `username:password` variable format
   const legacyRule = context.env[`${account.username}:${account.password}`];
-  return typeof legacyRule === "string" && allowedPath(path, legacyRule);
+  if (typeof legacyRule === "string") {
+    if (isTestEndpoint) return true;
+    return allowedPath(path, legacyRule);
+  }
+
+  return false;
 }
