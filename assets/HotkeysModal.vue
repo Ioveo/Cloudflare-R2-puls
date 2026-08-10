@@ -23,7 +23,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         <header class="hotkeys-header">
           <div class="header-title">
             <i class="ph ph-keyboard"></i>
-            <span>FlareDrive 全快捷键指南</span>
+            <span>天才猫 R2 网盘全快捷键指南</span>
           </div>
           <button class="close-icon-btn" type="button" @click="emit('close')">×</button>
         </header>

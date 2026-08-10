@@ -3,10 +3,10 @@
   <!-- Left Glassmorphism Sidebar -->
   <aside class="studio-sidebar">
     <div class="sidebar-brand">
-      <span class="brand-mark"><i class="ph ph-cube-focus"></i></span>
+      <CatLogo />
       <div class="brand-text">
-        <strong>FlareDrive</strong>
-        <span class="status-dot"><i class="dot"></i> 云端直连中</span>
+        <strong>天才猫 R2 网盘</strong>
+        <span class="status-dot"><i class="dot"></i> 智能直连中</span>
       </div>
     </div>
 
@@ -331,6 +331,7 @@ import LightboxModal from "./LightboxModal.vue";
 import MediaPlayerModal from "./MediaPlayerModal.vue?v=13.0";
 import ArchiveModal from "./ArchiveModal.vue";
 import HotkeysModal from "./HotkeysModal.vue";
+import CatLogo from "./CatLogo.vue";
 
 function loadAuthCredentials() {
   try {
@@ -742,7 +743,7 @@ export default {
     uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },
   },
   watch: {
-    cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · FlareDrive Studio`; }, immediate: true },
+    cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · 天才猫 R2 网盘系统`; }, immediate: true },
     storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.loadCachedGlobalIndex(); this.fetchFiles(); },
     viewMode(value) { localStorage.setItem("drive-view", value); }
   },
@@ -759,6 +760,6 @@ export default {
   unmounted() {
     window.removeEventListener("keydown", this.onGlobalKeydown);
   },
-  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo },
 };
 </script>
