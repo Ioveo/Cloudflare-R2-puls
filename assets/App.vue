@@ -95,7 +95,7 @@
     </header>
 
     <section class="workspace">
-      <!-- Portal Hero Banner -->
+      <!-- Portal Hero Banner & R2 Storage Animated Widget -->
       <div class="portal-hero">
         <div class="hero-content">
           <div class="hero-header-row">
@@ -111,6 +111,34 @@
             <span class="hero-pill" @click="selectCategory('video')"><i class="ph ph-film-strip"></i> {{ categoryCounts.video }} 视频</span>
             <span class="hero-pill" @click="selectCategory('audio')"><i class="ph ph-music-notes"></i> {{ categoryCounts.audio }} 音乐</span>
             <span class="hero-pill" @click="selectCategory('archive')"><i class="ph ph-package"></i> {{ categoryCounts.archive }} 归档</span>
+          </div>
+        </div>
+
+        <!-- R2 Storage Usage Animated Card (Apple macOS Storage Widget) -->
+        <div class="r2-storage-widget" :title="`R2 存储桶已用 ${formatSize(totalStorageBytes)} · 基于 10GB 免费容量`">
+          <div class="storage-widget-header">
+            <div class="storage-title">
+              <i class="ph ph-cloud-check"></i>
+              <span>R2 存储容量占用</span>
+            </div>
+            <span class="storage-value-text">{{ formatSize(totalStorageBytes) }} <sub>/ 10 GB</sub></span>
+          </div>
+
+          <!-- Multi-Color Segmented Animated Progress Bar -->
+          <div class="storage-bar-track">
+            <div class="storage-bar-seg seg-image" :style="{ width: (totalStorageBytes ? (categoryBytes.image / totalStorageBytes) * storagePercent : 0) + '%' }" title="照片"></div>
+            <div class="storage-bar-seg seg-video" :style="{ width: (totalStorageBytes ? (categoryBytes.video / totalStorageBytes) * storagePercent : 0) + '%' }" title="视频"></div>
+            <div class="storage-bar-seg seg-audio" :style="{ width: (totalStorageBytes ? (categoryBytes.audio / totalStorageBytes) * storagePercent : 0) + '%' }" title="音频"></div>
+            <div class="storage-bar-seg seg-archive" :style="{ width: (totalStorageBytes ? (categoryBytes.archive / totalStorageBytes) * storagePercent : 0) + '%' }" title="归档"></div>
+            <div class="storage-bar-seg seg-document" :style="{ width: (totalStorageBytes ? (categoryBytes.document / totalStorageBytes) * storagePercent : 0) + '%' }" title="文档"></div>
+          </div>
+
+          <!-- Legend Breakdown Pills -->
+          <div class="storage-legend">
+            <span class="legend-dot dot-image">照片 {{ formatSize(categoryBytes.image) }}</span>
+            <span class="legend-dot dot-video">视频 {{ formatSize(categoryBytes.video) }}</span>
+            <span class="legend-dot dot-audio">音频 {{ formatSize(categoryBytes.audio) }}</span>
+            <span class="legend-dot dot-archive">归档 {{ formatSize(categoryBytes.archive) }}</span>
           </div>
         </div>
       </div>
@@ -154,7 +182,11 @@
         <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) || isVideo(file) ? 'file-card--photo' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')]" tabindex="0" @click="openFile(file)" @keydown.enter="openFile(file)" @contextmenu.stop.prevent="openContext(file, $event)">
           <div v-if="isImage(file) || isVideo(file)" class="photo-preview">
             <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-            <div v-if="isVideo(file)" class="video-play-badge"><i class="ph-fill ph-play"></i></div>
+            <div v-if="isVideo(file)" class="video-play-badge">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
+              </svg>
+            </div>
           </div>
           <div v-else-if="isArchive(file)" class="archive-card-icon">
             <i class="ph ph-package"></i>
@@ -286,6 +318,49 @@ export default {
         }
       }
       return Array.from(map.values());
+    },
+
+    totalStorageBytes() {
+      const map = new Map();
+      for (const f of this.files) {
+        if (f && f.key && f.size) map.set(f.key, f.size);
+      }
+      if (this.globalFilesLoaded) {
+        for (const f of this.globalFiles) {
+          if (f && f.key && f.size) map.set(f.key, f.size);
+        }
+      }
+      let total = 0;
+      for (const size of map.values()) total += size;
+      return total;
+    },
+
+    categoryBytes() {
+      const map = new Map();
+      for (const f of this.files) {
+        if (f && f.key) map.set(f.key, f);
+      }
+      if (this.globalFilesLoaded) {
+        for (const f of this.globalFiles) {
+          if (f && f.key) map.set(f.key, f);
+        }
+      }
+      const bytes = { image: 0, video: 0, audio: 0, archive: 0, document: 0 };
+      for (const f of map.values()) {
+        const s = f.size || 0;
+        if (this.isImage(f)) bytes.image += s;
+        else if (this.isVideo(f)) bytes.video += s;
+        else if (this.isAudio(f)) bytes.audio += s;
+        else if (this.isArchive(f)) bytes.archive += s;
+        else if (this.isDocument(f)) bytes.document += s;
+      }
+      return bytes;
+    },
+
+    storagePercent() {
+      const cap = 10 * 1024 * 1024 * 1024; // 10 GB
+      const pct = (this.totalStorageBytes / cap) * 100;
+      return Math.min(100, Math.max(1, pct));
     },
 
     filteredFiles() {
@@ -492,7 +567,7 @@ export default {
         this.loading = false;
       }
     },
-    formatSize(size) { const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
+    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
     async pasteFile() { if (!this.clipboard) return; this.openDialog({ title: "粘贴文件", message: "可以修改文件名，留空使用原名称", initialValue: this.fileName(this.clipboard), confirmText: "粘贴" }, async (name) => { if (!name) name = this.fileName(this.clipboard); try { await this.copyPaste(this.clipboard, `${this.cwd}${name}`); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
     async processUploadQueue() {
       if (!this.uploadQueue.length) {
