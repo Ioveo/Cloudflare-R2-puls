@@ -670,66 +670,265 @@ input:checked + .slider:before { transform: translateX(16px); }
 
 .file-footer strong { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--ink); }
 
-/* Photo & Video Cover Card Overrides */
-.file-grid:not(.list) .file-card--photo {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 280px !important;
-  min-height: 280px !important;
-  max-height: 280px !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
-
-.file-grid:not(.list) .file-card--photo .photo-preview {
-  position: relative !important;
-  width: 100% !important;
-  height: 190px !important;
-  overflow: hidden !important;
-  background: rgba(0, 0, 0, 0.08) !important;
-  flex-shrink: 0 !important;
-}
-
-.file-grid:not(.list) .file-card--photo .photo-preview img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
+/* ------------------------------------------------------------- */
+/* 1. PHOTO WATERFALL / MASONRY GALLERY (.waterfall-mode)       */
+/* ------------------------------------------------------------- */
+.file-grid.waterfall-mode {
   display: block !important;
-  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  column-count: 4;
+  column-gap: 22px;
 }
 
-.file-grid:not(.list) .file-card--photo:hover .photo-preview img { transform: scale(1.08) !important; }
+@media (max-width: 1600px) { .file-grid.waterfall-mode { column-count: 3; } }
+@media (max-width: 1100px) { .file-grid.waterfall-mode { column-count: 2; } }
+@media (max-width: 640px) { .file-grid.waterfall-mode { column-count: 1; } }
 
-.file-grid:not(.list) .file-card--photo .file-main {
+.file-grid.waterfall-mode .file-card {
+  break-inside: avoid;
+  margin-bottom: 22px;
   display: flex !important;
   flex-direction: column !important;
-  padding: 12px 18px 2px 18px !important;
-  margin: 0 !important;
-  flex: 1 !important;
-  justify-content: center !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.file-grid:not(.list) .file-card--photo .file-footer {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 2px 18px 12px 18px !important;
-  margin: 0 !important;
+.file-grid.waterfall-mode .photo-preview {
+  height: auto !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 22px 22px 0 0;
+}
+
+.file-grid.waterfall-mode .photo-preview img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  object-fit: cover !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.file-grid.waterfall-mode .file-card:hover .photo-preview img {
+  transform: scale(1.06) !important;
+}
+
+.photo-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.15) 60%, transparent 100%);
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+  transition: opacity 0.25s ease;
+  z-index: 4;
+}
+
+.file-card:hover .photo-hover-overlay { opacity: 1; }
+
+.photo-tag-badge {
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: rgba(10, 132, 255, 0.85);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  backdrop-filter: blur(10px);
+}
+
+.photo-overlay-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+.overlay-btn {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
+}
+
+.overlay-btn:hover {
+  background: #0a84ff;
+  transform: scale(1.1);
+}
+
+.file-grid.waterfall-mode .file-card .file-main {
+  padding: 14px 18px 4px 18px !important;
+}
+
+.file-grid.waterfall-mode .file-card .file-footer {
+  padding: 0 18px 14px 18px !important;
   border-top: none !important;
 }
 
-.file-grid:not(.list) .file-card--photo .more-button {
-  position: absolute !important;
-  top: 12px !important;
-  right: 12px !important;
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 50% !important;
-  background: rgba(0, 0, 0, 0.5) !important;
-  color: #fff !important;
-  backdrop-filter: blur(12px) !important;
-  z-index: 5 !important;
+/* ------------------------------------------------------------- */
+/* 2. VIDEO CINEMA GALLERY (.video-studio-mode)                  */
+/* ------------------------------------------------------------- */
+.file-grid.video-studio-mode {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+  gap: 26px !important;
+}
+
+.file-grid.video-studio-mode .file-card {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 310px !important;
+  padding: 0 !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  background: var(--surface) !important;
+}
+
+.file-grid.video-studio-mode .photo-preview {
+  height: 200px !important;
+  position: relative !important;
+  background: #000 !important;
+  overflow: hidden !important;
+}
+
+.file-grid.video-studio-mode .photo-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.file-grid.video-studio-mode .file-card:hover .photo-preview img {
+  transform: scale(1.08) !important;
+}
+
+.video-hd-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  z-index: 5;
+}
+
+.file-grid.video-studio-mode .file-card .file-main {
+  padding: 14px 18px 2px 18px !important;
+}
+
+.file-grid.video-studio-mode .file-card .file-footer {
+  padding: 0 18px 14px 18px !important;
+  border-top: none !important;
+}
+
+/* ------------------------------------------------------------- */
+/* 3. MUSIC VINYL PLATFORM (.music-studio-mode)                  */
+/* ------------------------------------------------------------- */
+.file-grid.music-studio-mode {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+  gap: 26px !important;
+}
+
+.file-grid.music-studio-mode .file-card {
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+  padding: 18px !important;
+  border-radius: 26px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.music-album-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 20px;
+  overflow: visible;
+  margin-bottom: 14px;
+}
+
+.music-vinyl-disc {
+  position: absolute;
+  top: 10%;
+  right: -15%;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2c2c34 0%, #15151c 65%, #08080c 100%);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
+  display: grid;
+  place-items: center;
+  color: #30d158;
+  font-size: 28px;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+.file-card:hover .music-vinyl-disc {
+  transform: translateX(35px) rotate(180deg);
+}
+
+.music-album-art {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(48, 209, 88, 0.22), rgba(10, 132, 255, 0.18));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  color: #30d158;
+  font-size: 52px;
+  z-index: 2;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.music-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.file-card:hover .music-play-overlay {
+  opacity: 1;
+}
+
+.music-play-overlay svg {
+  filter: drop-shadow(0 4px 12px rgba(48, 209, 88, 0.8));
+  transform: scale(0.85);
+  transition: transform 0.22s ease;
+}
+
+.file-card:hover .music-play-overlay svg {
+  transform: scale(1.1);
 }
 
 /* Crisp Video Play Badge Overlay with Inline SVG Icon Support */
@@ -757,7 +956,8 @@ input:checked + .slider:before { transform: translateX(16px); }
   filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35));
 }
 
-.file-card--photo:hover .video-play-badge {
+.file-card--photo:hover .video-play-badge,
+.file-card--video:hover .video-play-badge {
   transform: translate(-50%, -50%) scale(1.18);
   background: #0a84ff;
   box-shadow: 0 16px 44px rgba(10, 132, 255, 0.8);

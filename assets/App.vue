@@ -114,7 +114,7 @@
           </div>
         </div>
 
-        <!-- R2 Storage Usage Animated Card (Apple macOS Storage Widget) -->
+        <!-- R2 Storage Usage Animated Card -->
         <div class="r2-storage-widget" :title="`R2 存储桶已用 ${formatSize(totalStorageBytes)} · 基于 10GB 免费容量`">
           <div class="storage-widget-header">
             <div class="storage-title">
@@ -163,8 +163,9 @@
         <button v-if="!search" class="primary-button" type="button" @click="showUploadPopup = true"><i class="ph ph-upload-simple"></i> 上传文件</button>
       </section>
 
-      <!-- File Grid -->
-      <section v-else class="file-grid" :class="viewMode">
+      <!-- File Grid (Supports Masonry Waterfall, Video Cinema Gallery, and Music Vinyl Studio Layouts) -->
+      <section v-else class="file-grid" :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid', 'video-studio-mode': filterCategory === 'video' && viewMode === 'grid', 'music-studio-mode': filterCategory === 'audio' && viewMode === 'grid' }]">
+        
         <article v-if="cwd && filterCategory === 'all'" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
           <div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div>
           <div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div>
@@ -179,28 +180,105 @@
           <button class="more-button" type="button" title="更多操作" @click.stop="openContext(folder, $event)"><i class="ph ph-dots-three-outline"></i></button>
         </article>
 
-        <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) || isVideo(file) ? 'file-card--photo' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')]" tabindex="0" @click="openFile(file)" @keydown.enter="openFile(file)" @contextmenu.stop.prevent="openContext(file, $event)">
-          <div v-if="isImage(file) || isVideo(file)" class="photo-preview">
-            <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-            <div v-if="isVideo(file)" class="video-play-badge">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
-              </svg>
+        <!-- SPECIALIZED CATEGORY CARDS -->
+        <article
+          v-for="file in filteredFiles"
+          :key="file.key"
+          class="file-card"
+          :class="[isImage(file) ? 'file-card--image' : (isVideo(file) ? 'file-card--video' : (isAudio(file) ? 'file-card--audio' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')))]"
+          tabindex="0"
+          @click="openFile(file)"
+          @keydown.enter="openFile(file)"
+          @contextmenu.stop.prevent="openContext(file, $event)"
+        >
+          <!-- 1. PHOTO WATERFALL / MASONRY CARD -->
+          <template v-if="isImage(file)">
+            <div class="photo-preview">
+              <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+              <div class="photo-hover-overlay">
+                <span class="photo-tag-badge">HD 原图</span>
+                <div class="photo-overlay-actions">
+                  <button class="overlay-btn" type="button" title="大图幻灯片预览" @click.stop="openFile(file)">
+                    <i class="ph ph-arrows-out"></i>
+                  </button>
+                  <a class="overlay-btn" :href="rawPath(file.key)" download title="下载原图">
+                    <i class="ph ph-download-simple"></i>
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-          <div v-else-if="isArchive(file)" class="archive-card-icon">
-            <i class="ph ph-package"></i>
-            <span class="archive-pill">{{ archiveExt(file) }}</span>
-          </div>
-          <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
-          <div class="file-main">
-            <strong>{{ fileName(file.key) }}</strong>
-            <span>{{ formatDate(file.uploaded) }}</span>
-          </div>
-          <footer class="file-footer">
-            <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
-          </footer>
-          <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+            <div class="file-main">
+              <strong>{{ fileName(file.key) }}</strong>
+              <span>{{ formatDate(file.uploaded) }}</span>
+            </div>
+            <footer class="file-footer">
+              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+            </footer>
+            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+          </template>
+
+          <!-- 2. VIDEO CINEMA STREAMING CARD -->
+          <template v-else-if="isVideo(file)">
+            <div class="photo-preview video-cinema-preview">
+              <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+              <span class="video-hd-pill">4K Ultra HD</span>
+              <div class="video-play-badge">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="file-main">
+              <strong>{{ fileName(file.key) }}</strong>
+              <span>{{ formatDate(file.uploaded) }} · 高清视频</span>
+            </div>
+            <footer class="file-footer">
+              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+            </footer>
+            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+          </template>
+
+          <!-- 3. MUSIC VINYL PLATFORM CARD -->
+          <template v-else-if="isAudio(file)">
+            <div class="music-album-wrapper">
+              <div class="music-vinyl-disc">
+                <i class="ph ph-music-notes"></i>
+              </div>
+              <div class="music-album-art">
+                <i class="ph ph-vinyl-record"></i>
+                <div class="music-play-overlay">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                    <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="file-main">
+              <strong>{{ fileName(file.key) }}</strong>
+              <span>无损音频 · {{ formatDate(file.uploaded) }}</span>
+            </div>
+            <footer class="file-footer">
+              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+            </footer>
+            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+          </template>
+
+          <!-- 4. GENERAL ARCHIVE & DOCUMENT CARD -->
+          <template v-else>
+            <div v-if="isArchive(file)" class="archive-card-icon">
+              <i class="ph ph-package"></i>
+              <span class="archive-pill">{{ archiveExt(file) }}</span>
+            </div>
+            <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
+            <div class="file-main">
+              <strong>{{ fileName(file.key) }}</strong>
+              <span>{{ formatDate(file.uploaded) }}</span>
+            </div>
+            <footer class="file-footer">
+              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+            </footer>
+            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+          </template>
         </article>
       </section>
     </section>
@@ -297,9 +375,9 @@ export default {
     categoryMeta() {
       const map = {
         all: { title: "个人云端 Showcase 展厅", desc: "直连存储 · 在线影音播放 · 归档解压预览 · 全速传输" },
-        image: { title: "🖼️ 高清照片与壁纸集锦", desc: "跨目录全盘智能扫描 · 点击即刻开启沉浸式全屏幻灯片" },
-        video: { title: "🎬 4K 影音与视频画廊", desc: "跨目录全盘自动归类 · 智能倍速播放与独立音视频模组" },
-        audio: { title: "🎵 无损音乐与唱片曲库", desc: "跨目录全盘自动归类 · 包含 3D 黑胶唱片视效与动态频谱" },
+        image: { title: "🖼️ 瀑布流高清照片图库", desc: "Pinterest 级高保真瀑布流展厅 · 点击开启沉浸式幻灯片" },
+        video: { title: "🎬 4K 影音与视频画廊", desc: "B 站 / 影院级 16:9 画幅画廊 · 专属浮动控件与高保真流媒体" },
+        audio: { title: "🎵 3D 黑胶无损唱片曲库", desc: "Apple Music 级 3D 唱片滑出视效 · 动态频谱与在线高保真音频" },
         archive: { title: "📦 压缩包与归档资源", desc: "跨目录全盘自动归类 · 支持在线解压检视 ZIP/RAR 目录树" },
         document: { title: "📄 文档与办公资料", desc: "跨目录全盘自动归类 · PDF / Word / Markdown / 电子书" },
       };
