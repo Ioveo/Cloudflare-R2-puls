@@ -26,9 +26,10 @@
       <section v-else class="file-grid" :class="viewMode">
         <article v-if="cwd" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)"><div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div><div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div></article>
         <article v-for="folder in filteredFolders" :key="folder" class="file-card folder-card" tabindex="0" @click="goToFolder(folder)" @keydown.enter="goToFolder(folder)" @contextmenu.stop.prevent="openContext(folder, $event)"><div class="file-symbol folder-symbol"><i class="ph ph-folder-simple"></i></div><div class="file-main"><strong>{{ folderName(folder) }}</strong><span>文件夹</span></div><button class="more-button" type="button" title="更多操作" @click.stop="openContext(folder, $event)"><i class="ph ph-dots-three-outline"></i></button></article>
-        <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) ? 'file-card--photo' : 'file-card--document']" tabindex="0" @click="openFile(file)" @keydown.enter="openFile(file)" @contextmenu.stop.prevent="openContext(file, $event)">
-          <div v-if="isImage(file)" class="photo-preview">
+        <article v-for="file in filteredFiles" :key="file.key" class="file-card" :class="[isImage(file) || isVideo(file) ? 'file-card--photo' : 'file-card--document']" tabindex="0" @click="openFile(file)" @keydown.enter="openFile(file)" @contextmenu.stop.prevent="openContext(file, $event)">
+          <div v-if="isImage(file) || isVideo(file)" class="photo-preview">
             <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+            <div v-if="isVideo(file)" class="video-play-badge"><i class="ph ph-play-fill"></i></div>
           </div>
           <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
           <div class="file-main">
@@ -85,19 +86,23 @@ export default {
   computed: {
     menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴", value: "paste", disabled: !this.clipboard }, { text: "退出登录", value: "logout" }]; },
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
-    contextActions() { if (!this.focusedItem) return [{ id: "upload", label: "上传文件", icon: "ph-upload-simple" }, { id: "create-folder", label: "新建文件夹", icon: "ph-folder-plus" }, { id: "paste", label: "粘贴", icon: "ph-clipboard", disabled: !this.clipboard }, { id: "logout", label: "退出登录", icon: "ph-sign-out", danger: true }]; if (typeof this.focusedItem === "string") return [{ id: "open", label: "打开文件夹", icon: "ph-folder-open" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }]; return [{ id: "preview", label: "预览文件", icon: "ph-eye" }, { id: "download", label: "下载", icon: "ph-download-simple" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "rename", label: "重命名", icon: "ph-pencil-simple" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件", icon: "ph-trash", danger: true }]; },
+    contextActions() { if (!this.focusedItem) return [{ id: "upload", label: "上传文件", icon: "ph-upload-simple" }, { id: "create-folder", label: "新建文件夹", icon: "ph-folder-plus" }, { id: "paste", label: "粘贴", icon: "ph-clipboard", disabled: !this.clipboard }, { id: "logout", label: "退出登录", icon: "ph-sign-out", danger: true }]; if (typeof this.focusedItem === "string") return [{ id: "open", label: "打开文件夹", icon: "ph-folder-open" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }]; return [{ id: "preview", label: "播放/预览", icon: "ph-play-circle" }, { id: "download", label: "下载", icon: "ph-download-simple" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "rename", label: "重命名", icon: "ph-pencil-simple" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件", icon: "ph-trash", danger: true }]; },
     pathParts() { return this.cwd.split("/").filter(Boolean); }, parentPath() { return this.cwd.replace(/[^/]+\/$/, ""); }, currentFolderName() { return this.pathParts.at(-1) || "我的文件"; }, itemCountText() { const count = this.filteredFiles.length + this.filteredFolders.length; return `${count} 个项目${this.search ? " · 搜索结果" : ""}`; },
     filteredFiles() { const query = this.search.toLocaleLowerCase(); return this.files.filter((file) => !query || this.fileName(file.key).toLocaleLowerCase().includes(query)); }, filteredFolders() { const query = this.search.toLocaleLowerCase(); return this.folders.filter((folder) => !query || this.folderName(folder).toLocaleLowerCase().includes(query)); },
     imageItems() { return this.filteredFiles.filter(this.isImage).map((f) => ({ name: this.fileName(f.key), url: this.rawPath(f.key), file: f })); },
     mediaItems() { return this.filteredFiles.filter(this.isMedia).map((f) => ({ name: this.fileName(f.key), url: this.rawPath(f.key), file: f })); },
   },
   methods: {
-    isImage(file) { const type = file.httpMetadata?.contentType || ""; if (type.startsWith("image/")) return true; return /\.(jpg|jpeg|png|gif|webp|avif|svg|bmp|heic|ico)$/i.test(file.key || ""); },
-    isVideo(file) { const type = file.httpMetadata?.contentType || ""; if (type.startsWith("video/")) return true; return /\.(mp4|webm|mkv|mov|m4v|avi|flv)$/i.test(file.key || ""); },
-    isAudio(file) { const type = file.httpMetadata?.contentType || ""; if (type.startsWith("audio/")) return true; return /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(file.key || ""); },
+    isImage(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("image/")) return true; return /\.(jpg|jpeg|png|gif|webp|avif|svg|bmp|heic|ico)$/i.test(file.key || ""); },
+    isVideo(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("video/")) return true; return /\.(mp4|webm|mkv|mov|m4v|avi|flv|wmv|3gp)$/i.test(file.key || ""); },
+    isAudio(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("audio/")) return true; return /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma|aiff|alac)$/i.test(file.key || ""); },
     isMedia(file) { return this.isVideo(file) || this.isAudio(file); },
     imageUrl(file) { if (file.customMetadata?.thumbnail) return `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(this.storageId)}`; return this.rawPath(file.key); },
     openFile(file) {
+      if (typeof file === "string") {
+        const found = this.files.find((f) => f.key === file);
+        if (found) file = found;
+      }
       if (this.isImage(file)) {
         const index = this.imageItems.findIndex((item) => item.file.key === file.key);
         if (index !== -1) {
@@ -121,7 +126,26 @@ export default {
     openDialog(options, action) { this.dialog = { visible: true, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options }; this.dialogAction = action; }, closeDialog() { this.dialog.visible = false; this.dialogAction = null; }, onDialogSubmit(value) { const action = this.dialogAction; this.closeDialog(); action?.(value); },
     async login(credentials) { const response = await fetch("/api/write/test", { headers: { Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` } }); if (!response.ok) { this.dialogAction = (nextCredentials) => this.login(nextCredentials); this.dialog = { ...this.dialog, visible: true, error: "账号或密码不合规" }; return; } this.authCredentials = credentials; localStorage.setItem("drive-auth", JSON.stringify(credentials)); sessionStorage.setItem("drive-auth", JSON.stringify(credentials)); },
     logout() { localStorage.removeItem("drive-auth"); sessionStorage.removeItem("drive-auth"); this.authCredentials = null; location.reload(); },
-    async runContextAction(action) { const item = this.focusedItem; this.closeContext(); if (action === "logout") return this.logout(); if (action === "upload") return (this.showUploadPopup = true); if (action === "create-folder") return this.createFolder(); if (action === "paste") return this.pasteFile(); if (!item) return; if (action === "open") return this.goToFolder(item); if (action === "preview") return this.preview(typeof item === "string" ? item : item.key); if (action === "download") { const link = document.createElement("a"); link.href = this.rawPath(item.key); link.download = this.fileName(item.key); link.click(); return; } if (action === "copy-link") return this.copyLink(typeof item === "string" ? `/?p=${encodeURIComponent(item)}&storage=${encodeURIComponent(this.storageId)}` : this.rawPath(item.key)); if (action === "rename") return this.renameFile(item.key); if (action === "move") return this.moveFile(typeof item === "string" ? `${item}_$folder$` : item.key); if (action === "delete") return this.removeFile(typeof item === "string" ? `${item}_$folder$` : item.key); },
+    async runContextAction(action) {
+      const item = this.focusedItem;
+      this.closeContext();
+      if (action === "logout") return this.logout();
+      if (action === "upload") return (this.showUploadPopup = true);
+      if (action === "create-folder") return this.createFolder();
+      if (action === "paste") return this.pasteFile();
+      if (!item) return;
+      if (action === "open") return this.goToFolder(item);
+      if (action === "preview") {
+        const targetFile = typeof item === "string" ? this.files.find((f) => f.key === item) : item;
+        if (targetFile) return this.openFile(targetFile);
+        return this.preview(this.rawPath(item.key || item));
+      }
+      if (action === "download") { const link = document.createElement("a"); link.href = this.rawPath(item.key); link.download = this.fileName(item.key); link.click(); return; }
+      if (action === "copy-link") return this.copyLink(typeof item === "string" ? `/?p=${encodeURIComponent(item)}&storage=${encodeURIComponent(this.storageId)}` : this.rawPath(item.key));
+      if (action === "rename") return this.renameFile(item.key);
+      if (action === "move") return this.moveFile(typeof item === "string" ? `${item}_$folder$` : item.key);
+      if (action === "delete") return this.removeFile(typeof item === "string" ? `${item}_$folder$` : item.key);
+    },
     sortItems() { const compare = (a, b) => this.order === "size-asc" ? a.size - b.size : this.order === "size-desc" ? b.size - a.size : a.key.localeCompare(b.key, "zh-CN"); this.files.sort(compare); this.folders.sort((a, b) => a.localeCompare(b, "zh-CN")); }, async copyPaste(source, target) { await axios.put(`/api/write/items/${target}`, "", { headers: { ...this.storageHeaders(), "x-amz-copy-source": encodeURIComponent(source) } }); },
     async createFolder() { this.openDialog({ title: "新建文件夹", message: "为文件夹输入一个清晰的名称", confirmText: "创建" }, async (folderName) => { if (!folderName) return; try { await axios.put(`/api/write/items/${this.cwd}${folderName}/_$folder$`, "", { headers: this.storageHeaders() }); this.showUploadPopup = false; this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Create folder failed", error); } }); },
     async fetchStorages() { try { const response = await fetch("/api/storages"); const data = await response.json(); if (Array.isArray(data.storages) && data.storages.length) { this.storageOptions = data.storages; if (!this.storageOptions.some((item) => item.id === this.storageId)) this.storageId = this.storageOptions[0].id; } } catch (error) { console.warn("Storage discovery failed", error); } },
@@ -142,7 +166,7 @@ export default {
       this.uploadProgress = 0;
       this.speedText = "准备中...";
       let thumbnailDigest = null;
-      if (file.type.startsWith("image/") || file.type === "video/mp4") {
+      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
         try {
           const thumbnail = await generateThumbnail(file);
           thumbnailDigest = await blobDigest(thumbnail);
