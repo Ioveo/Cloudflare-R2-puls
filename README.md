@@ -82,7 +82,9 @@
 | `GUEST` | 否 | `public/,incoming/` | 未登录用户允许写入的目录，多个目录用英文逗号分隔 |
 | `BUCKET` | 否 | 通过绑定配置 | 本地开发或默认桶绑定名称；生产环境推荐使用 R2 绑定 |
 | `账号:密码` | 否 | `admin:CHANGE_ME` | 管理账号变量名；变量值是允许写入的目录列表 |
-| `AUTH_USERS` | 推荐 | JSON | 账号、密码和目录权限；避免使用带冒号的变量名 |
+| `ADMIN` | 推荐 | `ADMIN` | Basic Auth 用户名；与 `PASS` 配合使用 |
+| `PASS` | 推荐 | `PASS` | Basic Auth 密码；与 `ADMIN` 配合使用 |
+| `AUTH_USERS` | 可选 | JSON | 多账号、密码和目录权限配置 |
 | `STORAGES` | 否 | JSON 配置 | 多个 R2 binding 的显示名称、binding 名和公共 URL |
 
 #### `GUEST`
@@ -95,9 +97,31 @@ public/,incoming/
 
 这表示游客可以写入 `public/` 和 `incoming/`。设置为 `*` 会允许游客写入所有目录，不建议在公开网盘中使用。
 
-#### 管理员账号（推荐：`AUTH_USERS`）
+#### 管理员账号
 
-Cloudflare Pages 控制台对环境变量名称的字符限制可能不允许使用冒号。推荐将账号统一放在一个 `AUTH_USERS` JSON 变量中：
+#### 最简单的账号密码设置
+
+在 Cloudflare Pages 的环境变量中添加两项：
+
+```text
+变量名：ADMIN    值：ADMIN
+变量名：PASS     值：PASS
+```
+
+然后在登录框输入：
+
+```text
+用户名：ADMIN
+密码：PASS
+```
+
+这两个变量会直接授予所有写操作权限。修改变量后请重新部署；如果浏览器仍使用旧账号，请用无痕窗口打开。
+
+下面的 `AUTH_USERS` 适合需要多个账号或目录权限的场景。
+
+#### 多账号配置（可选：`AUTH_USERS`）
+
+需要多个账号或限制不同目录时，可将账号统一放在一个 `AUTH_USERS` JSON 变量中：
 
 ```json
 {

@@ -45,6 +45,12 @@ function getJsonUserRule(env, username: string, password: string): UserRule | nu
   }
 }
 
+function matchesSimpleCredentials(env, username: string, password: string) {
+  const admin = typeof env.ADMIN === "string" ? env.ADMIN : "";
+  const pass = typeof env.PASS === "string" ? env.PASS : "";
+  return Boolean(admin && pass && username === admin && password === pass);
+}
+
 export function get_auth_status(context) {
   const path = getRequestPath(context);
   if (path.startsWith("_$flaredrive$/thumbnails/")) return true;
@@ -53,6 +59,9 @@ export function get_auth_status(context) {
 
   const account = getBasicAccount(new Headers(context.request.headers).get("Authorization"));
   if (!account) return false;
+
+  // Simplest setup: ADMIN contains the username and PASS contains the password.
+  if (matchesSimpleCredentials(context.env, account.username, account.password)) return true;
 
   const jsonRule = getJsonUserRule(context.env, account.username, account.password);
   if (jsonRule) return allowedPath(path, jsonRule.paths || "");
