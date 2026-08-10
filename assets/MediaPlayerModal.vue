@@ -18,7 +18,6 @@ const duration = ref(0);
 const volume = ref(1);
 const isMuted = ref(false);
 const playbackRate = ref(1);
-const isMinimized = ref(false);
 const showPlaylist = ref(false);
 const loopMode = ref("all");
 const isFullscreen = ref(false);
@@ -212,7 +211,6 @@ function close() {
   if (audioRef.value) audioRef.value.pause();
   if (videoRef.value) videoRef.value.pause();
   isPlaying.value = false;
-  isMinimized.value = false;
   showPlaylist.value = false;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   emit("close");
@@ -220,7 +218,7 @@ function close() {
 
 function onKeydown(e) {
   if (!props.visible) return;
-  if (e.key === "Escape" && !isMinimized.value) close();
+  if (e.key === "Escape") close();
   else if (e.key === " ") { e.preventDefault(); togglePlay(); }
   else if (e.key === "ArrowLeft") prev();
   else if (e.key === "ArrowRight") next();
@@ -238,10 +236,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
 <template>
   <Transition name="fade">
-    <div v-if="visible && currentItem" class="media-container" :class="{ 'is-minimized': isMinimized }">
+    <div v-if="visible && currentItem" class="media-container">
       <!-- Fullscreen / Large Modal Mask -->
-      <div v-if="!isMinimized" class="media-mask" @click.self="close">
-
+      <div class="media-mask" @click.self="close">
         <main class="media-body">
           <!-- AUDIO PLAYER VIEW -->
           <div v-if="isAudio" class="audio-view">
@@ -255,9 +252,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
               <div class="media-actions">
                 <button v-if="items.length > 1" class="header-btn" :class="{ active: showPlaylist }" type="button" title="播放列表" @click="showPlaylist = !showPlaylist">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm10 0l6 4-6 4v-8z"/></svg>
-                </button>
-                <button class="header-btn" type="button" title="迷你浮动播放器" @click="isMinimized = true">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                 </button>
                 <a class="header-btn" :href="currentItem.url" download title="下载媒体文件">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
@@ -528,29 +522,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
           </Transition>
         </main>
       </div>
-
-      <!-- MINIMIZED BOTTOM-RIGHT DOCK PLAYER (for Audio) -->
-      <div v-else class="mini-dock">
-        <div class="mini-disc" :class="{ spinning: isPlaying }" @click="isMinimized = false">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-        </div>
-        <div class="mini-info" @click="isMinimized = false">
-          <strong class="mini-title">{{ currentItem.name }}</strong>
-          <span class="mini-time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
-        </div>
-        <div class="mini-controls">
-          <button class="mini-btn" type="button" @click="togglePlay">
-            <svg v-if="!isPlaying" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          </button>
-          <button class="mini-btn" type="button" title="展开界面" @click="isMinimized = false">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-          </button>
-          <button class="mini-btn close" type="button" title="关闭播放器" @click="close">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-      </div>
     </div>
   </Transition>
 </template>
@@ -560,14 +531,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   position: fixed;
   inset: 0;
   z-index: 100;
-}
-
-.media-container.is-minimized {
-  inset: auto;
-  bottom: 24px;
-  right: 24px;
-  width: auto;
-  height: auto;
 }
 
 .media-mask {
@@ -1267,82 +1230,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Mini Bottom Dock */
-.mini-dock {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 18px;
-  border-radius: 20px;
-  background: rgba(20, 20, 26, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(24px);
-  color: #fff;
-  animation: slide-up 0.25s ease-out;
-}
-
-.mini-disc {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.mini-disc.spinning {
-  animation: spin 6s linear infinite;
-}
-
-.mini-info {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  max-width: 180px;
-}
-
-.mini-title {
-  font-size: 13px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mini-time {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  font-variant-numeric: tabular-nums;
-}
-
-.mini-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.mini-btn {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border: 0;
-  cursor: pointer;
-}
-
-.mini-btn:hover {
-  background: rgba(10, 132, 255, 0.7);
-}
-
-.mini-btn.close:hover {
-  background: rgba(255, 69, 58, 0.7);
 }
 
 .slide-left-enter-active, .slide-left-leave-active { transition: transform 0.25s ease; }
