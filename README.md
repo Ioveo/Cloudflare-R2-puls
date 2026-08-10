@@ -80,7 +80,7 @@
 | --- | :---: | --- | --- |
 | `PUBURL` | 是 | `https://pub-xxxx.r2.dev` | `/raw/*` 公开读取时使用的 R2 公共 URL |
 | `GUEST` | 否 | `public/,incoming/` | 未登录用户允许写入的目录，多个目录用英文逗号分隔 |
-| `BUCKET` | 否 | 通过绑定配置 | 本地开发或默认桶绑定名称；生产环境推荐使用 R2 绑定 |
+| `BUCKET` | 否 | 通过绑定配置 | 默认桶绑定名；Pages 中也可使用 `R2` 绑定名 |
 | `账号:密码` | 否 | `admin:CHANGE_ME` | 管理账号变量名；变量值是允许写入的目录列表 |
 | `ADMIN` | 推荐 | `ADMIN` | Basic Auth 用户名；与 `PASS` 配合使用 |
 | `PASS` | 推荐 | `PASS` | Basic Auth 密码；与 `ADMIN` 配合使用 |
@@ -169,7 +169,7 @@ public/,incoming/
 
 | Binding name | R2 bucket |
 | --- | --- |
-| `BUCKET` | 你创建的 R2 存储桶 |
+| `R2` 或 `BUCKET` | 你创建的 R2 存储桶 |
 
 保存后重新部署一次 Pages 项目。
 

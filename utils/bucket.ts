@@ -5,12 +5,17 @@ export type StorageDefinition = {
   publicUrl?: string;
 };
 
+function isR2Bucket(value: unknown): value is R2Bucket {
+  return Boolean(value) && typeof (value as R2Bucket).list === "function" && typeof (value as R2Bucket).put === "function";
+}
+
 function isStorageDefinition(value: unknown): value is Partial<StorageDefinition> {
   return Boolean(value) && typeof value === "object";
 }
 
 export function getStorageDefinitions(env: Record<string, unknown>): StorageDefinition[] {
-  const defaults = [{ id: "default", label: "主存储", binding: "BUCKET", publicUrl: String(env.PUBURL || "") }];
+  const defaultBinding = isR2Bucket(env.R2) ? "R2" : "BUCKET";
+  const defaults = [{ id: "default", label: "主存储", binding: defaultBinding, publicUrl: String(env.PUBURL || "") }];
   const source = env.STORAGES;
   if (typeof source !== "string" || !source.trim()) return defaults;
 
@@ -39,7 +44,9 @@ export function getStorage(context) {
   const definitions = getStorageDefinitions(context.env);
   const definition = definitions.find((item) => item.id === requestedId) || definitions[0];
   const driveId = url.hostname.replace(/\..*/, "");
-  const bucket = context.env[definition.binding] || context.env[driveId] || context.env.BUCKET;
+  const configuredBucket = context.env[definition.binding];
+  const fallbackBucket = [context.env[driveId], context.env.R2, context.env.BUCKET].find(isR2Bucket);
+  const bucket = isR2Bucket(configuredBucket) ? configuredBucket : fallbackBucket;
   const publicUrl = definition.publicUrl || context.env.PUBURL || "";
   return { bucket, publicUrl, definition };
 }
