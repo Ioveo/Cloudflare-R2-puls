@@ -238,7 +238,6 @@
           <template v-else-if="isImage(file)">
             <div class="folder-image-preview">
               <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-              <span class="image-hd-badge">HD 照片</span>
             </div>
             <div class="file-main">
               <strong>{{ fileName(file.key) }}</strong>
@@ -255,7 +254,6 @@
           <template v-else-if="isVideo(file)">
             <div class="photo-preview video-cinema-preview">
               <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-              <span class="video-hd-pill">4K Ultra HD</span>
               <div class="video-play-badge">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                   <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
