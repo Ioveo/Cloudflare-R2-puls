@@ -482,8 +482,8 @@ input:checked + .slider:before { transform: translateX(16px); }
 }
 
 .storage-switcher select option {
-  background-color: #1c1c1e;
-  color: #f2f2f7;
+  background-color: var(--surface-card);
+  color: var(--ink);
 }
 
 /* Ultra-Wide Full-Width Canvas Section */
@@ -1239,7 +1239,7 @@ input:checked + .slider:before { transform: translateX(16px); }
   position: fixed;
   right: 44px;
   bottom: 44px;
-  z-index: 50;
+  z-index: 40;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -1288,6 +1288,22 @@ input:checked + .slider:before { transform: translateX(16px); }
 
 .drag-content { display: grid; place-items: center; gap: 10px; color: var(--accent); text-align: center; }
 .drag-icon { display: grid; width: 76px; height: 76px; place-items: center; border-radius: 50%; background: var(--accent); color: #fff; font-size: 40px; box-shadow: 0 14px 35px rgba(10,132,255,0.4); }
+
+/* Animation Keyframes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
 
 /* Responsive adjustments */
 @media (max-width: 1200px) {

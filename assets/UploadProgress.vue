@@ -28,7 +28,7 @@ const progressStyle = computed(() => ({ "--progress": `${Math.min(Math.max(props
 </template>
 
 <style scoped>
-.upload-progress { position:fixed; right:30px; bottom:30px; z-index:30; display:grid; grid-template-columns:64px minmax(150px,1fr) 26px; gap:14px; align-items:center; width:min(410px,calc(100vw - 32px)); padding:12px 13px 12px 12px; overflow:hidden; color:#1d1d1f; border:1px solid rgba(255,255,255,.9); border-radius:16px; background:rgba(255,255,255,.84); box-shadow:0 20px 45px rgba(29,29,31,.16),inset 0 1px #fff; backdrop-filter:blur(24px) saturate(150%); }
+.upload-progress { position:fixed; right:30px; bottom:110px; z-index:60; display:grid; grid-template-columns:64px minmax(150px,1fr) 26px; gap:14px; align-items:center; width:min(410px,calc(100vw - 32px)); padding:12px 13px 12px 12px; overflow:hidden; color:#1d1d1f; border:1px solid rgba(255,255,255,.9); border-radius:16px; background:rgba(255,255,255,.88); box-shadow:0 20px 45px rgba(29,29,31,.2),inset 0 1px #fff; backdrop-filter:blur(24px) saturate(150%); animation:slide-up 0.25s ease-out; }
 @media (prefers-color-scheme: dark) {
   .upload-progress { color:#f2f2f7; border-color:rgba(255,255,255,.15); background:rgba(30,30,35,.88); box-shadow:0 20px 45px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.1); }
   .progress-visual::before { background:rgba(35,35,42,.95); }

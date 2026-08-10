@@ -177,7 +177,7 @@
         <div class="empty-icon"><i class="ph ph-folder-open"></i></div>
         <h2>{{ search ? '没有匹配的资源' : '当前分类暂无文件' }}</h2>
         <p>{{ search ? '尝试更换关键词重试。' : '拖放文件至此区域，或点击右下角上传。' }}</p>
-        <button v-if="!search" class="primary-button" type="button" @click="showUploadPopup = true"><i class="ph ph-upload-simple"></i> 上传文件</button>
+        <button v-if="!search" class="primary-button" type="button" @click="openUploadWithAuth"><i class="ph ph-upload-simple"></i> 上传文件</button>
       </section>
 
       <!-- File Grid (Supports Masonry Waterfall, Video Cinema Gallery, and Music Vinyl Studio Layouts) -->
@@ -402,14 +402,47 @@ export default {
     showHotkeysModal: false,
     shareModal: { visible: false, file: null, rawUrl: "" },
     authCredentials: loadAuthCredentials(),
-    dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options },
+    dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" },
     dialogAction: null
   }),
   computed: {
-    menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴", value: "paste", disabled: !this.clipboard }, { text: "退出登录", value: "logout" }]; },
+    menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴项目", value: "paste", disabled: !this.clipboard }, { text: "退出登录", value: "logout" }]; },
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
-    contextActions() { if (!this.focusedItem) return [{ id: "upload", label: "上传文件", icon: "ph-upload-simple" }, { id: "create-folder", label: "新建文件夹", icon: "ph-folder-plus" }, { id: "paste", label: "粘贴", icon: "ph-clipboard", disabled: !this.clipboard }, { id: "logout", label: "退出登录", icon: "ph-sign-out", danger: true }]; if (typeof this.focusedItem === "string") return [{ id: "open", label: "打开文件夹", icon: "ph-folder-open" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }]; return [{ id: "preview", label: "查看/播放", icon: "ph-eye" }, { id: "download", label: "下载", icon: "ph-download-simple" }, { id: "copy-link", label: "复制链接", icon: "ph-link" }, { id: "rename", label: "重命名", icon: "ph-pencil-simple" }, { id: "move", label: "移动", icon: "ph-arrows-out-cardinal" }, { id: "delete", label: "删除文件", icon: "ph-trash", danger: true }]; },
-    pathParts() { return this.cwd.split("/").filter(Boolean); }, parentPath() { return this.cwd.replace(/[^/]+\/$/, ""); }, currentFolderName() { return this.pathParts.at(-1) || "资源总览"; }, itemCountText() { const count = this.filteredFiles.length + this.filteredFolders.length; return `${count} 个资源项目${this.search ? " · 搜索结果" : ""}`; },
+    contextActions() {
+      if (!this.focusedItem) return [
+        { id: "upload", label: "上传文件", icon: "ph-upload-simple" },
+        { id: "create-folder", label: "新建文件夹", icon: "ph-folder-plus" },
+        { id: "paste", label: "粘贴项目", icon: "ph-clipboard", disabled: !this.clipboard },
+        { id: "logout", label: "退出登录", icon: "ph-sign-out", danger: true }
+      ];
+      if (typeof this.focusedItem === "string") return [
+        { id: "open", label: "打开文件夹", icon: "ph-folder-open" },
+        { id: "copy-link", label: "复制链接", icon: "ph-link" },
+        { id: "copy-item", label: "复制文件夹", icon: "ph-copy" },
+        { id: "cut-item", label: "剪切文件夹", icon: "ph-scissors" },
+        { id: "move", label: "移动到...", icon: "ph-arrows-out-cardinal" },
+        { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }
+      ];
+      return [
+        { id: "preview", label: "查看/播放", icon: "ph-eye" },
+        { id: "download", label: "下载原文件", icon: "ph-download-simple" },
+        { id: "share", label: "分享与二维码", icon: "ph-share-network" },
+        { id: "copy-link", label: "复制直链", icon: "ph-link" },
+        { id: "copy-item", label: "复制文件", icon: "ph-copy" },
+        { id: "cut-item", label: "剪切文件", icon: "ph-scissors" },
+        { id: "rename", label: "重命名", icon: "ph-pencil-simple" },
+        { id: "move", label: "移动到...", icon: "ph-arrows-out-cardinal" },
+        { id: "delete", label: "删除文件", icon: "ph-trash", danger: true }
+      ];
+    },
+    pathParts() { return this.cwd.split("/").filter(Boolean); },
+    parentPath() {
+      const clean = this.cwd.endsWith("/") ? this.cwd.slice(0, -1) : this.cwd;
+      const lastSlash = clean.lastIndexOf("/");
+      return lastSlash >= 0 ? clean.slice(0, lastSlash + 1) : "";
+    },
+    currentFolderName() { return this.pathParts.at(-1) || "资源总览"; },
+    itemCountText() { const count = this.filteredFiles.length + this.filteredFolders.length; return `${count} 个资源项目${this.search ? " · 搜索结果" : ""}`; },
     totalItemCount() { return this.files.length + this.folders.length; },
     
     categoryMeta() {
@@ -688,23 +721,40 @@ export default {
       const item = this.focusedItem;
       this.closeContext();
       if (action === "logout") return this.logout();
-      if (action === "upload") return (this.showUploadPopup = true);
+      if (action === "upload") return this.openUploadWithAuth();
       if (action === "create-folder") return this.createFolder();
       if (action === "paste") return this.pasteFile();
       if (!item) return;
+      if (action === "copy-item") {
+        this.clipboard = { action: "copy", item };
+        return;
+      }
+      if (action === "cut-item") {
+        this.clipboard = { action: "cut", item };
+        return;
+      }
       if (action === "open") return this.goToFolder(item);
       if (action === "preview") {
         const targetFile = typeof item === "string" ? this.files.find((f) => f.key === item) : item;
         if (targetFile) return this.openFile(targetFile);
         return this.preview(this.rawPath(item.key || item));
       }
-      if (action === "download") { const link = document.createElement("a"); link.href = this.rawPath(item.key); link.download = this.fileName(item.key); link.click(); return; }
+      if (action === "download") {
+        if (typeof item === "string") return;
+        const link = document.createElement("a");
+        link.href = this.rawPath(item.key);
+        link.download = this.fileName(item.key);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
       if (action === "copy-link" || action === "share") {
         const targetFile = typeof item === "object" ? item : { key: item };
         this.shareModal = { visible: true, file: targetFile, rawUrl: typeof item === "string" ? `/?p=${encodeURIComponent(item)}&storage=${encodeURIComponent(this.storageId)}` : this.rawPath(item.key) };
         return;
       }
-      if (action === "rename") return this.renameFile(item.key);
+      if (action === "rename") return this.renameFile(typeof item === "string" ? item : item.key);
       if (action === "move") return this.moveFile(typeof item === "string" ? `${item}_$folder$` : item.key);
       if (action === "delete") return this.removeFile(typeof item === "string" ? `${item}_$folder$` : item.key);
     },
@@ -731,7 +781,51 @@ export default {
       }
     },
     formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
-    async pasteFile() { if (!this.clipboard) return; this.openDialog({ title: "粘贴文件", message: "可以修改文件名，留空使用原名称", initialValue: this.fileName(this.clipboard), confirmText: "粘贴" }, async (name) => { if (!name) name = this.fileName(this.clipboard); try { await this.copyPaste(this.clipboard, `${this.cwd}${name}`); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
+    async pasteFile() {
+      if (!this.clipboard || !this.clipboard.item) return;
+      const { action, item } = this.clipboard;
+      const isFolder = typeof item === "string";
+      const sourceKey = isFolder ? `${item}_$folder$` : item.key;
+      const originalName = isFolder ? this.folderName(item) : this.fileName(item.key);
+      
+      this.openDialog({
+        title: action === "cut" ? "剪切项目" : "粘贴项目",
+        message: "可以修改新文件名/目录名，留空使用原名称",
+        initialValue: originalName,
+        confirmText: "粘贴"
+      }, async (name) => {
+        if (!name) name = originalName;
+        try {
+          if (isFolder) {
+            const sourceBase = item.endsWith("/") ? item : `${item}/`;
+            const targetBase = `${this.cwd}${name}/`;
+            const items = await this.getAllItems(sourceBase);
+            for (const subItem of items) {
+              const nextKey = `${targetBase}${subItem.key.slice(sourceBase.length)}`;
+              await this.copyPaste(subItem.key, nextKey);
+              if (action === "cut") {
+                await axios.delete(`/api/write/items/${subItem.key}`, { headers: this.storageHeaders() });
+              }
+            }
+            await this.copyPaste(sourceKey, `${targetBase}_$folder$`);
+            if (action === "cut") {
+              await axios.delete(`/api/write/items/${sourceKey}`, { headers: this.storageHeaders() });
+              this.clipboard = null;
+            }
+          } else {
+            const targetKey = `${this.cwd}${name}`;
+            await this.copyPaste(sourceKey, targetKey);
+            if (action === "cut") {
+              await axios.delete(`/api/write/items/${sourceKey}`, { headers: this.storageHeaders() });
+              this.clipboard = null;
+            }
+          }
+          this.fetchFiles(true);
+        } catch (error) {
+          this.handleWriteError(error);
+        }
+      });
+    },
     async processUploadQueue() {
       if (!this.uploadQueue.length) {
         await this.fetchFiles(true);
@@ -809,8 +903,14 @@ export default {
       this.showUploadPopup = true;
     },
     uploadFiles(files) {
-      if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/";
-      this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file })));
+      if (!files || !files.length) return;
+      if (!this.authCredentials) {
+        this.promptLogin(() => this.uploadFiles(files));
+        return;
+      }
+      let targetCwd = this.cwd;
+      if (targetCwd && !targetCwd.endsWith("/")) targetCwd += "/";
+      this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: targetCwd, file })));
       if (!this.isUploading && this.uploadQueue.length) {
         this.isUploading = true;
         this.processUploadQueue();

@@ -105,7 +105,8 @@ function onSeek(e) {
 
 function onHoverSeek(e) {
   if (!duration.value) return;
-  const rect = e.target.getBoundingClientRect();
+  const targetEl = e.currentTarget || e.target;
+  const rect = targetEl.getBoundingClientRect();
   const offsetX = e.clientX - rect.left;
   const pct = Math.max(0, Math.min(1, offsetX / rect.width));
   hoverSeekTime.value = formatTime(pct * duration.value);
