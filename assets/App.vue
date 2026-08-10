@@ -88,7 +88,7 @@
 
       <div class="topbar-actions">
         <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
-        <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
+        <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
         <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
       </div>
     </header>
@@ -99,7 +99,7 @@
         <div class="hero-content">
           <div class="hero-header-row">
             <span class="hero-tag"><i class="ph ph-sparkle"></i> SHOWCASE STUDIO</span>
-            <span v-if="autoGlobalScan && filterCategory !== 'all'" class="scan-tag"><i class="ph ph-radar"></i> 全盘自动聚合模式</span>
+            <span v-if="autoGlobalScan && filterCategory !== 'all'" class="scan-tag"><i class="ph ph-lightning"></i> 极速缓存索引已就绪</span>
           </div>
           <h1>{{ categoryMeta.title }}</h1>
           <p>{{ categoryMeta.desc }}</p>
@@ -172,6 +172,12 @@
       </section>
     </section>
 
+    <!-- Floating Glassmorphism Upload Action Pill -->
+    <button class="upload-button" type="button" title="上传或新建" @click="showUploadPopup = true">
+      <i class="ph ph-plus-bold"></i>
+      <span>新建或上传</span>
+    </button>
+
     <!-- Modals & Progress Overlays -->
     <Transition name="fade">
       <div v-if="isDragging" class="drag-overlay" @drop.prevent="onDrop">
@@ -184,7 +190,6 @@
     </Transition>
 
     <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
-    <button class="upload-button" type="button" title="上传或新建" @click="showUploadPopup = true"><i class="ph ph-plus"></i><span>新建</span></button>
     <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
     <ContextMenu :visible="showContextMenu" :x="contextPosition.x" :y="contextPosition.y" :title="contextTitle" :actions="contextActions" @close="closeContext" @select="runContextAction" />
     <PromptDialog v-model="dialog.visible" :mode="dialog.mode" :title="dialog.title" :message="dialog.message" :initial-value="dialog.initialValue" :confirm-text="dialog.confirmText" :error="dialog.error" @submit="onDialogSubmit" />
@@ -328,6 +333,31 @@ export default {
     mediaItems() { return this.filteredFiles.filter(this.isMedia).map((f) => ({ name: this.fileName(f.key), url: this.rawPath(f.key), file: f })); },
   },
   methods: {
+    loadCachedGlobalIndex() {
+      try {
+        const cacheKey = `flaredrive_index_cache_${this.storageId}`;
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.items) && parsed.items.length) {
+            this.globalFiles = parsed.items;
+            this.globalFilesLoaded = true;
+          }
+        }
+      } catch (err) {
+        console.warn("Load index cache error", err);
+      }
+    },
+
+    saveGlobalIndexCache() {
+      try {
+        const cacheKey = `flaredrive_index_cache_${this.storageId}`;
+        localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), items: this.globalFiles }));
+      } catch (err) {
+        console.warn("Save index cache error", err);
+      }
+    },
+
     selectCategory(cat) {
       this.filterCategory = cat;
       if (cat !== "all" && this.autoGlobalScan && !this.globalFilesLoaded) {
@@ -341,11 +371,12 @@ export default {
       }
     },
 
-    async fetchGlobalFiles() {
+    async fetchGlobalFiles(silent = false) {
       try {
         const items = await this.getAllItems("");
         this.globalFiles = items.filter((item) => item.key && !item.key.endsWith("_$folder$"));
         this.globalFilesLoaded = true;
+        this.saveGlobalIndexCache();
       } catch (err) {
         console.warn("Global scan failed", err);
       }
@@ -434,12 +465,30 @@ export default {
     sortItems() { const compare = (a, b) => this.order === "size-asc" ? a.size - b.size : this.order === "size-desc" ? b.size - a.size : a.key.localeCompare(b.key, "zh-CN"); this.files.sort(compare); this.folders.sort((a, b) => a.localeCompare(b, "zh-CN")); }, async copyPaste(source, target) { await axios.put(`/api/write/items/${target}`, "", { headers: { ...this.storageHeaders(), "x-amz-copy-source": encodeURIComponent(source) } }); },
     async createFolder() { this.openDialog({ title: "新建文件夹", message: "为文件夹输入一个清晰的名称", confirmText: "创建" }, async (folderName) => { if (!folderName) return; try { await axios.put(`/api/write/items/${this.cwd}${folderName}/_$folder$`, "", { headers: this.storageHeaders() }); this.showUploadPopup = false; this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Create folder failed", error); } }); },
     async fetchStorages() { try { const response = await fetch("/api/storages"); const data = await response.json(); if (Array.isArray(data.storages) && data.storages.length) { this.storageOptions = data.storages; if (!this.storageOptions.some((item) => item.id === this.storageId)) this.storageId = this.storageOptions[0].id; } } catch (error) { console.warn("Storage discovery failed", error); } },
-    async fetchFiles() { this.loading = true; try { const response = await fetch(`/api/children/${this.cwd}`, { headers: this.storageHeaders() }); const items = await response.json(); this.files = items.value || []; this.folders = items.folders || []; this.sortItems(); if (this.autoGlobalScan && !this.globalFilesLoaded) { this.fetchGlobalFiles(); } } catch (error) { console.error("Fetch files failed", error); this.files = []; this.folders = []; } finally { this.loading = false; } },
+    async fetchFiles(forceScan = false) {
+      this.loading = true;
+      try {
+        const response = await fetch(`/api/children/${this.cwd}`, { headers: this.storageHeaders() });
+        const items = await response.json();
+        this.files = items.value || [];
+        this.folders = items.folders || [];
+        this.sortItems();
+        if (this.autoGlobalScan && (!this.globalFilesLoaded || forceScan)) {
+          this.fetchGlobalFiles(true);
+        }
+      } catch (error) {
+        console.error("Fetch files failed", error);
+        this.files = [];
+        this.folders = [];
+      } finally {
+        this.loading = false;
+      }
+    },
     formatSize(size) { const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
     async pasteFile() { if (!this.clipboard) return; this.openDialog({ title: "粘贴文件", message: "可以修改文件名，留空使用原名称", initialValue: this.fileName(this.clipboard), confirmText: "粘贴" }, async (name) => { if (!name) name = this.fileName(this.clipboard); try { await this.copyPaste(this.clipboard, `${this.cwd}${name}`); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
     async processUploadQueue() {
       if (!this.uploadQueue.length) {
-        await this.fetchFiles();
+        await this.fetchFiles(true);
         this.uploadProgress = null;
         this.uploadFileName = "";
         this.speedText = "";
@@ -494,16 +543,16 @@ export default {
       }
       this.processUploadQueue();
     },
-    handleWriteError(error) { if (error?.response?.status === 401) { this.openDialog({ mode: "login", title: "登录资源站", message: "输入 ADMIN 和 PASS 对应的账号密码", confirmText: "登录" }, (credentials) => this.login(credentials)); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(); } catch (error) { this.handleWriteError(error); } }); },
-    async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
+    handleWriteError(error) { if (error?.response?.status === 401) { this.openDialog({ mode: "login", title: "登录资源站", message: "输入 ADMIN 和 PASS 对应的账号密码", confirmText: "登录" }, (credentials) => this.login(credentials)); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); },
+    async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(true); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
     uploadFiles(files) { if (this.cwd && !this.cwd.endsWith("/")) this.cwd += "/"; this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: this.cwd, file }))); if (!this.isUploading && this.uploadQueue.length) { this.isUploading = true; this.processUploadQueue(); } },
   },
   watch: {
     cwd: { handler() { this.fetchFiles(); const url = new URL(window.location); this.cwd ? url.searchParams.set("p", this.cwd) : url.searchParams.delete("p"); window.history.pushState(null, "", url); document.title = `${this.currentFolderName} · FlareDrive Studio`; }, immediate: true },
-    storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.fetchFiles(); },
+    storageId(value) { const url = new URL(window.location); value === "default" ? url.searchParams.delete("storage") : url.searchParams.set("storage", value); window.history.replaceState(null, "", url); this.loadCachedGlobalIndex(); this.fetchFiles(); },
     viewMode(value) { localStorage.setItem("drive-view", value); }
   },
-  created() { this.fetchStorages(); window.addEventListener("popstate", () => { const url = new URL(window.location); this.cwd = url.searchParams.get("p") || ""; this.storageId = url.searchParams.get("storage") || "default"; }); },
+  created() { this.loadCachedGlobalIndex(); this.fetchStorages(); window.addEventListener("popstate", () => { const url = new URL(window.location); this.cwd = url.searchParams.get("p") || ""; this.storageId = url.searchParams.get("storage") || "default"; }); },
   components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal },
 };
 </script>

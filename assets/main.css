@@ -356,6 +356,42 @@ input:checked + .slider:before { transform: translateX(16px); }
 .icon-button:hover, .view-button:hover { color: var(--accent); border-color: var(--accent); background: var(--surface-hover); }
 .view-button.active { color: #fff; background: var(--accent); border-color: var(--accent); box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3); }
 
+/* Storage Switcher Floating Pill */
+.storage-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  transition: all 0.2s ease;
+}
+
+.storage-switcher:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.storage-switcher select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.storage-switcher select option {
+  background-color: #1c1c1e;
+  color: #f2f2f7;
+}
+
 /* Workspace Section */
 .workspace { max-width: 1360px; margin: 0 auto; width: 100%; padding: 36px 40px 120px; }
 
@@ -573,6 +609,42 @@ input:checked + .slider:before { transform: translateX(16px); }
   font-weight: 800;
 }
 
+/* Floating Glassmorphism Upload Action Pill */
+.upload-button {
+  position: fixed;
+  right: 36px;
+  bottom: 36px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 30px rgba(10, 132, 255, 0.45);
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+}
+
+.upload-button:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 16px 36px rgba(10, 132, 255, 0.6);
+}
+
+.upload-button i {
+  font-size: 20px;
+  transition: transform 0.25s ease;
+}
+
+.upload-button:hover i {
+  transform: rotate(90deg);
+}
+
 /* Drag overlay */
 .drag-overlay {
   position: fixed;
@@ -597,4 +669,5 @@ input:checked + .slider:before { transform: translateX(16px); }
   .studio-sidebar { width: 100%; height: auto; position: static; padding: 16px; border-right: none; border-bottom: 1px solid var(--line); }
   .topbar { padding: 0 16px; }
   .workspace { padding: 20px 16px 100px; }
+  .upload-button { right: 20px; bottom: 20px; padding: 0 16px; height: 42px; font-size: 13px; }
 }
