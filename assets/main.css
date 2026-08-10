@@ -831,6 +831,13 @@ input:checked + .slider:before { transform: translateX(16px); }
 @media (max-width: 1100px) { .file-grid.waterfall-mode { column-count: 2; } }
 @media (max-width: 640px) { .file-grid.waterfall-mode { column-count: 1; } }
 
+.file-grid.waterfall-mode .file-card,
+.file-grid.waterfall-mode .photo-preview-pure,
+.file-grid.waterfall-mode .photo-preview-pure img,
+.file-grid.waterfall-mode .photo-hover-overlay {
+  border-radius: 0px !important;
+}
+
 .file-grid.waterfall-mode .file-card {
   break-inside: avoid;
   margin-bottom: 0px !important;
@@ -847,11 +854,6 @@ input:checked + .slider:before { transform: translateX(16px); }
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.file-grid.waterfall-mode .photo-preview-pure,
-.file-grid.waterfall-mode .photo-preview-pure img {
-  border-radius: 0px !important;
-}
-
 .file-grid.waterfall-mode .file-card:hover {
   transform: scale(1.03) !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
@@ -862,7 +864,7 @@ input:checked + .slider:before { transform: translateX(16px); }
   position: relative !important;
   width: 100% !important;
   height: auto !important;
-  border-radius: 22px !important;
+  border-radius: 0px !important;
   overflow: hidden !important;
 }
 
@@ -871,7 +873,7 @@ input:checked + .slider:before { transform: translateX(16px); }
   height: auto !important;
   display: block !important;
   object-fit: cover !important;
-  border-radius: 22px !important;
+  border-radius: 0px !important;
   transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -880,41 +882,62 @@ input:checked + .slider:before { transform: translateX(16px); }
 }
 
 /* ------------------------------------------------------------- */
-/* 2. NORMAL GRID MODE IMAGE CARD (In Folders like img/ or Hall) */
+/* 2. NORMAL FOLDER VIEW IMAGE CARD (In Folders like img/ or Hall)*/
 /* ------------------------------------------------------------- */
-.file-grid:not(.waterfall-mode) .file-card.file-card--image {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 220px !important;
-  min-height: 220px !important;
-  padding: 0 !important;
-  border-radius: 20px !important;
-  overflow: hidden !important;
-  background: var(--surface) !important;
-  border: 1px solid var(--line) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+.file-card.file-card--image:not(.waterfall-card) {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 32px;
+  grid-template-rows: 140px minmax(41px, auto);
+  gap: 12px 10px;
+  min-height: 240px;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(24px) saturate(180%);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.file-grid:not(.waterfall-mode) .file-card.file-card--image .photo-preview-pure {
-  position: relative !important;
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 20px !important;
-  overflow: hidden !important;
+.folder-image-preview {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  height: 140px;
+  width: 100%;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.file-grid:not(.waterfall-mode) .file-card.file-card--image .photo-preview-pure img {
-  width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  object-fit: cover !important;
-  object-position: center !important;
-  border-radius: 20px !important;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+.folder-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.35s ease;
 }
 
-.file-grid:not(.waterfall-mode) .file-card.file-card--image:hover .photo-preview-pure img {
-  transform: scale(1.06) !important;
+.file-card:hover .folder-image-preview img {
+  transform: scale(1.06);
+}
+
+.image-hd-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(10, 132, 255, 0.85);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
 }
 
 .photo-hover-overlay {

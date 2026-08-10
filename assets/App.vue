@@ -208,8 +208,8 @@
           @keydown.enter="openFile(file)"
           @contextmenu.stop.prevent="openContext(file, $event)"
         >
-          <!-- 1. PURE FULL HD PHOTO WATERFALL / MASONRY CARD (ALWAYS HIGH RESOLUTION RAW PATH, NO CARD BOX) -->
-          <template v-if="isImage(file)">
+          <!-- 1A. PURE FULL HD PHOTO WATERFALL MASONRY CARD (ONLY IN PHOTO GALLERY VIEW) -->
+          <template v-if="isImage(file) && filterCategory === 'image' && viewMode === 'grid'">
             <div class="photo-preview-pure">
               <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
               <div class="photo-hover-overlay">
@@ -231,6 +231,23 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </template>
+
+          <!-- 1B. FOLDER VIEW IMAGE CARD (CONTAINED THUMBNAIL + TITLE + SIZE + DATE) -->
+          <template v-else-if="isImage(file)">
+            <div class="folder-image-preview">
+              <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+              <span class="image-hd-badge">HD 照片</span>
+            </div>
+            <div class="file-main">
+              <strong>{{ fileName(file.key) }}</strong>
+              <span>{{ formatDate(file.uploaded) }} · 照片</span>
+            </div>
+            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+            <div class="file-footer">
+              <strong>{{ formatSize(file.size) }}</strong>
+              <span class="file-action-hint"><i class="ph ph-eye"></i> 预览</span>
             </div>
           </template>
 
