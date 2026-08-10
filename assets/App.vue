@@ -341,6 +341,7 @@
     <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
     <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
     <ShareModal :visible="shareModal.visible" :file="shareModal.file" :raw-url="shareModal.rawUrl" @close="shareModal.visible = false" />
+    <TextEditorModal :visible="textEditor.visible" :file="textEditor.file" :storage-headers="storageHeaders" @close="textEditor.visible = false" @saved="fetchFiles(true)" />
   </main>
 </div>
 </template>
@@ -359,6 +360,7 @@ import ArchiveModal from "./ArchiveModal.vue";
 import HotkeysModal from "./HotkeysModal.vue";
 import CatLogo from "./CatLogo.vue";
 import ShareModal from "./ShareModal.vue";
+import TextEditorModal from "./TextEditorModal.vue";
 
 function loadAuthCredentials() {
   try {
@@ -399,6 +401,7 @@ export default {
     lightbox: { visible: false, index: 0 },
     mediaPlayer: { visible: false, index: 0 },
     archiveModal: { visible: false, file: null },
+    textEditor: { visible: false, file: null },
     showHotkeysModal: false,
     shareModal: { visible: false, file: null, rawUrl: "" },
     authCredentials: loadAuthCredentials(),
@@ -423,8 +426,10 @@ export default {
         { id: "move", label: "移动到...", icon: "ph-arrows-out-cardinal" },
         { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }
       ];
+      const isEdit = this.focusedItem && this.isEditable(this.focusedItem);
       return [
         { id: "preview", label: "查看/播放", icon: "ph-eye" },
+        ...(isEdit ? [{ id: "edit", label: "在线编辑", icon: "ph-code" }] : []),
         { id: "download", label: "下载原文件", icon: "ph-download-simple" },
         { id: "share", label: "分享与二维码", icon: "ph-share-network" },
         { id: "copy-link", label: "复制直链", icon: "ph-link" },
@@ -656,6 +661,7 @@ export default {
     isAudio(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("audio/")) return true; return /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma|aiff|alac)$/i.test(file.key || ""); },
     isArchive(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("zip") || type.includes("rar") || type.includes("compressed") || type.includes("tar") || type.includes("archive")) return true; return /\.(zip|rar|7z|tar|gz|bz2|xz|iso|dmg|apk|exe|deb|pkg)$/i.test(file.key || ""); },
     isDocument(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("pdf") || type.includes("word") || type.includes("document") || type.includes("text")) return true; return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|json|csv|epub)$/i.test(file.key || ""); },
+    isEditable(file) { if (!file || !file.key) return false; return /\.(txt|md|markdown|json|js|ts|css|html|vue|py|sh|yaml|yml|sql|xml|env|ini|conf|log|properties)$/i.test(file.key); },
     isMedia(file) { return this.isVideo(file) || this.isAudio(file); },
     archiveExt(file) { const ext = (file.key || "").split(".").pop(); return ext ? ext.toUpperCase() : "ZIP"; },
     imageUrl(file) {
@@ -687,6 +693,11 @@ export default {
       if (this.isArchive(file)) {
         this.archiveModal.file = { ...file, name: this.fileName(file.key), url: this.rawPath(file.key), file };
         this.archiveModal.visible = true;
+        return;
+      }
+      if (this.isEditable(file)) {
+        this.textEditor.file = file;
+        this.textEditor.visible = true;
         return;
       }
       this.preview(this.rawPath(file.key));
@@ -734,6 +745,11 @@ export default {
         return;
       }
       if (action === "open") return this.goToFolder(item);
+      if (action === "edit") {
+        this.textEditor.file = typeof item === "string" ? { key: item } : item;
+        this.textEditor.visible = true;
+        return;
+      }
       if (action === "preview") {
         const targetFile = typeof item === "string" ? this.files.find((f) => f.key === item) : item;
         if (targetFile) return this.openFile(targetFile);
@@ -935,6 +951,6 @@ export default {
   unmounted() {
     window.removeEventListener("keydown", this.onGlobalKeydown);
   },
-  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal, TextEditorModal },
 };
 </script>

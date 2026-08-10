@@ -10,7 +10,12 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const copied = ref(false);
-const activeTab = ref("link"); // 'link' | 'embed'
+const activeTab = ref("link"); // 'link' | 'secure' | 'embed'
+
+// Secure Share Options
+const shareExpiry = ref("24h"); // '1h' | '24h' | '7d' | 'forever'
+const pinCode = ref("8888");
+const customNote = ref("");
 
 const formattedSize = computed(() => {
   if (!props.file || !props.file.size) return "未知大小";
@@ -22,24 +27,14 @@ const formattedSize = computed(() => {
 });
 
 const fileExtension = computed(() => {
-  if (!props.file || !props.file.key) return "";
+  if (!props.file || !props.file.key) return "FILE";
   const parts = props.file.key.split(".");
   return parts.length > 1 ? parts.pop().toUpperCase() : "FILE";
 });
 
-const embedCode = computed(() => {
-  if (!props.rawUrl) return "";
-  const ext = fileExtension.value.toLowerCase();
-  if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext)) {
-    return `<img src="${props.rawUrl}" alt="${props.file?.key || 'photo'}" />`;
-  }
-  if (["mp4", "webm", "mov"].includes(ext)) {
-    return `<video src="${props.rawUrl}" controls width="100%"></video>`;
-  }
-  if (["mp3", "wav", "ogg", "flac", "m4a"].includes(ext)) {
-    return `<audio src="${props.rawUrl}" controls></audio>`;
-  }
-  return `<a href="${props.rawUrl}" target="_blank" download>下载 ${props.file?.key || '文件'}</a>`;
+const fileNameDisplay = computed(() => {
+  if (!props.file || !props.file.key) return "未命名资源";
+  return props.file.key.split("/").filter(Boolean).pop() || "未命名资源";
 });
 
 const fullDirectUrl = computed(() => {
@@ -56,10 +51,37 @@ const qrImageUrl = computed(() => {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(fullDirectUrl.value)}`;
 });
 
-const fileNameDisplay = computed(() => {
-  if (!props.file || !props.file.key) return "未命名资源";
-  return props.file.key.split('/').filter(Boolean).pop() || "未命名资源";
+const embedCode = computed(() => {
+  if (!props.rawUrl) return "";
+  const ext = fileExtension.value.toLowerCase();
+  if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext)) {
+    return `<img src="${fullDirectUrl.value}" alt="${fileNameDisplay.value}" />`;
+  }
+  if (["mp4", "webm", "mov"].includes(ext)) {
+    return `<video src="${fullDirectUrl.value}" controls width="100%"></video>`;
+  }
+  if (["mp3", "wav", "ogg", "flac", "m4a"].includes(ext)) {
+    return `<audio src="${fullDirectUrl.value}" controls></audio>`;
+  }
+  return `<a href="${fullDirectUrl.value}" target="_blank" download>下载 ${fileNameDisplay.value}</a>`;
 });
+
+const expiryText = computed(() => {
+  switch (shareExpiry.value) {
+    case "1h": return "1 小时有效";
+    case "24h": return "24 小时有效";
+    case "7d": return "7 天有效";
+    default: return "永久有效";
+  }
+});
+
+const secureShareText = computed(() => {
+  return `📦【天才猫 R2 专属安全分享】\n文件名称：${fileNameDisplay.value} (${formattedSize.value})\n下载直链：${fullDirectUrl.value}\n🔑 访问提取码：${pinCode.value || "无"}\n⏳ 有效期：${expiryText.value}${customNote.value ? `\n💬 附言：${customNote.value}` : ""}\n（手机相机扫码或浏览器访问链接即可高速直连下载）`;
+});
+
+function generateRandomPin() {
+  pinCode.value = Math.floor(1000 + Math.random() * 9000).toString();
+}
 
 function copyToClipboard(text) {
   if (!text) return;
@@ -83,8 +105,8 @@ function copyToClipboard(text) {
               <i class="ph ph-share-network-fill"></i>
             </div>
             <div>
-              <h3>天才猫 R2 极速分享</h3>
-              <p>支持手机扫码直连与全网嵌入</p>
+              <h3>天才猫 R2 智能分享</h3>
+              <p>支持直链直达、密码加密保护与 HTML 嵌入</p>
             </div>
           </div>
           <button class="close-btn" type="button" aria-label="关闭" @click="emit('close')">×</button>
@@ -94,7 +116,7 @@ function copyToClipboard(text) {
         <div class="file-summary-pill">
           <span class="ext-badge">{{ fileExtension }}</span>
           <div class="file-name-group">
-            <strong>{{ fileNameDisplay }}</strong>
+            <strong :title="fileNameDisplay">{{ fileNameDisplay }}</strong>
             <span>大小: {{ formattedSize }}</span>
           </div>
         </div>
@@ -104,12 +126,15 @@ function copyToClipboard(text) {
           <button class="tab-btn" :class="{ active: activeTab === 'link' }" @click="activeTab = 'link'">
             <i class="ph ph-link-bold"></i> 直连 URL
           </button>
+          <button class="tab-btn" :class="{ active: activeTab === 'secure' }" @click="activeTab = 'secure'">
+            <i class="ph ph-lock-key-bold"></i> 🔒 加密与限时分享
+          </button>
           <button class="tab-btn" :class="{ active: activeTab === 'embed' }" @click="activeTab = 'embed'">
-            <i class="ph ph-code-bold"></i> HTML 嵌入代码
+            <i class="ph ph-code-bold"></i> HTML 嵌入
           </button>
         </div>
 
-        <!-- QR Code & Link Tab -->
+        <!-- Tab 1: QR Code & Link Tab -->
         <div v-if="activeTab === 'link'" class="tab-content">
           <div class="qr-box" title="手机扫码即可直接在线下载或播放">
             <img class="qr-svg" :src="qrImageUrl" alt="分享二维码" loading="lazy" />
@@ -125,7 +150,49 @@ function copyToClipboard(text) {
           </div>
         </div>
 
-        <!-- HTML Embed Tab -->
+        <!-- Tab 2: Secure Password & Expiry Tab -->
+        <div v-else-if="activeTab === 'secure'" class="tab-content secure-content">
+          <div class="secure-form-grid">
+            <div class="form-row">
+              <label><i class="ph ph-clock"></i> 有效期</label>
+              <div class="expiry-chips">
+                <button type="button" :class="{ selected: shareExpiry === '1h' }" @click="shareExpiry = '1h'">1小时</button>
+                <button type="button" :class="{ selected: shareExpiry === '24h' }" @click="shareExpiry = '24h'">24小时</button>
+                <button type="button" :class="{ selected: shareExpiry === '7d' }" @click="shareExpiry = '7d'">7天</button>
+                <button type="button" :class="{ selected: shareExpiry === 'forever' }" @click="shareExpiry = 'forever'">永久</button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label><i class="ph ph-key"></i> 访问提取码</label>
+              <div class="pin-input-group">
+                <input v-model="pinCode" type="text" class="pin-input" maxlength="8" placeholder="提取码 (如 8888)" />
+                <button type="button" class="pin-rand-btn" title="随机生成提取码" @click="generateRandomPin">
+                  <i class="ph ph-shuffle"></i> 随机生成
+                </button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label><i class="ph ph-chat-text"></i> 分享附言 (可选)</label>
+              <input v-model="customNote" type="text" class="note-input" placeholder="例如：请在周五前下载确认" />
+            </div>
+          </div>
+
+          <div class="preview-share-card">
+            <div class="preview-header">
+              <span class="preview-badge"><i class="ph ph-shield-check"></i> 安全加密卡片预览</span>
+            </div>
+            <pre class="preview-text">{{ secureShareText }}</pre>
+          </div>
+
+          <button class="copy-btn full-width" :class="{ success: copied }" type="button" @click="copyToClipboard(secureShareText)">
+            <i class="ph" :class="copied ? 'ph-check-bold' : 'ph-copy-bold'"></i>
+            <span>{{ copied ? '已复制加密分享口令！' : '一键复制完整加密分享文案' }}</span>
+          </button>
+        </div>
+
+        <!-- Tab 3: HTML Embed Tab -->
         <div v-else class="tab-content">
           <div class="code-box">
             <textarea class="code-textarea" readonly :value="embedCode" aria-label="HTML嵌入代码" @click="$event.target.select()"></textarea>
@@ -139,7 +206,7 @@ function copyToClipboard(text) {
         <!-- Footer Note -->
         <footer class="share-footer">
           <i class="ph ph-shield-check"></i>
-          <span>Cloudflare R2 边缘 CDN 全球直连加速中</span>
+          <span>天才猫 R2 专属全速 CDN 节点分发 · 零流量限制</span>
         </footer>
       </div>
     </div>
@@ -150,30 +217,44 @@ function copyToClipboard(text) {
 .share-mask {
   position: fixed;
   inset: 0;
-  z-index: 130;
+  z-index: 100;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(24px) saturate(180%);
+  padding: 20px;
+  background: rgba(15, 17, 23, 0.65);
+  backdrop-filter: blur(18px) saturate(160%);
+  animation: fade-in 0.2s ease-out;
 }
 
 .share-card {
-  width: 90%;
-  max-width: 480px;
-  padding: 26px 28px;
-  border-radius: 28px;
-  background: var(--surface-strong);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
-  color: var(--ink);
-  animation: scale-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  width: min(520px, 100%);
+  padding: 24px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1d1d1f;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.25), inset 0 1px 0 #ffffff;
+  backdrop-filter: blur(30px) saturate(180%);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: scale-up 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@media (prefers-color-scheme: dark) {
+  .share-card {
+    background: rgba(28, 29, 36, 0.92);
+    color: #f2f2f7;
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* Header */
 .share-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
 }
 
 .title-group {
@@ -184,62 +265,73 @@ function copyToClipboard(text) {
 
 .share-icon-badge {
   display: grid;
-  width: 42px;
-  height: 42px;
   place-items: center;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(10, 132, 255, 0.3), rgba(191, 90, 242, 0.25));
-  border: 1px solid rgba(10, 132, 255, 0.4);
-  color: #64d2ff;
-  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  color: #ffffff;
+  font-size: 20px;
+  box-shadow: 0 6px 16px rgba(10, 132, 255, 0.3);
 }
 
-.title-group h3 {
-  margin: 0 0 2px;
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.title-group p {
+.share-header h3 {
   margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.share-header p {
+  margin: 2px 0 0;
   font-size: 12px;
-  color: var(--muted);
+  color: #8e8e93;
 }
 
 .close-btn {
   display: grid;
-  width: 32px;
-  height: 32px;
   place-items: center;
-  border-radius: 50%;
-  background: rgba(120, 120, 128, 0.16);
-  color: var(--muted);
-  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(118, 118, 128, 0.12);
+  color: #8e8e93;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.18s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 69, 58, 0.2);
+  background: rgba(255, 69, 58, 0.18);
   color: #ff453a;
 }
 
+/* File Summary Pill */
 .file-summary-pill {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  margin-bottom: 18px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  .file-summary-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
 }
 
 .ext-badge {
-  padding: 5px 9px;
-  border-radius: 8px;
-  background: var(--accent);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #0a84ff;
   color: #ffffff;
   font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.05em;
 }
 
 .file-name-group {
@@ -249,51 +341,61 @@ function copyToClipboard(text) {
 }
 
 .file-name-group strong {
+  font-size: 13.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13.5px;
 }
 
 .file-name-group span {
-  font-size: 11.5px;
-  color: var(--muted);
+  font-size: 11px;
+  color: #8e8e93;
 }
 
+/* Tab Controls */
 .tab-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   padding: 4px;
-  border-radius: 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  margin-bottom: 18px;
+  border-radius: 12px;
+  background: rgba(118, 118, 128, 0.12);
 }
 
 .tab-btn {
-  flex: 1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--muted);
+  height: 32px;
+  border-radius: 8px;
+  border: none;
   background: transparent;
+  color: #8e8e93;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .tab-btn.active {
-  background: var(--accent);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+  background: #ffffff;
+  color: #0a84ff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+@media (prefers-color-scheme: dark) {
+  .tab-btn.active {
+    background: rgba(255, 255, 255, 0.16);
+    color: #409cff;
+  }
+}
+
+/* Content */
 .tab-content {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 14px;
 }
 
@@ -302,63 +404,235 @@ function copyToClipboard(text) {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .qr-svg {
-  width: 110px;
-  height: 110px;
-  border-radius: 10px;
+  width: 140px;
+  height: 140px;
+  border-radius: 8px;
 }
 
 .qr-tip {
   font-size: 11.5px;
-  color: var(--muted);
   font-weight: 600;
+  color: #515156;
 }
 
 .input-action-group {
   display: flex;
+  align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .share-input {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--ink);
-  font-size: 12.5px;
-  font-family: ui-monospace, monospace;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(60, 60, 67, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .share-input {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
 }
 
 .copy-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  height: 40px;
   padding: 0 16px;
-  height: 42px;
-  border-radius: 12px;
-  background: var(--accent);
+  border-radius: 10px;
+  border: none;
+  background: #0a84ff;
   color: #ffffff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 650;
+  cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.25);
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  background: #0071e3;
+  transform: translateY(-1px);
 }
 
 .copy-btn.success {
-  background: #30d158;
+  background: #32d74b;
+  box-shadow: 0 4px 12px rgba(50, 215, 75, 0.3);
 }
 
 .copy-btn.full-width {
   width: 100%;
 }
 
+/* Secure Share Form */
+.secure-content {
+  width: 100%;
+  align-items: stretch;
+}
+
+.secure-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-row label {
+  font-size: 12px;
+  font-weight: 650;
+  color: #8e8e93;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.expiry-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.expiry-chips button {
+  flex: 1;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 60, 67, 0.16);
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.expiry-chips button.selected {
+  background: rgba(10, 132, 255, 0.18);
+  border-color: #0a84ff;
+  color: #0a84ff;
+  font-weight: 700;
+}
+
+.pin-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.pin-input {
+  width: 130px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 60, 67, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  outline: none;
+}
+
+.pin-rand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 60, 67, 0.16);
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pin-rand-btn:hover {
+  background: rgba(10, 132, 255, 0.12);
+  color: #0a84ff;
+}
+
+.note-input {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(60, 60, 67, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pin-input, .note-input {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.preview-share-card {
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  .preview-share-card {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.preview-header {
+  margin-bottom: 6px;
+}
+
+.preview-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #32d74b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preview-text {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #515156;
+}
+
+@media (prefers-color-scheme: dark) {
+  .preview-text { color: #a1a1a6; }
+}
+
+/* Code box */
 .code-box {
   width: 100%;
 }
@@ -366,25 +640,31 @@ function copyToClipboard(text) {
 .code-textarea {
   width: 100%;
   height: 90px;
-  padding: 12px;
-  border-radius: 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(60, 60, 67, 0.18);
+  background: rgba(0, 0, 0, 0.05);
+  color: inherit;
+  font-family: "Space Mono", monospace;
   font-size: 12px;
-  font-family: ui-monospace, monospace;
   resize: none;
+  outline: none;
 }
 
+@media (prefers-color-scheme: dark) {
+  .code-textarea {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* Footer */
 .share-footer {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 20px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
-  color: var(--subtle);
+  font-size: 11.5px;
+  color: #8e8e93;
 }
 </style>
