@@ -1,31 +1,63 @@
-export function get_auth_status(context) {
-    var dopath = context.request.url.split("/api/write/items/")[1]
-    if(context.env["GUEST"]){
-        if(dopath.startsWith("_$flaredrive$/thumbnails/"))return true;
-        const allow_guest = context.env["GUEST"].split(",")
-        for (var aa of allow_guest){
-            if(aa == "*"){
-                return true
-            }else if(dopath.startsWith(aa)){
-                return true
-            }
-        }
-    }
-    var headers = new Headers(context.request.headers);
-    if(!headers.get('Authorization'))return false
-    const Authorization=headers.get('Authorization').split("Basic ")[1]
-    const account = atob(Authorization);
-    if(!account)return false
-    if(!context.env[account])return false
-    if(dopath.startsWith("_$flaredrive$/thumbnails/"))return true;
-    const allow = context.env[account].split(",")
-    for (var a of allow){
-        if(a == "*"){
-            return true
-        }else if(dopath.startsWith(a)){
-            return true
-        }
-    }
-    return false;
+type UserRule = {
+  password?: string;
+  paths?: string[] | string;
+};
+
+function allowedPath(path: string, rules: string | string[]) {
+  const paths = Array.isArray(rules) ? rules : String(rules || "").split(",");
+  return paths.some((prefix) => prefix === "*" || (prefix && path.startsWith(prefix)));
+}
+
+function getRequestPath(context) {
+  const pathname = new URL(context.request.url).pathname;
+  const marker = "/api/write/items/";
+  const rawPath = pathname.includes(marker) ? pathname.split(marker)[1] : "";
+  try {
+    return decodeURIComponent(rawPath || "");
+  } catch {
+    return rawPath || "";
   }
-  
+}
+
+function getBasicAccount(header: string | null) {
+  if (!header || !header.startsWith("Basic ")) return null;
+  try {
+    const decoded = atob(header.slice(6));
+    const separator = decoded.indexOf(":");
+    if (separator < 1) return null;
+    return { username: decoded.slice(0, separator), password: decoded.slice(separator + 1) };
+  } catch {
+    return null;
+  }
+}
+
+function getJsonUserRule(env, username: string, password: string): UserRule | null {
+  if (typeof env.AUTH_USERS !== "string" || !env.AUTH_USERS.trim()) return null;
+  try {
+    const users = JSON.parse(env.AUTH_USERS);
+    const rule = Array.isArray(users)
+      ? users.find((item) => item?.username === username)
+      : users?.[username];
+    if (!rule || typeof rule !== "object" || String(rule.password) !== password) return null;
+    return rule;
+  } catch {
+    return null;
+  }
+}
+
+export function get_auth_status(context) {
+  const path = getRequestPath(context);
+  if (path.startsWith("_$flaredrive$/thumbnails/")) return true;
+
+  if (context.env.GUEST && allowedPath(path, context.env.GUEST)) return true;
+
+  const account = getBasicAccount(new Headers(context.request.headers).get("Authorization"));
+  if (!account) return false;
+
+  const jsonRule = getJsonUserRule(context.env, account.username, account.password);
+  if (jsonRule) return allowedPath(path, jsonRule.paths || "");
+
+  // Backward compatibility with the original `username:password` variable format.
+  const legacyRule = context.env[`${account.username}:${account.password}`];
+  return typeof legacyRule === "string" && allowedPath(path, legacyRule);
+}
