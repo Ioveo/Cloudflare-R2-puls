@@ -20,7 +20,8 @@ const emit = defineEmits([
 
 const currentTime = ref("");
 const currentDate = ref("");
-const activeMenu = ref(null); // 'apple' | 'file' | 'edit' | 'view' | 'window' | 'help' | null
+const activeMenu = ref(null);
+const weather = ref({ temp: "26°C", text: "晴", icon: "ph-sun-dim-fill" });
 
 function updateClock() {
   const now = new Date();
@@ -30,9 +31,10 @@ function updateClock() {
   const date = now.getDate();
   const hours = String(now.getHours()).padStart(2, "0");
   const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
 
   currentDate.value = `${dayStr} ${month}月${date}日`;
-  currentTime.value = `${hours}:${minutes}`;
+  currentTime.value = `${hours}:${minutes}:${seconds}`;
 }
 
 let timer = null;
@@ -163,6 +165,12 @@ onUnmounted(() => {
         </select>
       </label>
 
+      <!-- Weather Widget Pill -->
+      <div class="status-weather-pill" title="天气预报">
+        <i class="ph" :class="weather.icon"></i>
+        <span>{{ weather.temp }} {{ weather.text }}</span>
+      </div>
+
       <!-- Theme Switcher -->
       <button class="status-btn" type="button" :title="theme === 'dark' ? '切换为浅色模式' : '切换为暗色模式'" @click="emit('toggle-theme')">
         <i class="ph" :class="theme === 'dark' ? 'ph-moon-stars-fill' : 'ph-sun-dim-fill'"></i>
@@ -178,10 +186,10 @@ onUnmounted(() => {
         <i class="ph ph-faders-horizontal"></i>
       </button>
 
-      <!-- Clock & Date -->
+      <!-- Clock & Date (With Seconds) -->
       <div class="status-clock" title="日期与时间">
         <span>{{ currentDate }}</span>
-        <strong>{{ currentTime }}</strong>
+        <strong class="font-mono">{{ currentTime }}</strong>
       </div>
     </div>
   </header>
@@ -371,6 +379,29 @@ onUnmounted(() => {
   font-weight: 600;
   outline: none;
   cursor: pointer;
+}
+
+.status-weather-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffcc00;
+  cursor: default;
+}
+
+[data-theme="light"] .status-weather-pill {
+  background: rgba(0, 0, 0, 0.06);
+  color: #ff9500;
+}
+
+.status-weather-pill i {
+  font-size: 14px;
 }
 
 .status-clock {

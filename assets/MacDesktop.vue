@@ -10,6 +10,8 @@ import MacIcons from "./MacIcons.vue";
 import MacVideoPlayerModal from "./MacVideoPlayerModal.vue";
 import MacMusicPlayerModal from "./MacMusicPlayerModal.vue";
 import MacPhotosModal from "./MacPhotosModal.vue";
+import MacCalculatorModal from "./MacCalculatorModal.vue";
+import MacNotesModal from "./MacNotesModal.vue";
 import ContextMenu from "./ContextMenu.vue";
 
 const props = defineProps({
@@ -110,6 +112,8 @@ const windows = ref({
 const videoModal = ref({ visible: false, file: null, items: [], index: 0 });
 const musicModal = ref({ visible: false, file: null, items: [], index: 0 });
 const photosModal = ref({ visible: false, file: null, items: [], index: 0 });
+const calculatorModal = ref({ visible: false });
+const notesModal = ref({ visible: false });
 const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
@@ -143,6 +147,10 @@ function launchApp(appId) {
     bringToFront("finder");
   } else if (appId === "settings") {
     bringToFront("settings");
+  } else if (appId === "calculator") {
+    calculatorModal.value.visible = true;
+  } else if (appId === "notes") {
+    notesModal.value.visible = true;
   } else if (appId === "photos") {
     const imgFiles = props.files.filter(isImage);
     if (imgFiles.length > 0) {
@@ -182,6 +190,8 @@ const openApps = computed(() => {
   if (videoModal.value.visible) list.push("cinema");
   if (musicModal.value.visible) list.push("music");
   if (photosModal.value.visible) list.push("photos");
+  if (calculatorModal.value.visible) list.push("calculator");
+  if (notesModal.value.visible) list.push("notes");
   return list;
 });
 
@@ -480,19 +490,22 @@ function toggleFullscreen() {
       @minimize="minimizeWindow('finder')"
     >
       <template #titlebar-right>
-        <!-- Quick View Controls in Finder Titlebar -->
+        <!-- Segmented View & Action Buttons in Finder Titlebar -->
         <div class="finder-titlebar-tools">
-          <button class="tool-btn" :class="{ active: viewMode === 'grid' }" type="button" title="图标视图" @click="emit('update:viewMode', 'grid')">
-            <i class="ph ph-squares-four-bold"></i>
+          <div class="finder-segmented-group">
+            <button class="seg-btn" :class="{ active: viewMode === 'grid' }" type="button" title="图标视图" @click="emit('update:viewMode', 'grid')">
+              <i class="ph ph-squares-four"></i>
+            </button>
+            <button class="seg-btn" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="emit('update:viewMode', 'list')">
+              <i class="ph ph-list-bullets"></i>
+            </button>
+          </div>
+
+          <button class="finder-action-icon-btn" type="button" title="新建文件夹" @click="emit('create-folder')">
+            <i class="ph ph-folder-plus"></i>
           </button>
-          <button class="tool-btn" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="emit('update:viewMode', 'list')">
-            <i class="ph ph-list-bullets-bold"></i>
-          </button>
-          <button class="tool-btn" type="button" title="新建文件夹" @click="emit('create-folder')">
-            <i class="ph ph-folder-plus-bold"></i>
-          </button>
-          <button class="tool-btn" type="button" title="上传文件" @click="emit('upload')">
-            <i class="ph ph-upload-simple-bold"></i>
+          <button class="finder-action-icon-btn highlight" type="button" title="极速上传" @click="emit('upload')">
+            <i class="ph ph-cloud-arrow-up"></i>
           </button>
         </div>
       </template>
@@ -655,6 +668,18 @@ function toggleFullscreen() {
       @close="photosModal.visible = false"
       @change="photosModal.index = $event"
       @set-wallpaper="setAsWallpaper"
+    />
+
+    <!-- 🔢 Window 5: macOS Calculator Modal -->
+    <MacCalculatorModal
+      :visible="calculatorModal.visible"
+      @close="calculatorModal.visible = false"
+    />
+
+    <!-- 📝 Window 6: macOS Notes Modal -->
+    <MacNotesModal
+      :visible="notesModal.visible"
+      @close="notesModal.visible = false"
     />
 
     <!-- ⚙️ Window 4: macOS System Settings -->
@@ -1039,32 +1064,100 @@ function toggleFullscreen() {
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* Finder Tools */
+/* Finder Titlebar Segmented & Action Controls */
 .finder-titlebar-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.tool-btn {
+.finder-segmented-group {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="light"] .finder-segmented-group {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.seg-btn {
   display: grid;
   place-items: center;
   width: 26px;
-  height: 24px;
-  border-radius: 6px;
+  height: 22px;
+  border-radius: 5px;
   border: none;
   background: transparent;
-  color: inherit;
+  color: #a1a1a6;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
 }
 
-.tool-btn:hover, .tool-btn.active {
-  background: rgba(255, 255, 255, 0.15);
+.seg-btn:hover {
+  color: #ffffff;
 }
 
-[data-theme="light"] .tool-btn:hover, [data-theme="light"] .tool-btn.active {
-  background: rgba(0, 0, 0, 0.08);
+[data-theme="light"] .seg-btn:hover {
+  color: #1d1d1f;
+}
+
+.seg-btn.active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .seg-btn.active {
+  background: #ffffff;
+  color: #1d1d1f;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.finder-action-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5e5ea;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.finder-action-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .finder-action-icon-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1d1d1f;
+}
+
+[data-theme="light"] .finder-action-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.finder-action-icon-btn.highlight {
+  background: #0a84ff;
+  border-color: #0a84ff;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.4);
+}
+
+.finder-action-icon-btn.highlight:hover {
+  background: #0071e3;
 }
 </style>
