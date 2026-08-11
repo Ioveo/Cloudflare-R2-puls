@@ -200,18 +200,13 @@ function launchApp(appId) {
     notesModal.value.visible = true;
   } else if (appId === "photos") {
     const imgFiles = props.files.filter(isImage);
-    if (imgFiles.length > 0) {
-      bringToFront("photos");
-      photosModal.value = {
-        visible: true,
-        file: imgFiles[0],
-        items: imgFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
-        index: 0,
-      };
-    } else {
-      emit("update:filterCategory", "image");
-      bringToFront("finder");
-    }
+    bringToFront("photos");
+    photosModal.value = {
+      visible: true,
+      file: imgFiles.length ? imgFiles[0] : null,
+      items: imgFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      index: 0,
+    };
   } else if (appId === "cinema") {
     const vFiles = props.files.filter(isVideo);
     if (vFiles.length > 0) {
