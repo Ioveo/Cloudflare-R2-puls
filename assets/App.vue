@@ -508,8 +508,9 @@ export default {
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
     contextActions() {
       if (!this.focusedItem) return [
-        { id: "upload", label: "上传文件", icon: "ph-upload-simple" },
-        { id: "create-folder", label: "新建文件夹", icon: "ph-folder-plus" },
+        { id: "upload", label: "上传文件 (Upload)", icon: "ph-upload-simple" },
+        { id: "create-folder", label: "新建文件夹 (New Folder)", icon: "ph-folder-plus" },
+        { id: "refresh", label: "刷新访达 (Reload)", icon: "ph-arrows-clockwise" },
         { id: "paste", label: "粘贴项目", icon: "ph-clipboard", disabled: !this.clipboard },
         { id: "logout", label: "退出登录", icon: "ph-sign-out", danger: true }
       ];
@@ -836,6 +837,7 @@ export default {
       if (action === "logout") return this.logout();
       if (action === "upload") return this.openUploadWithAuth();
       if (action === "create-folder") return this.createFolder();
+      if (action === "refresh") return this.fetchFiles(true);
       if (action === "paste") return this.pasteFile();
       if (!item) return;
       if (action === "set-wallpaper") {

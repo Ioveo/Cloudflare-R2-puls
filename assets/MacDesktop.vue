@@ -562,7 +562,7 @@ function toggleFullscreen() {
         </aside>
 
         <!-- Finder Main Files Pane -->
-        <main class="finder-main-pane">
+        <main class="finder-main-pane" @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })">
           <!-- Finder Path Bar -->
           <div class="finder-pathbar">
             <button class="path-btn" @click="emit('navigate', '')"><i class="ph ph-house"></i> 根目录</button>
@@ -573,8 +573,12 @@ function toggleFullscreen() {
             <span class="finder-status-count">{{ files.length + folders.length }} 个项目</span>
           </div>
 
-          <!-- Files Grid / List Container -->
-          <div class="finder-content-area" :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]">
+          <!-- Files Grid / List Container (Right click on blank space triggers Finder folder upload/create actions) -->
+          <div
+            class="finder-content-area"
+            :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]"
+            @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })"
+          >
             <!-- Parent Folder Card -->
             <article v-if="cwd && filterCategory === 'all'" class="finder-file-item folder-item parent-folder" @dblclick="emit('navigate', parentPath)">
               <div class="item-icon">
