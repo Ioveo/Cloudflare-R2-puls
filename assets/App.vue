@@ -1,375 +1,426 @@
 <template>
-<div class="studio-app" @click="closeContext" @contextmenu.prevent="openContext(null, $event)" @dragenter.prevent="onDragEnter" @dragover.prevent @dragleave="onDragLeave" @drop.prevent="onDrop">
-  <!-- Left Glassmorphism Sidebar -->
-  <aside class="studio-sidebar">
-    <div class="sidebar-brand">
-      <CatLogo />
-      <div class="brand-text">
-        <strong>天才猫 R2 网盘</strong>
-        <span class="status-dot"><i class="dot"></i> 智能直连中</span>
-      </div>
-    </div>
+<div class="app-root-wrapper">
+  <!-- 🍏 Mode 1: macOS 26 Desktop Mode (DEFAULT) -->
+  <MacDesktop
+    v-if="uiMode === 'macos'"
+    :files="filteredFiles"
+    :folders="filteredFolders"
+    :cwd="cwd"
+    :storage-id="storageId"
+    :storage-options="storageOptions"
+    :theme="theme"
+    :loading="loading"
+    :view-mode="viewMode"
+    :search="search"
+    :filter-category="filterCategory"
+    :auth-credentials="authCredentials"
+    :category-counts="categoryCounts"
+    :total-storage-bytes="totalStorageBytes"
+    @navigate="goToFolder"
+    @open-file="openFile"
+    @upload="openUploadWithAuth"
+    @create-folder="createFolder"
+    @rename="renameFile"
+    @move="moveFile"
+    @delete="removeFile"
+    @copy-item="clipboard = { action: 'copy', item: $event }"
+    @cut-item="clipboard = { action: 'cut', item: $event }"
+    @paste="pasteFile"
+    @share="shareModal = { visible: true, file: $event, rawUrl: rawPath($event.key) }"
+    @inspect="inspector = { visible: true, file: $event }"
+    @edit="textEditor = { visible: true, file: $event }"
+    @toggle-theme="toggleTheme"
+    @switch-storage="storageId = $event"
+    @switch-mode="switchUiMode"
+    @login="login"
+    @logout="logout"
+    @refresh="fetchFiles(true)"
+    @update:view-mode="viewMode = $event"
+    @update:filter-category="selectCategory"
+    @update:search="search = $event"
+    @context="openContext($event.item, $event.event)"
+    @action="handleMacAction"
+  />
 
-    <!-- Category Navigation Menu -->
-    <nav class="sidebar-nav">
-      <div class="nav-section-title">媒体 Showcase 库</div>
-      
-      <button class="nav-item nav-all" :class="{ active: filterCategory === 'all' }" @click="selectCategory('all')">
-        <i class="ph ph-squares-four"></i>
-        <span>概览大厅</span>
-        <span class="count-pill">{{ totalItemCount }}</span>
-      </button>
-
-      <button class="nav-item nav-image" :class="{ active: filterCategory === 'image' }" @click="selectCategory('image')">
-        <i class="ph ph-image"></i>
-        <span>照片图库</span>
-        <span class="count-pill highlight-blue">{{ categoryCounts.image }}</span>
-      </button>
-
-      <button class="nav-item nav-video" :class="{ active: filterCategory === 'video' }" @click="selectCategory('video')">
-        <i class="ph ph-film-strip"></i>
-        <span>高清影音</span>
-        <span class="count-pill highlight-purple">{{ categoryCounts.video }}</span>
-      </button>
-
-      <button class="nav-item nav-audio" :class="{ active: filterCategory === 'audio' }" @click="selectCategory('audio')">
-        <i class="ph ph-music-notes"></i>
-        <span>音乐曲库</span>
-        <span class="count-pill highlight-green">{{ categoryCounts.audio }}</span>
-      </button>
-
-      <button class="nav-item nav-archive" :class="{ active: filterCategory === 'archive' }" @click="selectCategory('archive')">
-        <i class="ph ph-package"></i>
-        <span>压缩归档</span>
-        <span class="count-pill highlight-amber">{{ categoryCounts.archive }}</span>
-      </button>
-
-      <button class="nav-item nav-document" :class="{ active: filterCategory === 'document' }" @click="selectCategory('document')">
-        <i class="ph ph-file-text"></i>
-        <span>文档资料</span>
-        <span class="count-pill">{{ categoryCounts.document }}</span>
-      </button>
-
-      <div class="nav-divider"></div>
-
-      <!-- Scope Switcher Toggle -->
-      <div class="scope-toggle-card" title="开启后，在任意子文件夹点击分类均可智能汇总全盘对应文件">
-        <div class="scope-title">
-          <i class="ph ph-globe-hemisphere-east"></i>
-          <span>跨目录全盘自动归类</span>
+  <!-- 🏛️ Mode 2: Classic Studio Showcase Mode -->
+  <div v-else class="studio-app" @click="closeContext" @contextmenu.prevent="openContext(null, $event)" @dragenter.prevent="onDragEnter" @dragover.prevent @dragleave="onDragLeave" @drop.prevent="onDrop">
+    <!-- Left Glassmorphism Sidebar -->
+    <aside class="studio-sidebar">
+      <div class="sidebar-brand">
+        <CatLogo />
+        <div class="brand-text">
+          <strong>天才猫 R2 网盘</strong>
+          <span class="status-dot"><i class="dot"></i> 智能直连中</span>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" v-model="autoGlobalScan" @change="onToggleGlobalScan" />
-          <span class="slider"></span>
-        </label>
       </div>
-    </nav>
 
-    <!-- Bottom User / Logout Bar -->
-    <footer class="sidebar-footer">
-      <div class="user-pill" title="存储桶绑定与凭证">
-        <i class="ph ph-shield-check"></i>
-        <span>已验证连接</span>
-      </div>
-      <button class="logout-icon-btn" type="button" title="退出登录" @click="logout">
-        <i class="ph ph-sign-out"></i>
-      </button>
-    </footer>
-  </aside>
-
-  <!-- Main Content Body -->
-  <main class="studio-main">
-    <header class="topbar">
-      <!-- Minimal Apple Spotlight Icon Search Button / Expandable Search Pill -->
-      <div class="search-wrapper">
-        <button v-if="!showSearchInput && !search" class="icon-button search-icon-btn" type="button" title="搜索资源 (⌘K)" @click="showSearchInput = true; $nextTick(() => $refs.searchInputRef?.focus())">
-          <i class="ph ph-magnifying-glass"></i>
+      <!-- Category Navigation Menu -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">媒体 Showcase 库</div>
+        
+        <button class="nav-item nav-all" :class="{ active: filterCategory === 'all' }" @click="selectCategory('all')">
+          <i class="ph ph-squares-four"></i>
+          <span>概览大厅</span>
+          <span class="count-pill">{{ totalItemCount }}</span>
         </button>
-        <label v-else class="search-box search-box-expanded">
-          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-          <input ref="searchInputRef" v-model.trim="search" type="search" placeholder="搜索资源..." aria-label="搜索当前目录资源" @blur="onSearchBlur" />
-          <button class="icon-button small" type="button" title="关闭搜索" @click="search = ''; showSearchInput = false">×</button>
-        </label>
-      </div>
 
-      <div class="topbar-actions">
-        <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
-        <button class="icon-button theme-toggle-btn" type="button" :title="theme === 'dark' ? '切换为浅色模式' : '切换为深色模式'" @click="toggleTheme">
-          <i class="ph" :class="theme === 'dark' ? 'ph-moon-stars-fill' : 'ph-sun-dim-fill'"></i>
+        <button class="nav-item nav-image" :class="{ active: filterCategory === 'image' }" @click="selectCategory('image')">
+          <i class="ph ph-image"></i>
+          <span>照片图库</span>
+          <span class="count-pill highlight-blue">{{ categoryCounts.image }}</span>
         </button>
-        <button class="icon-button" type="button" title="快捷键指南 (?)" @click="showHotkeysModal = true"><i class="ph ph-keyboard"></i></button>
-        <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
-        <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
-      </div>
-    </header>
 
-    <section class="workspace" :class="{ 'pure-gallery-workspace': filterCategory !== 'all' }">
-      <!-- Portal Hero Banner & R2 Storage Animated Widget (ONLY shown in General Overview Hall) -->
-      <div v-if="filterCategory === 'all'" class="portal-hero">
-        <div class="hero-content">
-          <div class="hero-header-row">
-            <span class="hero-tag"><i class="ph ph-sparkle-fill"></i> 天才猫 AI 云端引擎</span>
-            <span v-if="autoGlobalScan" class="scan-tag"><i class="ph ph-lightning-fill"></i> 全盘秒级索引就绪</span>
+        <button class="nav-item nav-video" :class="{ active: filterCategory === 'video' }" @click="selectCategory('video')">
+          <i class="ph ph-film-strip"></i>
+          <span>高清影音</span>
+          <span class="count-pill highlight-purple">{{ categoryCounts.video }}</span>
+        </button>
+
+        <button class="nav-item nav-audio" :class="{ active: filterCategory === 'audio' }" @click="selectCategory('audio')">
+          <i class="ph ph-music-notes"></i>
+          <span>音乐曲库</span>
+          <span class="count-pill highlight-green">{{ categoryCounts.audio }}</span>
+        </button>
+
+        <button class="nav-item nav-archive" :class="{ active: filterCategory === 'archive' }" @click="selectCategory('archive')">
+          <i class="ph ph-package"></i>
+          <span>压缩归档</span>
+          <span class="count-pill highlight-amber">{{ categoryCounts.archive }}</span>
+        </button>
+
+        <button class="nav-item nav-document" :class="{ active: filterCategory === 'document' }" @click="selectCategory('document')">
+          <i class="ph ph-file-text"></i>
+          <span>文档资料</span>
+          <span class="count-pill">{{ categoryCounts.document }}</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer User Status & Actions -->
+      <div class="sidebar-footer">
+        <div class="user-status-pill" :class="{ authenticated: !!authCredentials }">
+          <div class="user-avatar-badge">
+            <i class="ph" :class="authCredentials ? 'ph-user-check-bold' : 'ph-user-bold'"></i>
           </div>
-          <h1>天才猫 R2 智能云端展厅</h1>
-          <p>直连 Cloudflare R2 全球边缘存储 · 在线影音播放 · 归档解压预览 · 全速传输</p>
+          <div class="user-text-meta">
+            <strong class="user-name">{{ authCredentials ? authCredentials.username : '访客体验模式' }}</strong>
+            <span class="user-role">{{ authCredentials ? '管理员已鉴权' : '仅开放公开资源' }}</span>
+          </div>
+          <button v-if="!authCredentials" class="login-quick-btn" type="button" title="登录以管理文件" @click="promptLogin()">登录</button>
+          <button v-else class="logout-quick-btn" type="button" title="退出登录" @click="logout"><i class="ph ph-sign-out"></i></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Body -->
+    <main class="studio-main">
+      <header class="topbar">
+        <!-- Minimal Apple Spotlight Icon Search Button / Expandable Search Pill -->
+        <div class="search-wrapper">
+          <button v-if="!showSearchInput && !search" class="icon-button search-icon-btn" type="button" title="搜索资源 (⌘K)" @click="showSearchInput = true; $nextTick(() => $refs.searchInputRef?.focus())">
+            <i class="ph ph-magnifying-glass"></i>
+          </button>
+          <label v-else class="search-box search-box-expanded">
+            <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+            <input ref="searchInputRef" v-model.trim="search" type="search" placeholder="搜索资源..." aria-label="搜索当前目录资源" @blur="onSearchBlur" />
+            <button class="icon-button small" type="button" title="关闭搜索" @click="search = ''; showSearchInput = false">×</button>
+          </label>
+        </div>
+
+        <div class="topbar-actions">
+          <label class="storage-switcher" title="切换存储桶"><i class="ph ph-database"></i><select v-model="storageId" aria-label="选择存储桶"><option v-for="storage in storageOptions" :key="storage.id" :value="storage.id">{{ storage.label }}</option></select></label>
+          <button class="icon-button theme-toggle-btn" type="button" :title="theme === 'dark' ? '切换为浅色模式' : '切换为深色模式'" @click="toggleTheme">
+            <i class="ph" :class="theme === 'dark' ? 'ph-moon-stars-fill' : 'ph-sun-dim-fill'"></i>
+          </button>
+          <button class="icon-button" type="button" title="切换至 macOS 桌面模式" @click="switchUiMode('macos')">
+            <i class="ph ph-desktop"></i>
+          </button>
+          <button class="icon-button" type="button" title="快捷键指南 (?)" @click="showHotkeysModal = true"><i class="ph ph-keyboard"></i></button>
+          <button class="icon-button" type="button" title="刷新目录" @click="fetchFiles(true)"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i></button>
+          <div class="menu-button"><button class="icon-button" type="button" title="显示选项" @click="showMenu = true"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button><Menu v-model="showMenu" :items="menuItems" @click="onMenuClick" /></div>
+        </div>
+      </header>
+
+      <section class="workspace" :class="{ 'pure-gallery-workspace': filterCategory !== 'all' }">
+        <!-- Portal Hero Banner & R2 Storage Animated Widget (ONLY shown in General Overview Hall) -->
+        <div v-if="filterCategory === 'all'" class="portal-hero">
+          <div class="hero-content">
+            <div class="hero-header-row">
+              <span class="hero-tag"><i class="ph ph-sparkle-fill"></i> 天才猫 AI 云端引擎</span>
+              <span v-if="autoGlobalScan" class="scan-tag"><i class="ph ph-lightning-fill"></i> 全盘秒级索引就绪</span>
+            </div>
+            <h1>天才猫 R2 智能云端展厅</h1>
+            <p>直连 Cloudflare R2 全球边缘存储 · 在线影音播放 · 归档解压预览 · 全速传输</p>
+            
+            <!-- Category Quick Badges -->
+            <div class="hero-stat-pills">
+              <span class="hero-pill" @click="selectCategory('image')"><i class="ph ph-image-fill"></i> {{ categoryCounts.image }} 照片</span>
+              <span class="hero-pill" @click="selectCategory('video')"><i class="ph ph-film-strip-fill"></i> {{ categoryCounts.video }} 视频</span>
+              <span class="hero-pill" @click="selectCategory('audio')"><i class="ph ph-music-notes-fill"></i> {{ categoryCounts.audio }} 音乐</span>
+              <span class="hero-pill" @click="selectCategory('archive')"><i class="ph ph-package-fill"></i> {{ categoryCounts.archive }} 归档</span>
+            </div>
+          </div>
+
+          <!-- Apple macOS High-End Storage Card -->
+          <div class="r2-storage-widget">
+            <div class="storage-widget-header">
+              <div class="storage-title-group">
+                <div class="storage-icon-circle"><i class="ph ph-database-fill"></i></div>
+                <div>
+                  <h3>Cloudflare R2 存储节点</h3>
+                  <p>{{ storageId === 'default' ? '主存储桶 (Primary Bucket)' : `存储桶 · ${storageId}` }}</p>
+                </div>
+              </div>
+              <div class="storage-capacity-pill">
+                <span class="pulse-light"></span>
+                <span>{{ storagePercent.toFixed(1) }}% 容量</span>
+              </div>
+            </div>
+
+            <!-- Storage Metrics Numbers -->
+            <div class="storage-metrics-row">
+              <div class="metric-block">
+                <span class="metric-label">已用容量</span>
+                <span class="metric-value font-mono">{{ formatSize(totalStorageBytes) }}</span>
+              </div>
+              <div class="metric-block">
+                <span class="metric-label">预估上限</span>
+                <span class="metric-value font-mono">10.0 TB</span>
+              </div>
+              <div class="metric-block">
+                <span class="metric-label">总对象数</span>
+                <span class="metric-value font-mono">{{ totalItemCount }} 项</span>
+              </div>
+            </div>
+
+            <!-- Multi-Color Segmented Animated Progress Bar -->
+            <div class="storage-bar-track">
+              <div class="bar-shimmer"></div>
+              <div class="storage-bar-seg seg-image" :style="{ width: (totalStorageBytes ? (categoryBytes.image / totalStorageBytes) * storagePercent : 0) + '%' }" title="照片"></div>
+              <div class="storage-bar-seg seg-video" :style="{ width: (totalStorageBytes ? (categoryBytes.video / totalStorageBytes) * storagePercent : 0) + '%' }" title="视频"></div>
+              <div class="storage-bar-seg seg-audio" :style="{ width: (totalStorageBytes ? (categoryBytes.audio / totalStorageBytes) * storagePercent : 0) + '%' }" title="音频"></div>
+              <div class="storage-bar-seg seg-archive" :style="{ width: (totalStorageBytes ? (categoryBytes.archive / totalStorageBytes) * storagePercent : 0) + '%' }" title="归档"></div>
+              <div class="storage-bar-seg seg-document" :style="{ width: (totalStorageBytes ? (categoryBytes.document / totalStorageBytes) * storagePercent : 0) + '%' }" title="文档"></div>
+            </div>
+
+            <!-- Legend Breakdown Badges -->
+            <div class="storage-legend">
+              <span class="legend-badge badge-image" @click="selectCategory('image')"><i class="ph ph-image-fill"></i> 照片 <strong>{{ formatSize(categoryBytes.image) }}</strong></span>
+              <span class="legend-badge badge-video" @click="selectCategory('video')"><i class="ph ph-film-strip-fill"></i> 视频 <strong>{{ formatSize(categoryBytes.video) }}</strong></span>
+              <span class="legend-badge badge-audio" @click="selectCategory('audio')"><i class="ph ph-music-notes-fill"></i> 音频 <strong>{{ formatSize(categoryBytes.audio) }}</strong></span>
+              <span class="legend-badge badge-archive" @click="selectCategory('archive')"><i class="ph ph-package-fill"></i> 归档 <strong>{{ formatSize(categoryBytes.archive) }}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workspace Heading / Breadcrumbs (ONLY shown in General Overview Hall) -->
+        <div v-if="filterCategory === 'all'" class="workspace-heading">
+          <div>
+            <nav class="breadcrumbs" aria-label="当前位置"><button type="button" @click="goToFolder('')">首页</button><template v-for="(part, index) in pathParts" :key="`${part}-${index}`"><span aria-hidden="true">/</span><button type="button" @click="goToFolder(pathUntil(index))">{{ part }}</button></template></nav>
+            <h2>{{ currentFolderName }}</h2>
+            <p>{{ itemCountText }}</p>
+          </div>
+          <div class="view-controls" aria-label="视图设置"><button class="view-button" :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'"><i class="ph ph-squares-four" aria-hidden="true"></i></button><button class="view-button" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'"><i class="ph ph-list-bullets" aria-hidden="true"></i></button></div>
+        </div>
+
+        <!-- Loading skeleton -->
+        <section v-if="loading" class="file-grid loading-grid" :class="viewMode"><div v-for="item in 8" :key="item" class="file-skeleton"></div></section>
+
+        <!-- Empty state -->
+        <section v-else-if="!filteredFiles.length && !filteredFolders.length" class="empty-state-wrap">
+          <!-- Subfolder Parent Nav Card -->
+          <div v-if="cwd && filterCategory === 'all'" class="empty-parent-nav">
+            <article class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
+              <div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div>
+              <div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div>
+            </article>
+          </div>
+
+          <!-- VisionOS Empty Showcase Card -->
+          <div class="empty-showcase-card">
+            <div class="empty-glow-bubble">
+              <i class="ph" :class="filterCategory === 'image' ? 'ph-image-broken' : (filterCategory === 'video' ? 'ph-film-slash' : (filterCategory === 'audio' ? 'ph-music-notes-simple' : (search ? 'ph-magnifying-glass' : 'ph-folder-dashed')))"></i>
+            </div>
+            <h3>{{ search ? '没有匹配的资源' : (cwd ? '当前文件夹为空' : '当前分类暂无文件') }}</h3>
+            <p>{{ search ? '尝试更换搜索关键词或清除筛选条件。' : '直接将本地文件拖放至此窗口，或点击下方按钮开始上传。' }}</p>
+            <div class="empty-action-group">
+              <button v-if="!search" class="empty-cta-btn primary" type="button" @click="openUploadWithAuth">
+                <i class="ph ph-cloud-arrow-up-bold"></i>
+                <span>立即上传文件</span>
+              </button>
+              <button v-if="cwd && !search" class="empty-cta-btn secondary" type="button" @click="createFolder">
+                <i class="ph ph-folder-plus-bold"></i>
+                <span>新建子文件夹</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- File Grid (Supports Masonry Waterfall, Video Cinema Gallery, and Music Vinyl Studio Layouts) -->
+        <section v-else class="file-grid" :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid', 'video-studio-mode': filterCategory === 'video' && viewMode === 'grid', 'music-studio-mode': filterCategory === 'audio' && viewMode === 'grid' }]">
           
-          <!-- Category Quick Badges -->
-          <div class="hero-stat-pills">
-            <span class="hero-pill" @click="selectCategory('image')"><i class="ph ph-image-fill"></i> {{ categoryCounts.image }} 照片</span>
-            <span class="hero-pill" @click="selectCategory('video')"><i class="ph ph-film-strip-fill"></i> {{ categoryCounts.video }} 视频</span>
-            <span class="hero-pill" @click="selectCategory('audio')"><i class="ph ph-music-notes-fill"></i> {{ categoryCounts.audio }} 音乐</span>
-            <span class="hero-pill" @click="selectCategory('archive')"><i class="ph ph-package-fill"></i> {{ categoryCounts.archive }} 归档</span>
-          </div>
-        </div>
-
-        <!-- Rebuilt R2 Storage Usage Animated Card -->
-        <div class="r2-storage-widget" :title="`R2 存储桶已用 ${formatSize(totalStorageBytes)} · 基于 10GB 免费容量`">
-          <div class="storage-widget-header">
-            <div class="storage-title">
-              <div class="cloud-icon-box">
-                <i class="ph ph-cloud-arrow-up-fill"></i>
-                <div class="icon-pulse-ring"></div>
-              </div>
-              <div class="storage-text-group">
-                <span class="title-main">R2 存储容量占用</span>
-                <span class="title-sub">Cloudflare R2 Storage</span>
-              </div>
-            </div>
-            <div class="storage-value-badge">
-              <span class="usage-percent">{{ storagePercent.toFixed(1) }}%</span>
-              <span class="usage-raw">{{ formatSize(totalStorageBytes) }} <sub>/ 10 GB</sub></span>
-            </div>
-          </div>
-
-          <!-- Multi-Color Segmented Animated Progress Bar -->
-          <div class="storage-bar-track">
-            <div class="bar-shimmer"></div>
-            <div class="storage-bar-seg seg-image" :style="{ width: (totalStorageBytes ? (categoryBytes.image / totalStorageBytes) * storagePercent : 0) + '%' }" title="照片"></div>
-            <div class="storage-bar-seg seg-video" :style="{ width: (totalStorageBytes ? (categoryBytes.video / totalStorageBytes) * storagePercent : 0) + '%' }" title="视频"></div>
-            <div class="storage-bar-seg seg-audio" :style="{ width: (totalStorageBytes ? (categoryBytes.audio / totalStorageBytes) * storagePercent : 0) + '%' }" title="音频"></div>
-            <div class="storage-bar-seg seg-archive" :style="{ width: (totalStorageBytes ? (categoryBytes.archive / totalStorageBytes) * storagePercent : 0) + '%' }" title="归档"></div>
-            <div class="storage-bar-seg seg-document" :style="{ width: (totalStorageBytes ? (categoryBytes.document / totalStorageBytes) * storagePercent : 0) + '%' }" title="文档"></div>
-          </div>
-
-          <!-- Legend Breakdown Badges -->
-          <div class="storage-legend">
-            <span class="legend-badge badge-image" @click="selectCategory('image')"><i class="ph ph-image-fill"></i> 照片 <strong>{{ formatSize(categoryBytes.image) }}</strong></span>
-            <span class="legend-badge badge-video" @click="selectCategory('video')"><i class="ph ph-film-strip-fill"></i> 视频 <strong>{{ formatSize(categoryBytes.video) }}</strong></span>
-            <span class="legend-badge badge-audio" @click="selectCategory('audio')"><i class="ph ph-music-notes-fill"></i> 音频 <strong>{{ formatSize(categoryBytes.audio) }}</strong></span>
-            <span class="legend-badge badge-archive" @click="selectCategory('archive')"><i class="ph ph-package-fill"></i> 归档 <strong>{{ formatSize(categoryBytes.archive) }}</strong></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Workspace Heading / Breadcrumbs (ONLY shown in General Overview Hall) -->
-      <div v-if="filterCategory === 'all'" class="workspace-heading">
-        <div>
-          <nav class="breadcrumbs" aria-label="当前位置"><button type="button" @click="goToFolder('')">首页</button><template v-for="(part, index) in pathParts" :key="`${part}-${index}`"><span aria-hidden="true">/</span><button type="button" @click="goToFolder(pathUntil(index))">{{ part }}</button></template></nav>
-          <h2>{{ currentFolderName }}</h2>
-          <p>{{ itemCountText }}</p>
-        </div>
-        <div class="view-controls" aria-label="视图设置"><button class="view-button" :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'"><i class="ph ph-squares-four" aria-hidden="true"></i></button><button class="view-button" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'"><i class="ph ph-list-bullets" aria-hidden="true"></i></button></div>
-      </div>
-
-      <!-- Loading skeleton -->
-      <section v-if="loading" class="file-grid loading-grid" :class="viewMode"><div v-for="item in 8" :key="item" class="file-skeleton"></div></section>
-
-      <!-- Empty state -->
-      <section v-else-if="!filteredFiles.length && !filteredFolders.length" class="empty-state-wrap">
-        <!-- Subfolder Parent Nav Card -->
-        <div v-if="cwd && filterCategory === 'all'" class="empty-parent-nav">
-          <article class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
+          <article v-if="cwd && filterCategory === 'all'" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
             <div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div>
             <div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div>
           </article>
-        </div>
 
-        <!-- VisionOS Empty Showcase Card -->
-        <div class="empty-showcase-card">
-          <div class="empty-glow-bubble">
-            <i class="ph" :class="filterCategory === 'image' ? 'ph-image-broken' : (filterCategory === 'video' ? 'ph-film-slash' : (filterCategory === 'audio' ? 'ph-music-notes-simple' : (search ? 'ph-magnifying-glass' : 'ph-folder-dashed')))"></i>
-          </div>
-          <h3>{{ search ? '没有匹配的资源' : (cwd ? '当前文件夹为空' : '当前分类暂无文件') }}</h3>
-          <p>{{ search ? '尝试更换搜索关键词或清除筛选条件。' : '直接将本地文件拖放至此窗口，或点击下方按钮开始上传。' }}</p>
-          <div class="empty-action-group">
-            <button v-if="!search" class="empty-cta-btn primary" type="button" @click="openUploadWithAuth">
-              <i class="ph ph-cloud-arrow-up-bold"></i>
-              <span>立即上传文件</span>
-            </button>
-            <button v-if="cwd && !search" class="empty-cta-btn secondary" type="button" @click="createFolder">
-              <i class="ph ph-folder-plus-bold"></i>
-              <span>新建子文件夹</span>
-            </button>
-          </div>
-        </div>
-      </section>
+          <article v-for="folder in filteredFolders" :key="folder" class="file-card folder-card" tabindex="0" @click="goToFolder(folder)" @keydown.enter="goToFolder(folder)" @contextmenu.stop.prevent="openContext(folder, $event)">
+            <div class="file-symbol folder-symbol"><i class="ph ph-folder-simple-star"></i></div>
+            <div class="file-main">
+              <strong>{{ folderName(folder) }}</strong>
+              <span>分类目录</span>
+            </div>
+            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(folder, $event)"><i class="ph ph-dots-three-outline"></i></button>
+          </article>
 
-      <!-- File Grid (Supports Masonry Waterfall, Video Cinema Gallery, and Music Vinyl Studio Layouts) -->
-      <section v-else class="file-grid" :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid', 'video-studio-mode': filterCategory === 'video' && viewMode === 'grid', 'music-studio-mode': filterCategory === 'audio' && viewMode === 'grid' }]">
-        
-        <article v-if="cwd && filterCategory === 'all'" class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
-          <div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div>
-          <div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div>
-        </article>
-
-        <article v-for="folder in filteredFolders" :key="folder" class="file-card folder-card" tabindex="0" @click="goToFolder(folder)" @keydown.enter="goToFolder(folder)" @contextmenu.stop.prevent="openContext(folder, $event)">
-          <div class="file-symbol folder-symbol"><i class="ph ph-folder-simple-star"></i></div>
-          <div class="file-main">
-            <strong>{{ folderName(folder) }}</strong>
-            <span>分类目录</span>
-          </div>
-          <button class="more-button" type="button" title="更多操作" @click.stop="openContext(folder, $event)"><i class="ph ph-dots-three-outline"></i></button>
-        </article>
-
-        <!-- SPECIALIZED CATEGORY CARDS -->
-        <article
-          v-for="file in filteredFiles"
-          :key="file.key"
-          class="file-card"
-          :class="[isImage(file) ? 'file-card--image' : (isVideo(file) ? 'file-card--video' : (isAudio(file) ? 'file-card--audio' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')))]"
-          tabindex="0"
-          @click="openFile(file)"
-          @keydown.enter="openFile(file)"
-          @contextmenu.stop.prevent="openContext(file, $event)"
-        >
-          <!-- 1A. PURE FULL HD PHOTO WATERFALL MASONRY CARD (ONLY IN PHOTO GALLERY VIEW) -->
-          <template v-if="isImage(file) && filterCategory === 'image' && viewMode === 'grid'">
-            <div class="photo-preview-pure">
-              <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-              <div class="photo-hover-overlay">
-                <div class="photo-overlay-top">
-                  <span class="photo-tag-badge">{{ fileName(file.key) }}</span>
-                </div>
-                <div class="photo-overlay-bottom">
-                  <span class="photo-size-badge">{{ formatSize(file.size) }}</span>
-                  <div class="photo-overlay-actions">
-                    <button class="overlay-btn" type="button" title="大图幻灯片预览" @click.stop="openFile(file)">
-                      <i class="ph ph-arrows-out"></i>
-                    </button>
-                    <a class="overlay-btn" :href="rawPath(file.key)" download title="下载原图" @click.stop>
-                      <i class="ph ph-download-simple"></i>
-                    </a>
-                    <button class="overlay-btn" type="button" title="更多选项" @click.stop="openContext(file, $event)">
-                      <i class="ph ph-dots-three-outline"></i>
-                    </button>
+          <!-- SPECIALIZED CATEGORY CARDS -->
+          <article
+            v-for="file in filteredFiles"
+            :key="file.key"
+            class="file-card"
+            :class="[isImage(file) ? 'file-card--image' : (isVideo(file) ? 'file-card--video' : (isAudio(file) ? 'file-card--audio' : (isArchive(file) ? 'file-card--archive' : 'file-card--document')))]"
+            tabindex="0"
+            @click="openFile(file)"
+            @keydown.enter="openFile(file)"
+            @contextmenu.stop.prevent="openContext(file, $event)"
+          >
+            <!-- 1A. PURE FULL HD PHOTO WATERFALL MASONRY CARD (ONLY IN PHOTO GALLERY VIEW) -->
+            <template v-if="isImage(file) && filterCategory === 'image' && viewMode === 'grid'">
+              <div class="photo-preview-pure">
+                <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+                <div class="photo-hover-overlay">
+                  <div class="photo-overlay-top">
+                    <span class="photo-tag-badge">{{ fileName(file.key) }}</span>
+                  </div>
+                  <div class="photo-overlay-bottom">
+                    <span class="photo-size-badge">{{ formatSize(file.size) }}</span>
+                    <div class="photo-overlay-actions">
+                      <button class="overlay-btn" type="button" title="大图幻灯片预览" @click.stop="openFile(file)">
+                        <i class="ph ph-arrows-out"></i>
+                      </button>
+                      <a class="overlay-btn" :href="rawPath(file.key)" download title="下载原图" @click.stop>
+                        <i class="ph ph-download-simple"></i>
+                      </a>
+                      <button class="overlay-btn" type="button" title="更多选项" @click.stop="openContext(file, $event)">
+                        <i class="ph ph-dots-three-outline"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
 
-          <!-- 1B. FOLDER VIEW IMAGE CARD (CONTAINED THUMBNAIL + TITLE + SIZE + DATE) -->
-          <template v-else-if="isImage(file)">
-            <div class="folder-image-preview">
-              <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-            </div>
-            <div class="file-main">
-              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
-              <span>{{ formatDate(file.uploaded) }} · 照片</span>
-            </div>
-            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
-            <div class="file-footer">
-              <strong>{{ formatSize(file.size) }}</strong>
-              <span class="file-action-hint"><i class="ph ph-eye"></i> 预览</span>
-            </div>
-          </template>
-
-          <!-- 2. VIDEO CINEMA STREAMING CARD -->
-          <template v-else-if="isVideo(file)">
-            <div class="photo-preview video-cinema-preview">
-              <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-              <div class="video-play-badge">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                  <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
-                </svg>
+            <!-- 1B. FOLDER VIEW IMAGE CARD (CONTAINED THUMBNAIL + TITLE + SIZE + DATE) -->
+            <template v-else-if="isImage(file)">
+              <div class="folder-image-preview">
+                <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
               </div>
-            </div>
-            <div class="file-main">
-              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
-              <span>{{ formatDate(file.uploaded) }} · 高清视频</span>
-            </div>
-            <footer class="file-footer">
-              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
-            </footer>
-            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
-          </template>
-
-          <!-- 3. MUSIC VINYL PLATFORM CARD -->
-          <template v-else-if="isAudio(file)">
-            <div class="music-album-wrapper">
-              <div class="music-vinyl-disc">
-                <i class="ph ph-music-notes"></i>
+              <div class="file-main">
+                <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
+                <span>{{ formatDate(file.uploaded) }} · 照片</span>
               </div>
-              <div class="music-album-art">
-                <i class="ph ph-vinyl-record"></i>
-                <div class="music-play-overlay">
-                  <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+              <div class="file-footer">
+                <strong>{{ formatSize(file.size) }}</strong>
+                <span class="file-action-hint"><i class="ph ph-eye"></i> 预览</span>
+              </div>
+            </template>
+
+            <!-- 2. VIDEO CINEMA STREAMING CARD -->
+            <template v-else-if="isVideo(file)">
+              <div class="photo-preview video-cinema-preview">
+                <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+                <div class="video-play-badge">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                     <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
                   </svg>
                 </div>
               </div>
-            </div>
-            <div class="file-main">
-              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
-              <span>无损音频 · {{ formatDate(file.uploaded) }}</span>
-            </div>
-            <footer class="file-footer">
-              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
-            </footer>
-            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
-          </template>
+              <div class="file-main">
+                <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
+                <span>{{ formatDate(file.uploaded) }} · 高清视频</span>
+              </div>
+              <footer class="file-footer">
+                <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+              </footer>
+              <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+            </template>
 
-          <!-- 4. GENERAL ARCHIVE & DOCUMENT CARD -->
-          <template v-else>
-            <div v-if="isArchive(file)" class="archive-card-icon">
-              <i class="ph ph-package"></i>
-              <span class="archive-pill">{{ archiveExt(file) }}</span>
-            </div>
-            <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
-            <div class="file-main">
-              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
-              <span>{{ formatDate(file.uploaded) }}</span>
-            </div>
-            <footer class="file-footer">
-              <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
-            </footer>
-            <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
-          </template>
-        </article>
+            <!-- 3. MUSIC VINYL PLATFORM CARD -->
+            <template v-else-if="isAudio(file)">
+              <div class="music-album-wrapper">
+                <div class="music-vinyl-disc">
+                  <i class="ph ph-music-notes"></i>
+                </div>
+                <div class="music-album-art">
+                  <i class="ph ph-vinyl-record"></i>
+                  <div class="music-play-overlay">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                      <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div class="file-main">
+                <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
+                <span>无损音频 · {{ formatDate(file.uploaded) }}</span>
+              </div>
+              <footer class="file-footer">
+                <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+              </footer>
+              <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+            </template>
+
+            <!-- 4. GENERAL ARCHIVE & DOCUMENT CARD -->
+            <template v-else>
+              <div v-if="isArchive(file)" class="archive-card-icon">
+                <i class="ph ph-package"></i>
+                <span class="archive-pill">{{ archiveExt(file) }}</span>
+              </div>
+              <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
+              <div class="file-main">
+                <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
+                <span>{{ formatDate(file.uploaded) }}</span>
+              </div>
+              <footer class="file-footer">
+                <span>大小</span><strong>{{ formatSize(file.size) }}</strong>
+              </footer>
+              <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
+            </template>
+          </article>
+        </section>
       </section>
-    </section>
 
-    <!-- Floating Glassmorphism Upload Action Pill -->
-    <button class="upload-button" type="button" title="上传或新建" @click="openUploadWithAuth">
-      <i class="ph ph-plus-bold"></i>
-      <span>新建或上传</span>
-    </button>
+      <!-- Floating Glassmorphism Upload Action Pill -->
+      <button class="upload-button" type="button" title="上传或新建" @click="openUploadWithAuth">
+        <i class="ph ph-plus-bold"></i>
+        <span>新建或上传</span>
+      </button>
+    </main>
+  </div>
 
-    <!-- Modals & Progress Overlays -->
-    <Transition name="fade">
-      <div v-if="isDragging" class="drag-overlay" @drop.prevent="onDrop">
-        <div class="drag-content">
-          <div class="drag-icon"><i class="ph ph-cloud-arrow-up"></i></div>
-          <h3>释放鼠标立即上传</h3>
-          <p>文件将保存至「{{ currentFolderName }}」</p>
-        </div>
+  <!-- Global Universal Modals (Active in both macOS & Studio Modes) -->
+  <Transition name="fade">
+    <div v-if="isDragging" class="drag-overlay" @drop.prevent="onDrop">
+      <div class="drag-content">
+        <div class="drag-icon"><i class="ph ph-cloud-arrow-up"></i></div>
+        <h3>释放鼠标立即上传</h3>
+        <p>文件将保存至「{{ currentFolderName }}」</p>
       </div>
-    </Transition>
+    </div>
+  </Transition>
 
-    <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
-    <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
-    <ContextMenu :visible="showContextMenu" :x="contextPosition.x" :y="contextPosition.y" :title="contextTitle" :actions="contextActions" @close="closeContext" @select="runContextAction" />
-    <PromptDialog v-model="dialog.visible" :mode="dialog.mode" :title="dialog.title" :message="dialog.message" :initial-value="dialog.initialValue" :confirm-text="dialog.confirmText" :error="dialog.error" @submit="onDialogSubmit" />
-    <LightboxModal :visible="lightbox.visible" :items="imageItems" :index="lightbox.index" @close="lightbox.visible = false" @change="lightbox.index = $event" />
-    <MediaPlayerModal :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
-    <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
-    <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
-    <ShareModal :visible="shareModal.visible" :file="shareModal.file" :raw-url="shareModal.rawUrl" @close="shareModal.visible = false" />
-    <TextEditorModal :visible="textEditor.visible" :file="textEditor.file" :storage-headers="storageHeaders" @close="textEditor.visible = false" @saved="fetchFiles(true)" />
-    <FileInspectorModal :visible="inspector.visible" :file="inspector.file" :storage-id="storageId" @close="inspector.visible = false" @action="handleInspectorAction" />
-    <DocumentViewerModal :visible="docViewer.visible" :file="docViewer.file" :storage-id="storageId" @close="docViewer.visible = false" />
-  </main>
+  <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
+  <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
+  <ContextMenu :visible="showContextMenu" :x="contextPosition.x" :y="contextPosition.y" :title="contextTitle" :actions="contextActions" @close="closeContext" @select="runContextAction" />
+  <PromptDialog v-model="dialog.visible" :mode="dialog.mode" :title="dialog.title" :message="dialog.message" :initial-value="dialog.initialValue" :confirm-text="dialog.confirmText" :error="dialog.error" @submit="onDialogSubmit" />
+  <LightboxModal :visible="lightbox.visible" :items="imageItems" :index="lightbox.index" @close="lightbox.visible = false" @change="lightbox.index = $event" />
+  <MediaPlayerModal :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
+  <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
+  <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
+  <ShareModal :visible="shareModal.visible" :file="shareModal.file" :raw-url="shareModal.rawUrl" @close="shareModal.visible = false" />
+  <TextEditorModal :visible="textEditor.visible" :file="textEditor.file" :storage-headers="storageHeaders" @close="textEditor.visible = false" @saved="fetchFiles(true)" />
+  <FileInspectorModal :visible="inspector.visible" :file="inspector.file" :storage-id="storageId" @close="inspector.visible = false" @action="handleInspectorAction" />
+  <DocumentViewerModal :visible="docViewer.visible" :file="docViewer.file" :storage-id="storageId" @close="docViewer.visible = false" />
 </div>
 </template>
 
@@ -390,6 +441,7 @@ import ShareModal from "./ShareModal.vue";
 import TextEditorModal from "./TextEditorModal.vue";
 import FileInspectorModal from "./FileInspectorModal.vue";
 import DocumentViewerModal from "./DocumentViewerModal.vue";
+import MacDesktop from "./MacDesktop.vue";
 
 function loadAuthCredentials() {
   try {
@@ -401,6 +453,7 @@ function loadAuthCredentials() {
 }
 export default {
   data: () => ({
+    uiMode: localStorage.getItem("ui-mode") || "macos",
     cwd: new URL(window.location).searchParams.get("p") || "",
     storageId: new URL(window.location).searchParams.get("storage") || "default",
     storageOptions: [{ id: "default", label: "主存储" }],
@@ -441,7 +494,17 @@ export default {
     dialogAction: null
   }),
   computed: {
-    menuItems() { return [{ text: "按名称排序", value: "name-asc" }, { text: "按大小从小到大", value: "size-asc" }, { text: "按大小从大到小", value: "size-desc" }, { text: "粘贴项目", value: "paste", disabled: !this.clipboard }, { text: this.theme === "dark" ? "切换为浅色模式" : "切换为暗色模式", value: "toggle-theme" }, { text: "退出登录", value: "logout" }]; },
+    menuItems() {
+      return [
+        { text: this.uiMode === "macos" ? "切换为经典展厅模式" : "切换为 macOS 桌面模式", value: "toggle-ui-mode" },
+        { text: "按名称排序", value: "name-asc" },
+        { text: "按大小从小到大", value: "size-asc" },
+        { text: "按大小从大到小", value: "size-desc" },
+        { text: "粘贴项目", value: "paste", disabled: !this.clipboard },
+        { text: this.theme === "dark" ? "切换为浅色模式" : "切换为暗色模式", value: "toggle-theme" },
+        { text: "退出登录", value: "logout" }
+      ];
+    },
     contextTitle() { if (!this.focusedItem) return this.storageOptions.find((item) => item.id === this.storageId)?.label || "文件库"; return typeof this.focusedItem === "string" ? this.folderName(this.focusedItem) : this.fileName(this.focusedItem.key); },
     contextActions() {
       if (!this.focusedItem) return [
@@ -837,7 +900,7 @@ export default {
         this.loading = false;
       }
     },
-    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); if (value === "toggle-theme") return this.toggleTheme(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
+    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "toggle-ui-mode") return this.toggleUiMode(); if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); if (value === "toggle-theme") return this.toggleTheme(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
     async pasteFile() {
       if (!this.clipboard || !this.clipboard.item) return;
       const { action, item } = this.clipboard;
@@ -1053,6 +1116,33 @@ export default {
         this.docViewer.visible = false;
       }
     },
+    switchUiMode(mode) {
+      this.uiMode = mode;
+      localStorage.setItem("ui-mode", mode);
+    },
+    toggleUiMode() {
+      this.switchUiMode(this.uiMode === "macos" ? "studio" : "macos");
+    },
+    handleMacAction(action) {
+      if (action === "reload") return this.fetchFiles(true);
+      if (action === "logout") return this.logout();
+      if (action === "new-folder") return this.createFolder();
+      if (action === "upload") return this.openUploadWithAuth();
+      if (action === "paste") return this.pasteFile();
+      if (action === "hotkeys") this.showHotkeysModal = true;
+      if (action === "view-grid") this.viewMode = "grid";
+      if (action === "view-list") this.viewMode = "list";
+      if (action === "select-all") {
+        // Spotlight or finder selection
+      }
+      if (action === "toggle-fullscreen") {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    },
   },
   watch: {
     theme: {
@@ -1079,6 +1169,6 @@ export default {
   unmounted() {
     window.removeEventListener("keydown", this.onGlobalKeydown);
   },
-  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal, TextEditorModal, FileInspectorModal, DocumentViewerModal },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal, TextEditorModal, FileInspectorModal, DocumentViewerModal, MacDesktop },
 };
 </script>
