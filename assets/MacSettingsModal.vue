@@ -130,7 +130,7 @@ function handleLogin() {
           </div>
         </div>
 
-        <h4 style="margin-top: 20px;">桌面 4K 动态壁纸</h4>
+        <h4 style="margin-top: 20px;">桌面 4K 官方原版壁纸 (macOS 26 / Sequoia / Sonoma)</h4>
         <div class="wp-grid-settings">
           <div
             v-for="wp in wallpapers"
@@ -139,8 +139,15 @@ function handleLogin() {
             :class="{ active: currentWallpaper === wp.id }"
             @click="emit('change-wallpaper', wp.id)"
           >
-            <div class="wp-box-preview" :style="{ background: wp.gradient }"></div>
-            <span>{{ wp.name }}</span>
+            <div
+              class="wp-box-preview"
+              :style="wp.url ? { backgroundImage: `url(${wp.url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: wp.gradient }"
+            >
+              <div v-if="currentWallpaper === wp.id" class="wp-active-indicator">
+                <i class="ph ph-check-bold"></i>
+              </div>
+            </div>
+            <span :title="wp.name">{{ wp.name }}</span>
           </div>
         </div>
       </section>
@@ -429,8 +436,8 @@ function handleLogin() {
 
 .wp-grid-settings {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .wp-box-card {
@@ -442,17 +449,56 @@ function handleLogin() {
 }
 
 .wp-box-preview {
+  position: relative;
   width: 100%;
-  height: 60px;
+  height: 72px;
   border-radius: 10px;
   border: 2px solid transparent;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.16s ease;
+}
+
+.wp-box-card:hover .wp-box-preview {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
 .wp-box-card.active .wp-box-preview {
   border-color: #0a84ff;
+  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.4), 0 8px 20px rgba(10, 132, 255, 0.35);
 }
 
-.wp-box-card span { font-size: 11px; color: #8e8e93; }
+.wp-active-indicator {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0a84ff;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.wp-box-card span {
+  font-size: 11.5px;
+  color: #8e8e93;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.wp-box-card.active span {
+  color: #0a84ff;
+  font-weight: 600;
+}
 
 /* Auth */
 .auth-logged-card {

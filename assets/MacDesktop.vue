@@ -61,13 +61,68 @@ const emit = defineEmits([
   "update:search",
 ]);
 
-// 4K macOS Dynamic Wallpapers
+// 4K macOS Official & Dynamic Wallpapers
 const wallpapers = [
-  { id: "sequoia", name: "Sequoia 杉树晨光", gradient: "radial-gradient(circle at 50% 30%, #1e3c72, #2a5298, #0f2027)" },
-  { id: "sonoma", name: "Sonoma 极光流彩", gradient: "linear-gradient(135deg, #13072e 0%, #3f0d75 50%, #09203f 100%)" },
-  { id: "bigsur", name: "Big Sur 晨曦群山", gradient: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)" },
-  { id: "neon", name: "Cyberpunk 霓虹深空", gradient: "linear-gradient(135deg, #000428, #004e92)" },
-  { id: "amber", name: "Sunset 晚霞金辉", gradient: "linear-gradient(135deg, #232526, #414345)" },
+  {
+    id: "sequoia",
+    name: "Sequoia 杉树晨光 (macOS 15)",
+    url: "https://images.unsplash.com/photo-1511497584788-87676104235f?q=85&w=2800&auto=format&fit=crop",
+    gradient: "radial-gradient(circle at 50% 30%, #1e3c72, #2a5298, #0f2027)",
+  },
+  {
+    id: "macos26",
+    name: "macOS 26 流体玻璃 (Liquid Tahoe)",
+    url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #1f1c2c 0%, #928dab 100%)",
+  },
+  {
+    id: "sonoma",
+    name: "Sonoma 极光天际 (macOS 14)",
+    url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #13072e 0%, #3f0d75 50%, #09203f 100%)",
+  },
+  {
+    id: "ventura",
+    name: "Ventura 炽烈流光 (macOS 13)",
+    url: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #ff7e5f, #feb47b)",
+  },
+  {
+    id: "monterey",
+    name: "Monterey 蒙特利深海 (macOS 12)",
+    url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #001f3f, #0074D9)",
+  },
+  {
+    id: "bigsur",
+    name: "Big Sur 晨曦群山 (macOS 11)",
+    url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)",
+  },
+  {
+    id: "aurora",
+    name: "Aurora 璀璨极光 4K",
+    url: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #000428, #004e92)",
+  },
+  {
+    id: "mojave",
+    name: "Mojave 暗夜星河 4K",
+    url: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+  },
+  {
+    id: "neon",
+    name: "Cyberpunk 赛博霓虹 4K",
+    url: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?q=85&w=2800&auto=format&fit=crop",
+    gradient: "linear-gradient(135deg, #000428, #004e92)",
+  },
+  {
+    id: "obsidian",
+    name: "Obsidian 黑曜石极简",
+    url: "",
+    gradient: "linear-gradient(135deg, #090a0f 0%, #151821 50%, #0c0d12 100%)",
+  },
 ];
 const currentWallpaper = ref(localStorage.getItem("mac-wallpaper") || "sequoia");
 const customWallpaper = ref(localStorage.getItem("mac-custom-wallpaper") || "");
@@ -83,6 +138,15 @@ const wallpaperStyle = computed(() => {
     };
   }
   const wp = wallpapers.find((w) => w.id === currentWallpaper.value) || wallpapers[0];
+  if (wp.url) {
+    return {
+      backgroundImage: `url("${wp.url}")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center center",
+      backgroundRepeat: "no-repeat",
+      backgroundColor: "#111216",
+    };
+  }
   return { background: wp.gradient };
 });
 
