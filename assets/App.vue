@@ -100,6 +100,13 @@
           <span>文档资料</span>
           <span class="count-pill">{{ categoryCounts.document }}</span>
         </button>
+
+        <div class="nav-section-title" style="margin-top:14px;">应用与工具</div>
+        <button class="nav-item nav-software" :class="{ active: showStudioSoftware }" @click="showStudioSoftware = true">
+          <i class="ph ph-app-store-logo"></i>
+          <span>软件工坊</span>
+          <span class="count-pill highlight-teal">{{ categoryCounts.software }}</span>
+        </button>
       </nav>
 
       <!-- Sidebar Footer User Status & Actions -->
@@ -428,6 +435,25 @@
   <FileInspectorModal :visible="inspector.visible" :file="inspector.file" :storage-id="storageId" @close="inspector.visible = false" @action="handleInspectorAction" />
   <DocumentViewerModal :visible="docViewer.visible" :file="docViewer.file" :storage-id="storageId" @close="docViewer.visible = false" />
   <PromptDialog v-model="dialog.visible" :mode="dialog.mode" :title="dialog.title" :message="dialog.message" :initial-value="dialog.initialValue" :confirm-text="dialog.confirmText" :error="dialog.error" @submit="onDialogSubmit" />
+
+  <!-- 🏛️ Studio Mode: Software App Store Modal Overlay -->
+  <MacAppStoreModal
+    v-if="uiMode !== 'macos'"
+    ref="studioAppStoreRef"
+    :visible="showStudioSoftware"
+    :files="files"
+    :all-files="allBucketFiles"
+    :metadata="appsMetadata"
+    :storage-id="storageId"
+    :z-index="200"
+    :is-active="true"
+    :auth-credentials="authCredentials"
+    @close="showStudioSoftware = false"
+    @minimize="showStudioSoftware = false"
+    @save-metadata="saveAppsMetadata"
+    @upload="openUploadWithAuth"
+    @refresh="fetchFiles(true)"
+  />
 </div>
 </template>
 
@@ -449,6 +475,7 @@ import TextEditorModal from "./TextEditorModal.vue";
 import FileInspectorModal from "./FileInspectorModal.vue";
 import DocumentViewerModal from "./DocumentViewerModal.vue";
 import MacDesktop from "./MacDesktop.vue";
+import MacAppStoreModal from "./MacAppStoreModal.vue";
 
 function loadAuthCredentials() {
   try {
@@ -500,7 +527,8 @@ export default {
     authCredentials: loadAuthCredentials(),
     pendingUploadTargetFolder: null,
     dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" },
-    dialogAction: null
+    dialogAction: null,
+    showStudioSoftware: false
   }),
   computed: {
     menuItems() {
@@ -844,6 +872,13 @@ export default {
         this.archiveModal.visible = true;
         return;
       }
+      if (this.isSoftware(file)) {
+        this.showStudioSoftware = true;
+        this.$nextTick(() => {
+          this.$refs.studioAppStoreRef?.openDetailByKey(file.key);
+        });
+        return;
+      }
       if (this.isDocViewer(file)) {
         this.docViewer = { visible: true, file };
         return;
@@ -900,12 +935,24 @@ export default {
       if (action === "app-edit-meta") {
         if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
           this.$refs.macDesktopRef.openAppStoreEditor(item);
+        } else {
+          this.showStudioSoftware = true;
+          this.$nextTick(() => {
+            const key = typeof item === "string" ? item : item.key;
+            this.$refs.studioAppStoreRef?.openEditorByKey(key);
+          });
         }
         return;
       }
       if (action === "app-get-links") {
         if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
           this.$refs.macDesktopRef.openAppStoreLinks(item);
+        } else {
+          this.showStudioSoftware = true;
+          this.$nextTick(() => {
+            const key = typeof item === "string" ? item : item.key;
+            this.$refs.studioAppStoreRef?.openLinksByKey(key);
+          });
         }
         return;
       }

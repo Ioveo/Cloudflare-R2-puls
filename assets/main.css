@@ -262,6 +262,9 @@ a { color: inherit; text-decoration: none; }
 .count-pill.highlight-purple { background: rgba(191, 90, 242, 0.18); color: #bf5af2; }
 .count-pill.highlight-green { background: rgba(48, 209, 88, 0.18); color: #30d158; }
 .count-pill.highlight-amber { background: rgba(255, 149, 0, 0.18); color: #ff9500; }
+.count-pill.highlight-teal { background: rgba(100, 210, 255, 0.18); color: #64d2ff; }
+
+.nav-item.nav-software i { color: #5ac8fa; }
 
 .nav-divider {
   height: 1px;
