@@ -522,8 +522,10 @@ export default {
         { id: "delete", label: "删除文件夹", icon: "ph-trash", danger: true }
       ];
       const isEdit = this.focusedItem && this.isEditable(this.focusedItem);
+      const isImg = this.focusedItem && this.isImage(this.focusedItem);
       return [
         { id: "preview", label: "查看/播放 (Space)", icon: "ph-eye" },
+        ...(isImg ? [{ id: "set-wallpaper", label: "设置为桌面壁纸", icon: "ph-image" }] : []),
         { id: "inspect", label: "查看属性 (I)", icon: "ph-info" },
         ...(isEdit ? [{ id: "edit", label: "在线编辑", icon: "ph-code" }] : []),
         { id: "download", label: "下载原文件", icon: "ph-download-simple" },
@@ -836,6 +838,13 @@ export default {
       if (action === "create-folder") return this.createFolder();
       if (action === "paste") return this.pasteFile();
       if (!item) return;
+      if (action === "set-wallpaper") {
+        const targetFile = typeof item === "string" ? { key: item } : item;
+        const rawUrl = this.rawPath(targetFile.key);
+        localStorage.setItem("mac-custom-wallpaper", rawUrl);
+        window.dispatchEvent(new CustomEvent("wallpaper-changed", { detail: rawUrl }));
+        return;
+      }
       if (action === "inspect") {
         this.inspector = { visible: true, file: typeof item === "string" ? { key: item } : item };
         return;

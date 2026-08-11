@@ -61,16 +61,44 @@ const wallpapers = [
   { id: "amber", name: "Sunset 晚霞金辉", gradient: "linear-gradient(135deg, #232526, #414345)" },
 ];
 const currentWallpaper = ref(localStorage.getItem("mac-wallpaper") || "sequoia");
+const customWallpaper = ref(localStorage.getItem("mac-custom-wallpaper") || "");
 
 const wallpaperStyle = computed(() => {
+  if (customWallpaper.value) {
+    return {
+      backgroundImage: `url(${customWallpaper.value})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    };
+  }
   const wp = wallpapers.find((w) => w.id === currentWallpaper.value) || wallpapers[0];
   return { background: wp.gradient };
 });
 
 function changeWallpaper(id) {
+  customWallpaper.value = "";
+  localStorage.removeItem("mac-custom-wallpaper");
   currentWallpaper.value = id;
   localStorage.setItem("mac-wallpaper", id);
 }
+
+function resetWallpaper() {
+  customWallpaper.value = "";
+  localStorage.removeItem("mac-custom-wallpaper");
+}
+
+function setAsWallpaper(fileOrUrl) {
+  const url = typeof fileOrUrl === "string" ? fileOrUrl : imageUrl(fileOrUrl);
+  customWallpaper.value = url;
+  localStorage.setItem("mac-custom-wallpaper", url);
+}
+
+onMounted(() => {
+  window.addEventListener("wallpaper-changed", (e) => {
+    if (e.detail) customWallpaper.value = e.detail;
+  });
+});
 
 // Window Management States
 const windows = ref({
@@ -161,14 +189,22 @@ function onDesktopContextMenu(e) {
   showDesktopContext.value = true;
 }
 
-const desktopContextActions = [
-  { id: "new-folder", label: "新建文件夹", icon: "ph-folder-plus" },
-  { id: "upload", label: "上传文件...", icon: "ph-upload-simple" },
-  { id: "next-wallpaper", label: "更换桌面壁纸", icon: "ph-paint-brush" },
-  { id: "refresh", label: "刷新桌面", icon: "ph-arrows-clockwise" },
-  { id: "settings", label: "系统设置...", icon: "ph-gear-six" },
-  { id: "switch-studio", label: "切换经典展厅模式", icon: "ph-layout" },
-];
+const desktopContextActions = computed(() => {
+  const list = [
+    { id: "new-folder", label: "新建文件夹", icon: "ph-folder-plus" },
+    { id: "upload", label: "上传文件...", icon: "ph-upload-simple" },
+  ];
+  if (customWallpaper.value) {
+    list.push({ id: "reset-wallpaper", label: "还原官方动态壁纸", icon: "ph-arrow-counter-clockwise" });
+  }
+  list.push(
+    { id: "next-wallpaper", label: "切换官方动态壁纸", icon: "ph-paint-brush" },
+    { id: "refresh", label: "刷新桌面", icon: "ph-arrows-clockwise" },
+    { id: "settings", label: "系统偏好设置...", icon: "ph-gear-six" },
+    { id: "switch-studio", label: "切换经典展厅模式", icon: "ph-layout" }
+  );
+  return list;
+});
 
 function handleDesktopContextSelect(id) {
   showDesktopContext.value = false;
@@ -177,6 +213,7 @@ function handleDesktopContextSelect(id) {
   if (id === "refresh") emit("refresh");
   if (id === "settings") bringToFront("settings");
   if (id === "switch-studio") emit("switch-mode", "studio");
+  if (id === "reset-wallpaper") resetWallpaper();
   if (id === "next-wallpaper") {
     const idx = wallpapers.findIndex((w) => w.id === currentWallpaper.value);
     const nextWp = wallpapers[(idx + 1) % wallpapers.length];
@@ -644,10 +681,12 @@ function toggleFullscreen() {
       :total-files="files.length + folders.length"
       :total-bytes="totalStorageBytes"
       :current-wallpaper="currentWallpaper"
+      :custom-wallpaper="customWallpaper"
       :wallpapers="wallpapers"
       @close="showControlCenter = false"
       @toggle-theme="emit('toggle-theme')"
       @change-wallpaper="changeWallpaper"
+      @reset-wallpaper="resetWallpaper"
       @toggle-fullscreen="toggleFullscreen"
       @open-settings="bringToFront('settings')"
       @reload="emit('refresh')"

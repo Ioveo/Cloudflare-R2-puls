@@ -8,6 +8,7 @@ const props = defineProps({
   totalFiles: Number,
   totalBytes: Number,
   currentWallpaper: String,
+  customWallpaper: String,
   wallpapers: Array,
 });
 
@@ -15,6 +16,7 @@ const emit = defineEmits([
   "close",
   "toggle-theme",
   "change-wallpaper",
+  "reset-wallpaper",
   "toggle-fullscreen",
   "open-settings",
   "reload",
@@ -93,13 +95,18 @@ function formatSize(bytes) {
 
         <!-- 4. Dynamic macOS Wallpapers Grid -->
         <div class="cc-wallpapers-section">
-          <h4><i class="ph ph-paint-brush-bold"></i> macOS 桌面壁纸</h4>
+          <div class="cc-wp-header">
+            <h4><i class="ph ph-paint-brush-bold"></i> macOS 桌面壁纸</h4>
+            <button v-if="customWallpaper" class="reset-wp-link" type="button" @click="emit('reset-wallpaper')">
+              还原默认壁纸
+            </button>
+          </div>
           <div class="wallpaper-cards-grid">
             <div
               v-for="wp in wallpapers"
               :key="wp.id"
               class="wp-thumb-card"
-              :class="{ active: currentWallpaper === wp.id }"
+              :class="{ active: !customWallpaper && currentWallpaper === wp.id }"
               @click="emit('change-wallpaper', wp.id)"
             >
               <div class="wp-preview" :style="{ background: wp.gradient }"></div>
@@ -250,14 +257,34 @@ function formatSize(bytes) {
 }
 
 /* Wallpapers Section */
-.cc-wallpapers-section h4 {
+.cc-wp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 0 0 10px;
+}
+
+.cc-wp-header h4 {
+  margin: 0;
   font-size: 12px;
   font-weight: 700;
   color: #8e8e93;
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.reset-wp-link {
+  font-size: 11px;
+  color: #0a84ff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.reset-wp-link:hover {
+  text-decoration: underline;
 }
 
 .wallpaper-cards-grid {
