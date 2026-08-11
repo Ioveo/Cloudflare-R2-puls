@@ -318,6 +318,9 @@ const filteredApps = computed(() => {
     );
   }
 
+  return list;
+});
+
 // Spotlight Hero App (Top 1 app for Discover view)
 const heroApp = computed(() => {
   if (softwareItems.value.length > 0) {
