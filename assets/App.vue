@@ -421,6 +421,7 @@
   <TextEditorModal :visible="textEditor.visible" :file="textEditor.file" :storage-headers="storageHeaders" @close="textEditor.visible = false" @saved="fetchFiles(true)" />
   <FileInspectorModal :visible="inspector.visible" :file="inspector.file" :storage-id="storageId" @close="inspector.visible = false" @action="handleInspectorAction" />
   <DocumentViewerModal :visible="docViewer.visible" :file="docViewer.file" :storage-id="storageId" @close="docViewer.visible = false" />
+  <PromptDialog v-model="dialog.visible" :mode="dialog.mode" :title="dialog.title" :message="dialog.message" :initial-value="dialog.initialValue" :confirm-text="dialog.confirmText" :error="dialog.error" @submit="onDialogSubmit" />
 </div>
 </template>
 
