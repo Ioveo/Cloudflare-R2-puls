@@ -19,6 +19,7 @@ const props = defineProps({
   initialY: { type: Number, default: 60 },
   zIndex: { type: Number, default: 10 },
   isActive: { type: Boolean, default: false },
+  showTitle: { type: Boolean, default: true },
   closable: { type: Boolean, default: true },
   minimizable: { type: Boolean, default: true },
   maximizable: { type: Boolean, default: true },
@@ -263,7 +264,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Window Title & Icon -->
-      <div class="window-title-badge">
+      <div v-if="showTitle" class="window-title-badge">
         <i v-if="icon" class="ph" :class="icon"></i>
         <span>{{ title }}</span>
       </div>

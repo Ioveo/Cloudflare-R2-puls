@@ -18,25 +18,38 @@ const props = defineProps({
 const emit = defineEmits(["close", "minimize", "focus", "save-metadata", "upload", "download"]);
 
 // State
-const currentTab = ref("discover"); // 'discover' | 'design' | 'productivity' | 'developer' | 'utilities' | 'entertainment' | 'network' | 'mobile' | 'all'
-const selectedPlatform = ref("all"); // 'all' | 'mac' | 'win' | 'mobile' | 'linux'
+const currentTab = ref("discover");
+const selectedPlatform = ref("all"); // 'all' | 'mac' | 'win' | 'mobile'
 const searchQuery = ref("");
-const selectedApp = ref(null); // Active app for Detail modal
-const editingApp = ref(null); // Active app for Edit modal
+const selectedApp = ref(null);
+const editingApp = ref(null);
 const copySuccessTip = ref("");
 
-// Category definitions
+// Category definitions with rich SF-inspired visual tokens
 const categories = [
-  { id: "discover", name: "探索发现", icon: "ph-sparkle-fill", color: "#3b82f6" },
-  { id: "design", name: "设计创意", icon: "ph-paint-brush-fill", color: "#ec4899" },
-  { id: "productivity", name: "效率办公", icon: "ph-lightning-fill", color: "#f59e0b" },
-  { id: "developer", name: "开发工具", icon: "ph-code-fill", color: "#10b981" },
-  { id: "utilities", name: "系统工具", icon: "ph-wrench-fill", color: "#6366f1" },
-  { id: "entertainment", name: "影音娱乐", icon: "ph-film-strip-fill", color: "#8b5cf6" },
-  { id: "network", name: "网络通讯", icon: "ph-globe-simple-fill", color: "#06b6d4" },
-  { id: "mobile", name: "移动专属", icon: "ph-device-mobile-fill", color: "#14b8a6" },
-  { id: "all", name: "全部应用", icon: "ph-squares-four-fill", color: "#64748b" },
+  { id: "discover", name: "探索发现", subtitle: "Discover", icon: "ph-sparkle-fill", color: "#007aff" },
+  { id: "design", name: "设计创意", subtitle: "Create", icon: "ph-paint-brush-fill", color: "#ec4899" },
+  { id: "productivity", name: "效率办公", subtitle: "Work", icon: "ph-lightning-fill", color: "#f59e0b" },
+  { id: "developer", name: "开发工具", subtitle: "Develop", icon: "ph-code-fill", color: "#10b981" },
+  { id: "utilities", name: "系统工具", subtitle: "Utilities", icon: "ph-wrench-fill", color: "#6366f1" },
+  { id: "entertainment", name: "影音娱乐", subtitle: "Play", icon: "ph-film-strip-fill", color: "#8b5cf6" },
+  { id: "network", name: "网络通讯", subtitle: "Connect", icon: "ph-globe-simple-fill", color: "#06b6d4" },
+  { id: "mobile", name: "移动专属", subtitle: "Mobile", icon: "ph-device-mobile-fill", color: "#14b8a6" },
+  { id: "all", name: "全部应用", subtitle: "All Apps", icon: "ph-squares-four-fill", color: "#64748b" },
 ];
+
+// Recommended suggestions for empty category state
+const categorySuggestions = {
+  discover: ["Final Cut Pro", "Photoshop 2024", "VS Code", "CleanMyMac X", "Obsidian"],
+  design: ["Adobe Photoshop", "Adobe Illustrator", "After Effects", "Blender 3D", "Figma", "Sketch"],
+  productivity: ["Notion", "Obsidian", "Typora", "Raycast", "WPS Office", "1Password"],
+  developer: ["Visual Studio Code", "IntelliJ IDEA", "PyCharm", "TablePlus", "Docker", "Navicat"],
+  utilities: ["CleanMyMac X", "Downie 4", "Permute 3", "BetterDisplay", "Alfred 5"],
+  entertainment: ["Final Cut Pro", "Logic Pro", "IINA 播放器", "Premiere Pro", "VLC"],
+  network: ["Clash Verge", "Surge for Mac", "Google Chrome", "Telegram", "Arc Browser"],
+  mobile: ["Android APK", "iOS IPA", "移动安装包"],
+  all: ["Final Cut Pro", "Photoshop", "VS Code", "CleanMyMac X"],
+};
 
 // Helper: Check if a file is a software package
 function isSoftware(file) {
@@ -191,7 +204,6 @@ const filteredApps = computed(() => {
     if (selectedPlatform.value === "mac") list = list.filter((app) => app.platform.toLowerCase().includes("mac"));
     else if (selectedPlatform.value === "win") list = list.filter((app) => app.platform.toLowerCase().includes("win"));
     else if (selectedPlatform.value === "mobile") list = list.filter((app) => app.platform.toLowerCase().includes("android") || app.platform.toLowerCase().includes("ios"));
-    else if (selectedPlatform.value === "linux") list = list.filter((app) => app.platform.toLowerCase().includes("linux"));
   }
 
   // Search
@@ -285,7 +297,6 @@ function saveAppEditor() {
   emit("save-metadata", updated);
   editingApp.value = null;
 
-  // Refresh selected app view if open
   if (selectedApp.value && selectedApp.value.key === editingApp.value?.key) {
     selectedApp.value = {
       ...selectedApp.value,
@@ -318,49 +329,63 @@ defineExpose({
 <template>
   <MacWindow
     v-if="visible"
-    title="App Store · 软件工坊"
+    title="App Store"
     icon="ph-app-store-logo-fill"
     :visible="visible"
     :minimized="minimized"
+    :show-title="false"
     :width="980"
-    :height="640"
+    :height="650"
     :z-index="zIndex"
     :is-active="isActive"
     @focus="emit('focus')"
     @close="emit('close')"
     @minimize="emit('minimize')"
   >
-    <!-- macOS App Store Toolbar -->
+    <!-- macOS App Store Unified Titlebar Toolbar -->
     <template #titlebar-right>
       <div class="store-titlebar-tools">
         <!-- Platform Segmented Picker -->
         <div class="platform-segment">
-          <button :class="{ active: selectedPlatform === 'all' }" type="button" @click="selectedPlatform = 'all'">全部</button>
+          <button :class="{ active: selectedPlatform === 'all' }" type="button" @click="selectedPlatform = 'all'">全部应用</button>
           <button :class="{ active: selectedPlatform === 'mac' }" type="button" @click="selectedPlatform = 'mac'">🍎 macOS</button>
-          <button :class="{ active: selectedPlatform === 'win' }" type="button" @click="selectedPlatform = 'win'">🪟 Win</button>
+          <button :class="{ active: selectedPlatform === 'win' }" type="button" @click="selectedPlatform = 'win'">🪟 Windows</button>
           <button :class="{ active: selectedPlatform === 'mobile' }" type="button" @click="selectedPlatform = 'mobile'">📱 移动端</button>
         </div>
 
-        <!-- Quick Search -->
+        <!-- macOS Pill Search Bar -->
         <div class="store-search-box">
           <i class="ph ph-magnifying-glass"></i>
           <input v-model="searchQuery" type="text" placeholder="搜索软件、版本或关键词..." />
           <button v-if="searchQuery" class="clear-search" type="button" @click="searchQuery = ''">×</button>
         </div>
 
-        <!-- Upload Package Button -->
+        <!-- Apple Blue Publish Button -->
         <button class="store-upload-btn" type="button" title="上传新软件安装包" @click="emit('upload', '软件/')">
-          <i class="ph ph-plus-circle-bold"></i>
+          <i class="ph ph-plus-circle-fill"></i>
           <span>发布软件</span>
         </button>
       </div>
     </template>
 
-    <!-- App Store 2-Column Layout -->
+    <!-- App Store 2-Column High-End Layout -->
     <div class="appstore-layout">
       <!-- Left Glass Sidebar -->
       <aside class="store-sidebar">
-        <div class="sidebar-sec-title">分类浏览</div>
+        <!-- Brand Header inside Sidebar -->
+        <div class="sidebar-brand-header">
+          <div class="brand-icon-box">
+            <MacIcons name="appstore" :size="30" />
+          </div>
+          <div class="brand-text-col">
+            <span class="brand-title">App Store</span>
+            <span class="brand-sub">软件工坊 · R2 加速</span>
+          </div>
+        </div>
+
+        <div class="sidebar-sec-title">探索与分类</div>
+
+        <!-- Category Nav -->
         <nav class="store-nav">
           <button
             v-for="cat in categories"
@@ -373,7 +398,9 @@ defineExpose({
             <div class="nav-cat-icon" :style="{ backgroundColor: cat.color }">
               <i class="ph" :class="cat.icon"></i>
             </div>
-            <span class="nav-cat-name">{{ cat.name }}</span>
+            <div class="nav-text-col">
+              <span class="nav-cat-name">{{ cat.name }}</span>
+            </div>
             <span v-if="cat.id !== 'discover'" class="nav-cat-badge">
               {{ cat.id === 'all' ? softwareItems.length : softwareItems.filter(a => a.category === cat.id).length }}
             </span>
@@ -383,7 +410,7 @@ defineExpose({
         <!-- Storage Status Pill -->
         <div class="store-sidebar-footer">
           <div class="footer-chip">
-            <i class="ph ph-shield-check-fill"></i>
+            <span class="live-dot"></span>
             <span>Cloudflare R2 直连加速</span>
           </div>
         </div>
@@ -391,7 +418,7 @@ defineExpose({
 
       <!-- Right Main Content Area -->
       <main class="store-content-pane">
-        <!-- 🌟 1. Discover Hero Banner (When currentTab === 'discover') -->
+        <!-- 🌟 1. Discover Hero Banner (When currentTab === 'discover' & no search) -->
         <section v-if="currentTab === 'discover' && !searchQuery" class="store-hero-banner">
           <div class="hero-backdrop-glow"></div>
           <div class="hero-content">
@@ -399,9 +426,9 @@ defineExpose({
             <h2 class="hero-title">{{ heroApp.title }}</h2>
             <p class="hero-summary">{{ heroApp.summary }}</p>
             <div class="hero-meta-row">
-              <span class="meta-pill platform-pill"><i class="ph ph-laptop"></i> {{ heroApp.platform }}</span>
-              <span class="meta-pill version-pill"><i class="ph ph-tag"></i> {{ heroApp.version }}</span>
-              <span v-if="heroApp.size" class="meta-pill size-pill"><i class="ph ph-hard-drive"></i> {{ formatSize(heroApp.size) }}</span>
+              <span class="meta-pill platform-pill"><i class="ph ph-laptop-fill"></i> {{ heroApp.platform }}</span>
+              <span class="meta-pill version-pill"><i class="ph ph-tag-fill"></i> {{ heroApp.version }}</span>
+              <span v-if="heroApp.size" class="meta-pill size-pill"><i class="ph ph-hard-drive-fill"></i> {{ formatSize(heroApp.size) }}</span>
             </div>
             <div class="hero-actions">
               <a v-if="heroApp.file" :href="rawUrl(heroApp.key)" :download="heroApp.title" class="hero-get-btn">
@@ -412,33 +439,65 @@ defineExpose({
                 <i class="ph ph-info-bold"></i>
                 <span>功能与安装指南</span>
               </button>
+              <button v-if="!heroApp.file" class="hero-get-btn" type="button" @click="emit('upload', '软件/')">
+                <i class="ph ph-upload-simple-bold"></i>
+                <span>发布第一款软件</span>
+              </button>
             </div>
           </div>
           <div class="hero-badge-icon">
-            <MacIcons name="appstore" :size="96" />
+            <MacIcons name="appstore" :size="108" />
           </div>
         </section>
 
-        <!-- 📦 2. Section Header & App Grid -->
+        <!-- 📦 2. Section Header -->
         <div class="store-grid-header">
           <div class="grid-title-row">
-            <h3>{{ categories.find(c => c.id === currentTab)?.name || '软件应用库' }}</h3>
+            <div class="grid-title-left">
+              <h3>{{ categories.find(c => c.id === currentTab)?.name || '软件应用库' }}</h3>
+              <span class="grid-subtitle">{{ categories.find(c => c.id === currentTab)?.subtitle || 'Applications' }}</span>
+            </div>
             <span class="grid-count">共 {{ filteredApps.length }} 款软件</span>
           </div>
         </div>
 
-        <!-- Empty State -->
-        <div v-if="filteredApps.length === 0" class="store-empty-state">
-          <div class="empty-icon"><i class="ph ph-package-fill"></i></div>
-          <h4>暂无该分类下的软件包</h4>
-          <p>点击上方「发布软件」上传 `.dmg`、`.exe`、`.apk` 等软件安装包，即可自动智能生成专属展示卡片！</p>
-          <button class="empty-upload-btn" type="button" @click="emit('upload', '软件/')">
-            <i class="ph ph-upload-simple-bold"></i>
-            <span>立即上传软件</span>
-          </button>
+        <!-- 🎨 3. Refined Apple-Style Empty State Showcase -->
+        <div v-if="filteredApps.length === 0" class="store-empty-showcase">
+          <div class="empty-glow-orbit"></div>
+          <div class="empty-app-icon-wrap">
+            <div class="empty-icon-bubble" :style="{ backgroundColor: categories.find(c => c.id === currentTab)?.color || '#007aff' }">
+              <i class="ph" :class="categories.find(c => c.id === currentTab)?.icon || 'ph-package-fill'"></i>
+            </div>
+          </div>
+          <h4 class="empty-title">暂无「{{ categories.find(c => c.id === currentTab)?.name }}」软件包</h4>
+          <p class="empty-desc">
+            点击上方「<strong>发布软件</strong>」上传 <code>.dmg</code>、<code>.exe</code>、<code>.apk</code>、<code>.zip</code> 安装包，系统将自动匹配官方名称与安装说明。
+          </p>
+
+          <div class="empty-action-group">
+            <button class="empty-primary-btn" type="button" @click="emit('upload', '软件/')">
+              <i class="ph ph-upload-simple-bold"></i>
+              <span>立即上传发布</span>
+            </button>
+          </div>
+
+          <!-- Quick Inspiration Tag Pills -->
+          <div class="empty-suggestions">
+            <span class="sugg-label">💡 常见推荐软件：</span>
+            <div class="sugg-tags">
+              <span
+                v-for="sugg in (categorySuggestions[currentTab] || categorySuggestions.all)"
+                :key="sugg"
+                class="sugg-tag"
+                @click="emit('upload', '软件/')"
+              >
+                + {{ sugg }}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <!-- Software Cards Grid -->
+        <!-- 🚀 4. Rich App Cards Grid -->
         <div v-else class="store-apps-grid">
           <article
             v-for="app in filteredApps"
@@ -447,21 +506,22 @@ defineExpose({
             @click="openDetail(app)"
           >
             <div class="app-card-top">
-              <!-- App Vector / System Icon -->
+              <!-- App Vector / System Icon (52x52 Squircle) -->
               <div class="app-icon-frame">
-                <MacIcons name="apps" :size="48" />
+                <MacIcons name="apps" :size="52" />
               </div>
               <div class="app-info-block">
                 <h4 class="app-title" :title="app.title">{{ app.title }}</h4>
                 <div class="app-sub-row">
                   <span class="app-ver">{{ app.version }}</span>
+                  <span class="app-dot">·</span>
                   <span class="app-size">{{ formatSize(app.size) }}</span>
                 </div>
                 <div class="app-platform-tag" :title="app.platform">
-                  <i v-if="app.platform.includes('macOS')" class="ph ph-apple-logo"></i>
-                  <i v-else-if="app.platform.includes('Windows')" class="ph ph-windows-logo"></i>
-                  <i v-else-if="app.platform.includes('Android')" class="ph ph-android-logo"></i>
-                  <i v-else class="ph ph-device-mobile"></i>
+                  <i v-if="app.platform.includes('macOS')" class="ph ph-apple-logo-fill"></i>
+                  <i v-else-if="app.platform.includes('Windows')" class="ph ph-windows-logo-fill"></i>
+                  <i v-else-if="app.platform.includes('Android')" class="ph ph-android-logo-fill"></i>
+                  <i v-else class="ph ph-device-mobile-fill"></i>
                   <span>{{ app.platform }}</span>
                 </div>
               </div>
@@ -473,7 +533,7 @@ defineExpose({
             <!-- Card Bottom Buttons -->
             <div class="app-card-footer" @click.stop>
               <a :href="rawUrl(app.key)" :download="app.title" class="app-download-btn" title="直连极速下载">
-                <i class="ph ph-download-simple-bold"></i>
+                <i class="ph ph-arrow-circle-down-bold"></i>
                 <span>获取</span>
               </a>
               <button class="app-meta-edit-btn" type="button" title="编辑软件简介与安装说明" @click="openEditor(app)">
@@ -485,7 +545,7 @@ defineExpose({
       </main>
     </div>
 
-    <!-- 📖 3. macOS App Detail Full Modal (沉浸式详情与安装指南浮层) -->
+    <!-- 📖 3. macOS App Detail Full Modal -->
     <Transition name="fade-slide">
       <div v-if="selectedApp" class="app-detail-overlay" @click.self="selectedApp = null">
         <div class="app-detail-card">
@@ -498,9 +558,9 @@ defineExpose({
                 <h2>{{ selectedApp.title }}</h2>
                 <p class="detail-summary-lead">{{ selectedApp.summary }}</p>
                 <div class="detail-pills">
-                  <span class="dpill dpill-platform">{{ selectedApp.platform }}</span>
-                  <span class="dpill dpill-ver">{{ selectedApp.version }}</span>
-                  <span class="dpill dpill-size">{{ formatSize(selectedApp.size) }}</span>
+                  <span class="dpill dpill-platform"><i class="ph ph-laptop"></i> {{ selectedApp.platform }}</span>
+                  <span class="dpill dpill-ver"><i class="ph ph-tag"></i> {{ selectedApp.version }}</span>
+                  <span class="dpill dpill-size"><i class="ph ph-hard-drive"></i> {{ formatSize(selectedApp.size) }}</span>
                   <span class="dpill dpill-date">更新于 {{ formatDate(selectedApp.uploaded) }}</span>
                 </div>
               </div>
@@ -561,7 +621,7 @@ defineExpose({
       </div>
     </Transition>
 
-    <!-- ✏️ 4. macOS App Metadata Editor Modal (软件信息编辑器) -->
+    <!-- ✏️ 4. macOS App Metadata Editor Modal -->
     <Transition name="fade-slide">
       <div v-if="editingApp" class="app-editor-overlay" @click.self="editingApp = null">
         <div class="app-editor-card">
@@ -643,42 +703,49 @@ defineExpose({
 .store-titlebar-tools {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  margin-left: auto;
 }
 
 .platform-segment {
   display: flex;
-  padding: 2px;
-  border-radius: 8px;
+  padding: 3px;
+  border-radius: 9px;
   background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 :root.dark .platform-segment,
 @media (prefers-color-scheme: dark) {
-  .platform-segment { background: rgba(255, 255, 255, 0.1); }
+  .platform-segment {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
 }
 
 .platform-segment button {
-  padding: 3px 9px;
+  padding: 3px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  color: inherit;
+  color: #8e8e93;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
 }
 
 .platform-segment button.active {
   background: #ffffff;
   color: #007aff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 :root.dark .platform-segment button.active,
 @media (prefers-color-scheme: dark) {
   .platform-segment button.active {
-    background: #007aff;
+    background: rgba(255, 255, 255, 0.22);
     color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -690,41 +757,44 @@ defineExpose({
 
 .store-search-box i {
   position: absolute;
-  left: 8px;
+  left: 9px;
   color: #8e8e93;
   font-size: 13px;
   pointer-events: none;
 }
 
 .store-search-box input {
-  width: 170px;
-  height: 26px;
-  padding: 0 24px 0 26px;
+  width: 165px;
+  height: 28px;
+  padding: 0 24px 0 28px;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   outline: none;
-  transition: all 0.2s;
+  transition: all 0.22s ease;
 }
 :root.dark .store-search-box input,
 @media (prefers-color-scheme: dark) {
   .store-search-box input {
     border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.35);
     color: #ffffff;
   }
 }
 .store-search-box input:focus {
-  width: 210px;
+  width: 205px;
   border-color: #007aff;
   background: #ffffff;
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.25);
+}
+:root.dark .store-search-box input:focus {
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .clear-search {
   position: absolute;
-  right: 6px;
+  right: 7px;
   border: none;
   background: transparent;
   color: #8e8e93;
@@ -736,53 +806,91 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
-  padding: 0 10px;
+  height: 28px;
+  padding: 0 12px;
   border: none;
-  border-radius: 13px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #007aff, #0051d5);
   color: #ffffff;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 650;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
-  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35);
+  transition: all 0.18s;
+  white-space: nowrap;
 }
 .store-upload-btn:hover {
   transform: scale(1.03);
-  box-shadow: 0 4px 10px rgba(0, 122, 255, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.5);
 }
 
 /* 2-Column Layout */
 .appstore-layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 215px 1fr;
   height: 100%;
   overflow: hidden;
 }
 
+/* Sidebar */
 .store-sidebar {
   display: flex;
   flex-direction: column;
-  padding: 14px 10px;
+  padding: 12px 10px 14px;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(245, 245, 247, 0.6);
-  backdrop-filter: blur(20px);
+  background: rgba(245, 245, 247, 0.55);
+  backdrop-filter: blur(30px);
 }
 :root.dark .store-sidebar,
 @media (prefers-color-scheme: dark) {
   .store-sidebar {
     border-right-color: rgba(255, 255, 255, 0.08);
-    background: rgba(30, 30, 35, 0.6);
+    background: rgba(25, 25, 32, 0.65);
   }
 }
 
+.sidebar-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 10px;
+}
+:root.dark .sidebar-brand-header,
+@media (prefers-color-scheme: dark) {
+  .sidebar-brand-header { border-bottom-color: rgba(255, 255, 255, 0.06); }
+}
+
+.brand-icon-box {
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 122, 255, 0.3));
+}
+
+.brand-text-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: inherit;
+}
+
+.brand-sub {
+  font-size: 9.5px;
+  color: #8e8e93;
+  font-weight: 500;
+}
+
 .sidebar-sec-title {
-  padding: 0 8px 8px;
+  padding: 0 8px 6px;
   color: #8e8e93;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
@@ -797,17 +905,17 @@ defineExpose({
 .store-nav-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
+  gap: 10px;
+  padding: 7px 10px;
   border: none;
   border-radius: 9px;
   background: transparent;
   color: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.16s ease;
 }
 
 .store-nav-item:hover {
@@ -821,6 +929,8 @@ defineExpose({
 .store-nav-item.active {
   background: #007aff;
   color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 3px 10px rgba(0, 122, 255, 0.3);
 }
 
 .nav-cat-icon {
@@ -833,9 +943,10 @@ defineExpose({
   color: #ffffff;
   font-size: 12px;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.nav-cat-name {
+.nav-text-col {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -851,7 +962,7 @@ defineExpose({
   font-weight: 600;
 }
 .store-nav-item.active .nav-cat-badge {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.28);
   color: #ffffff;
 }
 
@@ -861,12 +972,12 @@ defineExpose({
 .footer-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
+  gap: 7px;
+  padding: 6px 9px;
   border-radius: 8px;
   background: rgba(16, 185, 129, 0.1);
   color: #059669;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
 }
 :root.dark .footer-chip,
@@ -877,9 +988,22 @@ defineExpose({
   }
 }
 
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
 /* Right Content Pane */
 .store-content-pane {
-  padding: 18px 24px;
+  padding: 20px 26px;
   overflow-y: auto;
 }
 
@@ -891,19 +1015,19 @@ defineExpose({
   justify-content: space-between;
   padding: 24px 28px;
   margin-bottom: 22px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 45%, #06b6d4 100%);
   color: #ffffff;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 12px 36px rgba(37, 99, 235, 0.28);
 }
 
 .hero-backdrop-glow {
   position: absolute;
   top: -50%;
   right: -20%;
-  width: 400px;
-  height: 400px;
+  width: 420px;
+  height: 420px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%);
   pointer-events: none;
@@ -912,30 +1036,30 @@ defineExpose({
 .hero-content {
   position: relative;
   z-index: 2;
-  max-width: 580px;
+  max-width: 560px;
 }
 
 .hero-tag {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 3px 9px;
   margin-bottom: 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 9px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.8px;
 }
 
 .hero-title {
   margin: 0 0 6px;
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 800;
   letter-spacing: -0.5px;
 }
 
 .hero-summary {
   margin: 0 0 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -944,15 +1068,16 @@ defineExpose({
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .meta-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.28);
   font-size: 11px;
   font-weight: 500;
 }
@@ -966,144 +1091,252 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 20px;
   background: #ffffff;
   color: #1e3a8a;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: all 0.15s;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  transition: all 0.16s;
+  cursor: pointer;
+  border: none;
 }
 .hero-get-btn:hover {
   transform: scale(1.04);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
 }
 
 .hero-detail-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.16s;
 }
 .hero-detail-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .hero-badge-icon {
   position: relative;
   z-index: 2;
-  margin-right: 12px;
-  filter: drop-shadow(0 12px 24px rgba(0,0,0,0.3));
+  margin-right: 16px;
+  filter: drop-shadow(0 14px 28px rgba(0,0,0,0.35));
 }
 
 /* Grid Header */
 .store-grid-header {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .grid-title-row {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
 }
-.grid-title-row h3 {
+.grid-title-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.grid-title-left h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.grid-subtitle {
+  color: #8e8e93;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 .grid-count {
   color: #8e8e93;
   font-size: 12px;
+  font-weight: 500;
 }
 
-/* Empty State */
-.store-empty-state {
+/* 🎨 Apple Empty State Showcase */
+.store-empty-showcase {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 48px 24px 40px;
+  margin-top: 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
   text-align: center;
+  overflow: hidden;
 }
-.empty-icon {
-  color: #94a3b8;
-  font-size: 48px;
-  margin-bottom: 12px;
+:root.dark .store-empty-showcase {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
 }
-.store-empty-state h4 {
-  margin: 0 0 6px;
-  font-size: 15px;
+
+.empty-app-icon-wrap {
+  margin-bottom: 16px;
 }
-.store-empty-state p {
-  max-width: 420px;
-  margin: 0 0 18px;
+.empty-icon-bubble {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  color: #ffffff;
+  font-size: 28px;
+  box-shadow: 0 10px 25px rgba(0, 122, 255, 0.35);
+}
+
+.empty-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+.empty-desc {
+  max-width: 460px;
+  margin: 0 0 20px;
   color: #8e8e93;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
-.empty-upload-btn {
+.empty-desc strong { color: #007aff; }
+.empty-desc code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 11.5px;
+}
+:root.dark .empty-desc code,
+@media (prefers-color-scheme: dark) {
+  .empty-desc code { background: rgba(255, 255, 255, 0.1); }
+}
+
+.empty-action-group {
+  margin-bottom: 24px;
+}
+.empty-primary-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
+  gap: 7px;
+  padding: 9px 22px;
   border: none;
   border-radius: 12px;
+  background: linear-gradient(135deg, #007aff, #0051d5);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+  transition: all 0.18s;
+}
+.empty-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(0, 122, 255, 0.55);
+}
+
+.empty-suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  width: 100%;
+  max-width: 500px;
+}
+:root.dark .empty-suggestions,
+@media (prefers-color-scheme: dark) {
+  .empty-suggestions { border-top-color: rgba(255, 255, 255, 0.06); }
+}
+
+.sugg-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8e8e93;
+}
+
+.sugg-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sugg-tag {
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(0, 122, 255, 0.08);
+  color: #007aff;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+:root.dark .sugg-tag,
+@media (prefers-color-scheme: dark) {
+  .sugg-tag { background: rgba(0, 122, 255, 0.16); color: #60a5fa; }
+}
+.sugg-tag:hover {
   background: #007aff;
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  transform: scale(1.05);
 }
 
 /* Apps Grid */
 .store-apps-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 16px;
 }
 
 .app-card {
   display: flex;
   flex-direction: column;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 :root.dark .app-card,
 @media (prefers-color-scheme: dark) {
   .app-card {
     border-color: rgba(255, 255, 255, 0.08);
-    background: rgba(35, 35, 42, 0.7);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    background: rgba(36, 36, 44, 0.75);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
   }
 }
 .app-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(0, 122, 255, 0.3);
-  box-shadow: 0 8px 20px rgba(0, 122, 255, 0.12);
+  border-color: rgba(0, 122, 255, 0.35);
+  box-shadow: 0 10px 26px rgba(0, 122, 255, 0.15);
 }
 
 .app-card-top {
   display: flex;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .app-icon-frame {
   flex-shrink: 0;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.18));
 }
 
 .app-info-block {
@@ -1113,8 +1346,8 @@ defineExpose({
 
 .app-title {
   margin: 0 0 3px;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14.5px;
+  font-weight: 750;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1122,22 +1355,24 @@ defineExpose({
 
 .app-sub-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
   color: #8e8e93;
   font-size: 11px;
 }
+.app-dot { opacity: 0.5; }
 
 .app-platform-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(0, 122, 255, 0.08);
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(0, 122, 255, 0.09);
   color: #007aff;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 650;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1145,14 +1380,14 @@ defineExpose({
 }
 :root.dark .app-platform-tag,
 @media (prefers-color-scheme: dark) {
-  .app-platform-tag { background: rgba(0, 122, 255, 0.18); color: #60a5fa; }
+  .app-platform-tag { background: rgba(0, 122, 255, 0.2); color: #60a5fa; }
 }
 
 .app-summary-text {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   color: #64748b;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1180,11 +1415,11 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 14px;
-  border-radius: 12px;
+  padding: 5px 16px;
+  border-radius: 14px;
   background: rgba(0, 122, 255, 0.12);
   color: #007aff;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   text-decoration: none;
   transition: all 0.15s;
@@ -1227,8 +1462,8 @@ defineExpose({
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(16px);
 }
 
 .app-detail-card,
@@ -1239,7 +1474,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 25px 60px rgba(0,0,0,0.3);
   overflow: hidden;
 }
@@ -1248,7 +1483,7 @@ defineExpose({
 @media (prefers-color-scheme: dark) {
   .app-detail-card,
   .app-editor-card {
-    background: rgba(30, 30, 38, 0.95);
+    background: rgba(30, 30, 38, 0.96);
     color: #ffffff;
     box-shadow: 0 25px 60px rgba(0,0,0,0.6);
   }
@@ -1270,7 +1505,7 @@ defineExpose({
 }
 .detail-titles h2 {
   margin: 0 0 6px;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
 }
 .detail-summary-lead {
@@ -1290,6 +1525,9 @@ defineExpose({
   gap: 6px;
 }
 .dpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 11px;
@@ -1344,8 +1582,8 @@ defineExpose({
 
 .detail-close-btn {
   margin-left: auto;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.06);
