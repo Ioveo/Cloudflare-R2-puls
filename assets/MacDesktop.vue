@@ -100,10 +100,28 @@ function setAsWallpaper(fileOrUrl) {
   localStorage.setItem("mac-custom-wallpaper", url);
 }
 
+function handleDesktopKeydown(e) {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.code === "Space" || e.key === " ") {
+    if (selectedFileKey.value) {
+      e.preventDefault();
+      const selFile = props.files.find((f) => f.key === selectedFileKey.value);
+      if (selFile) {
+        handleOpenFile(selFile);
+      }
+    }
+  }
+}
+
 onMounted(() => {
   window.addEventListener("wallpaper-changed", (e) => {
     if (e.detail) customWallpaper.value = e.detail;
   });
+  window.addEventListener("keydown", handleDesktopKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleDesktopKeydown);
 });
 
 // Window Management States
@@ -744,6 +762,27 @@ function onDropFiles(e) {
               <span v-if="viewMode === 'list'" class="item-date">{{ formatDate(file.uploaded) }}</span>
             </article>
           </div>
+
+          <!-- 🧭 Finder macOS Bottom Path & Item Counter Bar -->
+          <footer class="finder-path-statusbar">
+            <div class="path-breadcrumbs">
+              <span class="crumb-item" @click="emit('navigate', '')">
+                <i class="ph ph-hard-drive"></i>
+                <span>天才猫 R2</span>
+              </span>
+              <template v-for="(part, idx) in pathParts" :key="idx">
+                <span class="crumb-sep">›</span>
+                <span class="crumb-item" @click="emit('navigate', pathUntil(idx))">
+                  <i class="ph ph-folder"></i>
+                  <span>{{ part }}</span>
+                </span>
+              </template>
+            </div>
+            <div class="statusbar-info">
+              <span v-if="selectedFileKey">已选中 1 项</span>
+              <span v-else>共 {{ files.length + folders.length }} 个项目</span>
+            </div>
+          </footer>
         </main>
       </div>
     </MacWindow>
@@ -1197,6 +1236,57 @@ function onDropFiles(e) {
 .finder-file-item.is-selected .item-size,
 .finder-file-item.is-selected .item-date {
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Finder macOS Bottom Path & Statusbar */
+.finder-path-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  padding: 0 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: #8e8e93;
+  user-select: none;
+}
+
+[data-theme="light"] .finder-path-statusbar {
+  background: rgba(0, 0, 0, 0.03);
+  border-top-color: rgba(60, 60, 67, 0.08);
+  color: #636366;
+}
+
+.path-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: all 0.12s ease;
+}
+
+.crumb-item:hover {
+  color: #0a84ff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.crumb-sep {
+  opacity: 0.4;
+  font-weight: 700;
+}
+
+.statusbar-info {
+  font-size: 11px;
+  opacity: 0.85;
 }
 
 /* Finder Titlebar Segmented & Action Controls */

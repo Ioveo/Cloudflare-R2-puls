@@ -247,7 +247,20 @@ onUnmounted(() => {
   backdrop-filter: blur(45px) saturate(210%);
   overflow: hidden;
   user-select: none;
-  transition: box-shadow 0.2s ease;
+  animation: mac-window-open 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: box-shadow 0.2s ease, opacity 0.18s ease;
+  will-change: transform, opacity;
+}
+
+@keyframes mac-window-open {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 [data-theme="light"] .mac-window {
@@ -258,7 +271,16 @@ onUnmounted(() => {
 }
 
 .mac-window.is-active {
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 0 1.5px rgba(10, 132, 255, 0.45);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 0 2px rgba(10, 132, 255, 0.4);
+}
+
+.mac-window:not(.is-active) {
+  opacity: 0.94;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45);
+}
+
+.mac-window:not(.is-active) .traffic-btn {
+  filter: grayscale(40%) opacity(0.8);
 }
 
 [data-theme="light"] .mac-window.is-active {
@@ -304,19 +326,19 @@ onUnmounted(() => {
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .traffic-btn:hover {
-  transform: scale(1.1);
+  transform: scale(1.12);
 }
 
 .traffic-btn .icon-sym {
   opacity: 0;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 900;
   line-height: 1;
-  color: rgba(0, 0, 0, 0.7);
+  color: rgba(0, 0, 0, 0.75);
   transition: opacity 0.15s ease;
 }
 
