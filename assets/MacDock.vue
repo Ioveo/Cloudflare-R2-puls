@@ -3,7 +3,7 @@ import { ref } from "vue";
 import MacIcons from "./MacIcons.vue";
 
 const props = defineProps({
-  openApps: { type: Array, default: () => ["finder"] }, // List of currently active app IDs
+  openApps: { type: Array, default: () => ["finder"] },
   activeAppId: { type: String, default: "finder" },
 });
 
@@ -20,9 +20,9 @@ const apps = [
   { id: "editor", name: "代码工坊 (Xcode)", iconName: "xcode" },
   { id: "archive", name: "归档解压 (Archive)", iconName: "archive" },
   { id: "doc", name: "预览与文档 (Preview)", iconName: "preview" },
-  { id: "settings", name: "系统设置 (Settings)", iconName: "settings" },
+  { id: "settings", name: "系统偏好设置 (Settings)", iconName: "settings" },
   { id: "upload", name: "极速上传 (Upload)", iconName: "upload" },
-  { id: "trash", name: "废纸篓 / 存储 (Trash)", iconName: "trash" },
+  { id: "trash", name: "废纸篓 (Trash)", iconName: "trash" },
 ];
 
 function onMouseMove(e) {
@@ -33,7 +33,7 @@ function onMouseLeave() {
   mouseX.value = null;
 }
 
-// Authentic macOS Gaussian Magnification Physics
+// 1:1 Authentic macOS Sequoia Cosine Bell Curve Magnification
 function getIconScale(index) {
   if (mouseX.value === null) return 1;
   const iconEl = document.getElementById(`dock-item-${index}`);
@@ -42,12 +42,11 @@ function getIconScale(index) {
   const centerX = rect.left + rect.width / 2;
   const dist = Math.abs(mouseX.value - centerX);
   
-  const maxDist = 160; // Influence radius
+  const maxDist = 150;
   if (dist > maxDist) return 1;
   
-  // Cosine bell curve for ultra-smooth fluid transition
   const factor = (1 + Math.cos((Math.PI * dist) / maxDist)) / 2;
-  return 1 + 0.42 * factor;
+  return 1 + 0.38 * factor;
 }
 
 function launchApp(app) {
@@ -72,7 +71,7 @@ function launchApp(app) {
         <!-- Tooltip -->
         <span class="dock-tooltip">{{ app.name }}</span>
 
-        <!-- Authentic macOS Vector Icon (No ugly duplicate square tile) -->
+        <!-- Authentic macOS Vector Icon -->
         <div class="dock-icon-tile">
           <MacIcons :name="app.iconName" :size="52" />
         </div>
@@ -92,28 +91,28 @@ function launchApp(app) {
   right: 0;
   display: flex;
   justify-content: center;
-  z-index: 90;
+  z-index: 100;
   pointer-events: none;
 }
 
 .dock-bar {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 10px;
+  padding: 8px 16px;
   border-radius: 24px;
-  background: rgba(30, 31, 38, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: rgba(32, 33, 40, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(40px) saturate(220%);
   pointer-events: auto;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="light"] .dock-bar {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.78);
   border-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), inset 0 1px 0 #ffffff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.16), inset 0 1px 0 #ffffff;
 }
 
 .dock-item {
@@ -136,49 +135,34 @@ function launchApp(app) {
 }
 
 .dock-item:hover .dock-icon-tile {
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.45));
 }
 
 /* Tooltip */
 .dock-tooltip {
   position: absolute;
-  top: -38px;
+  top: -40px;
   opacity: 0;
   pointer-events: none;
   padding: 4px 10px;
   border-radius: 8px;
-  background: rgba(20, 21, 28, 0.85);
+  background: rgba(20, 21, 28, 0.88);
   color: #f2f2f7;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(16px);
-  transform: translateY(4px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  transform: translateY(6px);
   transition: all 0.16s ease;
-}
-  top: -38px;
-  opacity: 0;
-  pointer-events: none;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(20, 21, 28, 0.85);
-  color: #f2f2f7;
-  font-size: 11.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(16px);
-  transform: translateY(4px);
-  transition: all 0.16s ease;
+  z-index: 105;
 }
 
 [data-theme="light"] .dock-tooltip {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   color: #1d1d1f;
-  border-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.95);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
@@ -215,14 +199,12 @@ function launchApp(app) {
 
 @media (max-width: 600px) {
   .dock-bar {
-    gap: 4px;
-    padding: 6px 8px;
+    gap: 6px;
+    padding: 6px 10px;
   }
   .dock-icon-tile {
-    width: 36px;
-    height: 36px;
-    font-size: 19px;
-    border-radius: 10px;
+    width: 38px;
+    height: 38px;
   }
 }
 </style>

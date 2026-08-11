@@ -437,48 +437,24 @@ function toggleFullscreen() {
       @action="$emit('action', $event)"
     />
 
-    <!-- 2. Desktop Icons Workspace -->
+    <!-- 2. Desktop Primary Volumes (macOS Top-Right Align) -->
     <div class="desktop-icons-area">
-      <!-- R2 Root Folder -->
+      <!-- R2 Main Disk Volume -->
       <div class="desktop-icon-item" @dblclick="emit('navigate', ''); bringToFront('finder')">
         <MacIcons name="finder" :size="56" />
         <span class="icon-label">天才猫 R2 根目录</span>
       </div>
 
-      <!-- Photos Gallery -->
-      <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'image'); bringToFront('finder')">
+      <!-- Photos Album -->
+      <div class="desktop-icon-item" @dblclick="launchApp('photos')">
         <MacIcons name="photos" :size="56" />
         <span class="icon-label">我的照片图库</span>
       </div>
 
-      <!-- Cinema -->
-      <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'video'); bringToFront('finder')">
+      <!-- Video Cinema -->
+      <div class="desktop-icon-item" @dblclick="launchApp('cinema')">
         <MacIcons name="cinema" :size="56" />
         <span class="icon-label">影视放映厅</span>
-      </div>
-
-      <!-- Music Vinyl -->
-      <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'audio'); bringToFront('finder')">
-        <MacIcons name="music" :size="56" />
-        <span class="icon-label">黑胶唱片台</span>
-      </div>
-
-      <!-- Archive Utility -->
-      <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'archive'); bringToFront('finder')">
-        <MacIcons name="archive" :size="56" />
-        <span class="icon-label">压缩归档</span>
-      </div>
-
-      <!-- Code & Markdown IDE -->
-      <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'document'); bringToFront('finder')">
-        <MacIcons name="preview" :size="56" />
-        <span class="icon-label">办公与文档</span>
-      </div>
-
-      <!-- System Settings -->
-      <div class="desktop-icon-item" @dblclick="bringToFront('settings')">
-        <MacIcons name="settings" :size="56" />
-        <span class="icon-label">系统偏好设置</span>
       </div>
     </div>
 
@@ -776,15 +752,14 @@ function toggleFullscreen() {
   transition: background 0.4s ease;
 }
 
-/* Desktop Icons Grid */
+/* Desktop Icons Grid (macOS Top-Right Volume Column) */
 .desktop-icons-area {
   position: absolute;
-  top: 44px;
-  left: 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 96px);
-  grid-auto-rows: 106px;
-  gap: 14px;
+  top: 46px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   z-index: 5;
 }
 
