@@ -263,21 +263,35 @@ const iconSize = computed(() => (typeof props.size === "number" ? `${props.size}
     <svg v-else-if="name === 'appstore' || name === 'apps'" viewBox="0 0 100 100" class="mac-svg-icon">
       <defs>
         <linearGradient id="aps-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#2563eb" />
-          <stop offset="50%" stop-color="#1d4ed8" />
-          <stop offset="100%" stop-color="#0284c7" />
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="30%" stop-color="#0284c7" />
+          <stop offset="70%" stop-color="#0066cc" />
+          <stop offset="100%" stop-color="#004db3" />
         </linearGradient>
-        <filter id="aps-sh" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.3" />
+        <linearGradient id="aps-gloss" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4" />
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0" />
+        </linearGradient>
+        <linearGradient id="aps-bar-light" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="100%" stop-color="#e0f2fe" />
+        </linearGradient>
+        <filter id="aps-sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="5" stdDeviation="5" flood-opacity="0.38" flood-color="#003380" />
+        </filter>
+        <filter id="aps-bar-sh" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3" flood-color="#002244" />
         </filter>
       </defs>
+      <!-- Base Squircle -->
       <rect x="6" y="6" width="88" height="88" rx="20" fill="url(#aps-bg)" filter="url(#aps-sh)" />
-      <!-- App Store Stylus/Ruler/Pencil Triangle "A" -->
-      <g transform="translate(50, 50)" stroke="#ffffff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-        <line x1="-22" y1="24" x2="0" y2="-24" />
-        <line x1="22" y1="24" x2="0" y2="-24" />
-        <line x1="-16" y1="8" x2="16" y2="8" />
-      </g>
+      <rect x="7" y="7" width="86" height="86" rx="19" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" />
+      <path d="M 6 26 C 6 15 15 6 26 6 L 74 6 C 85 6 94 15 94 26 L 94 48 C 65 52 35 48 6 40 Z" fill="url(#aps-gloss)" />
+      
+      <!-- Authentic 3D App Store "A" Structure (Pencil, Ruler, Brush) -->
+      <line x1="28" y1="74" x2="50" y2="26" stroke="url(#aps-bar-light)" stroke-width="8" stroke-linecap="round" filter="url(#aps-bar-sh)" />
+      <line x1="72" y1="74" x2="50" y2="26" stroke="url(#aps-bar-light)" stroke-width="8" stroke-linecap="round" filter="url(#aps-bar-sh)" />
+      <line x1="33" y1="58" x2="67" y2="58" stroke="url(#aps-bar-light)" stroke-width="8" stroke-linecap="round" filter="url(#aps-bar-sh)" />
     </svg>
 
     <!-- 10.4 🚀 macOS Applications System Folder Icon -->

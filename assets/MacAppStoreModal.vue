@@ -25,17 +25,80 @@ const selectedApp = ref(null);
 const editingApp = ref(null);
 const copySuccessTip = ref("");
 
-// Category definitions with rich SF-inspired visual tokens
+// Category definitions with rich, tactile multi-stop gradient color tokens & SF glyphs
 const categories = [
-  { id: "discover", name: "探索发现", subtitle: "Discover", icon: "ph-sparkle-fill", color: "#007aff" },
-  { id: "design", name: "设计创意", subtitle: "Create", icon: "ph-paint-brush-fill", color: "#ec4899" },
-  { id: "productivity", name: "效率办公", subtitle: "Work", icon: "ph-lightning-fill", color: "#f59e0b" },
-  { id: "developer", name: "开发工具", subtitle: "Develop", icon: "ph-code-fill", color: "#10b981" },
-  { id: "utilities", name: "系统工具", subtitle: "Utilities", icon: "ph-wrench-fill", color: "#6366f1" },
-  { id: "entertainment", name: "影音娱乐", subtitle: "Play", icon: "ph-film-strip-fill", color: "#8b5cf6" },
-  { id: "network", name: "网络通讯", subtitle: "Connect", icon: "ph-globe-simple-fill", color: "#06b6d4" },
-  { id: "mobile", name: "移动专属", subtitle: "Mobile", icon: "ph-device-mobile-fill", color: "#14b8a6" },
-  { id: "all", name: "全部应用", subtitle: "All Apps", icon: "ph-squares-four-fill", color: "#64748b" },
+  {
+    id: "discover",
+    name: "探索发现",
+    subtitle: "Discover",
+    icon: "ph-compass-rose-fill",
+    gradient: "linear-gradient(135deg, #007aff 0%, #38bdf8 100%)",
+    shadow: "0 4px 12px rgba(0, 122, 255, 0.42)",
+  },
+  {
+    id: "design",
+    name: "设计创意",
+    subtitle: "Create",
+    icon: "ph-palette-fill",
+    gradient: "linear-gradient(135deg, #f43f5e 0%, #ec4899 50%, #a855f7 100%)",
+    shadow: "0 4px 12px rgba(236, 72, 153, 0.42)",
+  },
+  {
+    id: "productivity",
+    name: "效率办公",
+    subtitle: "Work",
+    icon: "ph-briefcase-fill",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
+    shadow: "0 4px 12px rgba(245, 158, 11, 0.42)",
+  },
+  {
+    id: "developer",
+    name: "开发工具",
+    subtitle: "Develop",
+    icon: "ph-code-fill",
+    gradient: "linear-gradient(135deg, #10b981 0%, #059669 50%, #0d9488 100%)",
+    shadow: "0 4px 12px rgba(16, 185, 129, 0.42)",
+  },
+  {
+    id: "utilities",
+    name: "系统工具",
+    subtitle: "Utilities",
+    icon: "ph-wrench-fill",
+    gradient: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+    shadow: "0 4px 12px rgba(99, 102, 241, 0.42)",
+  },
+  {
+    id: "entertainment",
+    name: "影音娱乐",
+    subtitle: "Play",
+    icon: "ph-film-strip-fill",
+    gradient: "linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)",
+    shadow: "0 4px 12px rgba(139, 92, 246, 0.42)",
+  },
+  {
+    id: "network",
+    name: "网络通讯",
+    subtitle: "Connect",
+    icon: "ph-globe-hemisphere-east-fill",
+    gradient: "linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)",
+    shadow: "0 4px 12px rgba(6, 182, 212, 0.42)",
+  },
+  {
+    id: "mobile",
+    name: "移动专属",
+    subtitle: "Mobile",
+    icon: "ph-device-mobile-camera-fill",
+    gradient: "linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%)",
+    shadow: "0 4px 12px rgba(20, 184, 166, 0.42)",
+  },
+  {
+    id: "all",
+    name: "全部应用",
+    subtitle: "All Apps",
+    icon: "ph-squares-four-fill",
+    gradient: "linear-gradient(135deg, #64748b 0%, #475569 100%)",
+    shadow: "0 4px 12px rgba(100, 116, 139, 0.42)",
+  },
 ];
 
 // Recommended suggestions for empty category state
@@ -112,23 +175,20 @@ const PRESET_APP_DB = [
 function parseDefaultMeta(file) {
   const key = file.key || "";
   let baseName = key.split("/").pop() || key;
-  baseName = baseName.replace(/\.[a-zA-Z0-9_\.]*$/, ""); // remove ext
+  baseName = baseName.replace(/\.[a-zA-Z0-9_\.]*$/, "");
 
-  // Try extracting version
   let version = "1.0.0";
   const verMatch = baseName.match(/[vV]?(\d+\.\d+(\.\d+)?)/);
   if (verMatch) {
     version = `v${verMatch[1]}`;
   }
 
-  // Check Knowledge Base
   const lowerName = baseName.toLowerCase();
   const matched = PRESET_APP_DB.find(p => p.match.some(m => lowerName.includes(m)));
 
   const platform = detectPlatform(key);
   let appName = matched ? matched.appName : `${baseName}.app`;
 
-  // Clean title
   let title = matched ? matched.title : baseName
     .replace(/[vV]?\d+\.\d+(\.\d+)?.*$/, "")
     .replace(/[_\-]+(mac|macos|win|windows|x64|arm64|universal|crack|patch|setup|installer)/gi, " ")
@@ -194,19 +254,16 @@ const softwareItems = computed(() => {
 const filteredApps = computed(() => {
   let list = softwareItems.value;
 
-  // Category filter
   if (currentTab.value !== "discover" && currentTab.value !== "all") {
     list = list.filter((app) => app.category === currentTab.value);
   }
 
-  // Platform filter
   if (selectedPlatform.value !== "all") {
     if (selectedPlatform.value === "mac") list = list.filter((app) => app.platform.toLowerCase().includes("mac"));
     else if (selectedPlatform.value === "win") list = list.filter((app) => app.platform.toLowerCase().includes("win"));
     else if (selectedPlatform.value === "mobile") list = list.filter((app) => app.platform.toLowerCase().includes("android") || app.platform.toLowerCase().includes("ios"));
   }
 
-  // Search
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase();
     list = list.filter((app) =>
@@ -334,8 +391,8 @@ defineExpose({
     :visible="visible"
     :minimized="minimized"
     :show-title="false"
-    :width="980"
-    :height="650"
+    :width="990"
+    :height="660"
     :z-index="zIndex"
     :is-active="isActive"
     @focus="emit('focus')"
@@ -355,7 +412,7 @@ defineExpose({
 
         <!-- macOS Pill Search Bar -->
         <div class="store-search-box">
-          <i class="ph ph-magnifying-glass"></i>
+          <i class="ph ph-magnifying-glass-bold"></i>
           <input v-model="searchQuery" type="text" placeholder="搜索软件、版本或关键词..." />
           <button v-if="searchQuery" class="clear-search" type="button" @click="searchQuery = ''">×</button>
         </div>
@@ -375,11 +432,11 @@ defineExpose({
         <!-- Brand Header inside Sidebar -->
         <div class="sidebar-brand-header">
           <div class="brand-icon-box">
-            <MacIcons name="appstore" :size="30" />
+            <MacIcons name="appstore" :size="32" />
           </div>
           <div class="brand-text-col">
             <span class="brand-title">App Store</span>
-            <span class="brand-sub">软件工坊 · R2 加速</span>
+            <span class="brand-sub">软件工坊 · 极速分发</span>
           </div>
         </div>
 
@@ -395,7 +452,11 @@ defineExpose({
             type="button"
             @click="currentTab = cat.id"
           >
-            <div class="nav-cat-icon" :style="{ backgroundColor: cat.color }">
+            <!-- Tactile Multi-stop Gradient SF Icon Badge -->
+            <div
+              class="nav-cat-icon"
+              :style="{ background: cat.gradient, boxShadow: cat.shadow }"
+            >
               <i class="ph" :class="cat.icon"></i>
             </div>
             <div class="nav-text-col">
@@ -465,13 +526,19 @@ defineExpose({
         <div v-if="filteredApps.length === 0" class="store-empty-showcase">
           <div class="empty-glow-orbit"></div>
           <div class="empty-app-icon-wrap">
-            <div class="empty-icon-bubble" :style="{ backgroundColor: categories.find(c => c.id === currentTab)?.color || '#007aff' }">
+            <div
+              class="empty-icon-bubble"
+              :style="{
+                background: categories.find(c => c.id === currentTab)?.gradient || 'linear-gradient(135deg, #007aff 0%, #38bdf8 100%)',
+                boxShadow: categories.find(c => c.id === currentTab)?.shadow || '0 8px 24px rgba(0, 122, 255, 0.45)'
+              }"
+            >
               <i class="ph" :class="categories.find(c => c.id === currentTab)?.icon || 'ph-package-fill'"></i>
             </div>
           </div>
           <h4 class="empty-title">暂无「{{ categories.find(c => c.id === currentTab)?.name }}」软件包</h4>
           <p class="empty-desc">
-            点击上方「<strong>发布软件</strong>」上传 <code>.dmg</code>、<code>.exe</code>、<code>.apk</code>、<code>.zip</code> 安装包，系统将自动匹配官方名称与安装说明。
+            点击下方「<strong>立即上传发布</strong>」上传 <code>.dmg</code>、<code>.exe</code>、<code>.apk</code>、<code>.zip</code> 安装包，系统将自动匹配官方名称与安装说明。
           </p>
 
           <div class="empty-action-group">
@@ -827,44 +894,44 @@ defineExpose({
 /* 2-Column Layout */
 .appstore-layout {
   display: grid;
-  grid-template-columns: 215px 1fr;
+  grid-template-columns: 220px 1fr;
   height: 100%;
   overflow: hidden;
 }
 
-/* Sidebar */
+/* Sidebar with Deep macOS Frosted Aesthetics */
 .store-sidebar {
   display: flex;
   flex-direction: column;
-  padding: 12px 10px 14px;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(245, 245, 247, 0.55);
-  backdrop-filter: blur(30px);
+  padding: 14px 10px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 22, 28, 0.78);
+  backdrop-filter: blur(40px) saturate(200%);
 }
-:root.dark .store-sidebar,
-@media (prefers-color-scheme: dark) {
-  .store-sidebar {
-    border-right-color: rgba(255, 255, 255, 0.08);
-    background: rgba(25, 25, 32, 0.65);
-  }
+[data-theme="light"] .store-sidebar {
+  background: rgba(246, 247, 250, 0.92);
+  border-right-color: rgba(0, 0, 0, 0.08);
 }
 
 .sidebar-brand-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 8px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  margin-bottom: 10px;
+  padding: 4px 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
 }
-:root.dark .sidebar-brand-header,
-@media (prefers-color-scheme: dark) {
-  .sidebar-brand-header { border-bottom-color: rgba(255, 255, 255, 0.06); }
+[data-theme="light"] .sidebar-brand-header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
 }
 
 .brand-icon-box {
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(0, 122, 255, 0.3));
+  filter: drop-shadow(0 4px 10px rgba(0, 122, 255, 0.45));
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sidebar-brand-header:hover .brand-icon-box {
+  transform: scale(1.06);
 }
 
 .brand-text-col {
@@ -873,97 +940,143 @@ defineExpose({
 }
 
 .brand-title {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.3px;
   color: inherit;
 }
 
 .brand-sub {
-  font-size: 9.5px;
+  font-size: 10px;
   color: #8e8e93;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sidebar-sec-title {
-  padding: 0 8px 6px;
-  color: #8e8e93;
+  padding: 0 8px 8px;
+  color: #71717a;
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
+  font-weight: 750;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
 }
 
 .store-nav {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
   overflow-y: auto;
 }
 
 .store-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border: none;
-  border-radius: 9px;
+  gap: 11px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
-  color: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 550;
   text-align: left;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .store-nav-item:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-:root.dark .store-nav-item:hover,
-@media (prefers-color-scheme: dark) {
-  .store-nav-item:hover { background: rgba(255, 255, 255, 0.08); }
-}
-
-.store-nav-item.active {
-  background: #007aff;
+  background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 3px 10px rgba(0, 122, 255, 0.3);
+}
+[data-theme="light"] .store-nav-item {
+  color: #475569;
+}
+[data-theme="light"] .store-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
 }
 
+/* Translucent High-End macOS Active Row */
+.store-nav-item.active {
+  background: linear-gradient(90deg, rgba(0, 122, 255, 0.22) 0%, rgba(0, 122, 255, 0.06) 100%);
+  border: 1px solid rgba(0, 122, 255, 0.35);
+  color: #38bdf8;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 10px rgba(0, 122, 255, 0.15);
+}
+[data-theme="light"] .store-nav-item.active {
+  background: linear-gradient(90deg, rgba(0, 122, 255, 0.14) 0%, rgba(0, 122, 255, 0.04) 100%);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  color: #007aff;
+  box-shadow: inset 0 1px 0 #ffffff, 0 2px 8px rgba(0, 122, 255, 0.1);
+}
+
+.store-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3.5px;
+  border-radius: 3px;
+  background: #007aff;
+  box-shadow: 0 0 10px #007aff;
+}
+
+/* Tactile Gradient Icon Badge with Inner Bevel */
 .nav-cat-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 14px;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 3px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.store-nav-item:hover .nav-cat-icon {
+  transform: scale(1.12);
+}
+.store-nav-item.active .nav-cat-icon {
+  transform: scale(1.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 4px 12px rgba(0, 122, 255, 0.4);
 }
 
-.nav-text-col {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.nav-cat-name {
+  font-size: 13px;
+  letter-spacing: -0.2px;
 }
 
 .nav-cat-badge {
-  padding: 1px 6px;
-  border-radius: 10px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 650;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .nav-cat-badge {
   background: rgba(0, 0, 0, 0.06);
-  color: #8e8e93;
-  font-size: 10px;
-  font-weight: 600;
+  color: #64748b;
+  border-color: rgba(0, 0, 0, 0.04);
 }
 .store-nav-item.active .nav-cat-badge {
-  background: rgba(255, 255, 255, 0.28);
-  color: #ffffff;
+  background: rgba(0, 122, 255, 0.25);
+  color: #38bdf8;
+  border-color: rgba(0, 122, 255, 0.4);
+}
+[data-theme="light"] .store-nav-item.active .nav-cat-badge {
+  background: rgba(0, 122, 255, 0.15);
+  color: #007aff;
+  border-color: rgba(0, 122, 255, 0.3);
 }
 
 .store-sidebar-footer {
@@ -1013,7 +1126,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 28px;
+  padding: 26px 30px;
   margin-bottom: 22px;
   border-radius: 20px;
   background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 45%, #06b6d4 100%);
@@ -1191,12 +1304,13 @@ defineExpose({
 .empty-icon-bubble {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 16px;
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
   color: #ffffff;
-  font-size: 28px;
-  box-shadow: 0 10px 25px rgba(0, 122, 255, 0.35);
+  font-size: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 10px 25px rgba(0, 122, 255, 0.35);
 }
 
 .empty-title {
