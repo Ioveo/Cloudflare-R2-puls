@@ -533,8 +533,12 @@ export default {
       ];
       const isEdit = this.focusedItem && this.isEditable(this.focusedItem);
       const isImg = this.focusedItem && this.isImage(this.focusedItem);
+      const isSoft = this.focusedItem && this.isSoftware(this.focusedItem);
+      const isMacApp = isSoft && (this.focusedItem.key?.endsWith(".dmg") || this.focusedItem.key?.endsWith(".pkg") || this.focusedItem.key?.toLowerCase().includes("mac"));
       return [
-        { id: "preview", label: "查看/播放 (Space)", icon: "ph-eye" },
+        { id: "preview", label: isSoft ? "在软件工坊中检视" : "查看/播放 (Space)", icon: isSoft ? "ph-app-store-logo" : "ph-eye" },
+        ...(isSoft ? [{ id: "app-edit-meta", label: "编辑软件简介与说明", icon: "ph-pencil-simple" }] : []),
+        ...(isMacApp ? [{ id: "copy-quarantine-cmd", label: "复制终端免隔离命令", icon: "ph-terminal-window" }] : []),
         ...(isImg ? [{ id: "set-wallpaper", label: "设置为桌面壁纸", icon: "ph-image" }] : []),
         { id: "inspect", label: "查看属性 (I)", icon: "ph-info" },
         ...(isEdit ? [{ id: "edit", label: "在线编辑", icon: "ph-code" }] : []),
@@ -885,6 +889,22 @@ export default {
         const rawUrl = this.rawPath(targetFile.key);
         localStorage.setItem("mac-custom-wallpaper", rawUrl);
         window.dispatchEvent(new CustomEvent("wallpaper-changed", { detail: rawUrl }));
+        return;
+      }
+      if (action === "app-edit-meta") {
+        if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
+          this.$refs.macDesktopRef.openAppStoreEditor(item);
+        }
+        return;
+      }
+      if (action === "copy-quarantine-cmd") {
+        const key = typeof item === "string" ? item : item.key;
+        let baseName = key.split("/").pop() || key;
+        baseName = baseName.replace(/\.[a-zA-Z0-9_\.]*$/, "");
+        const appName = `${baseName}.app`;
+        const cmd = `sudo xattr -rd com.apple.quarantine /Applications/${appName.replace(/\s/g, "\\ ")}`;
+        navigator.clipboard.writeText(cmd);
+        alert(`已复制 macOS 绕过隔离命令到剪贴板：\n${cmd}`);
         return;
       }
       if (action === "inspect") {

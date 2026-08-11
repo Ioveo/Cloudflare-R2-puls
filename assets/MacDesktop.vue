@@ -230,6 +230,7 @@ const photosModal = ref({ visible: false, minimized: false, file: null, items: [
 const calculatorModal = ref({ visible: false, minimized: false });
 const notesModal = ref({ visible: false, minimized: false });
 const appStoreModal = ref({ visible: false, minimized: false });
+const appStoreRef = ref(null);
 const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
@@ -587,6 +588,37 @@ function isSoftware(file) {
   return /\.(dmg|pkg|exe|msi|apk|ipa|deb|appimage|rpm)$/i.test(key) || (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("app")));
 }
 
+function getSoftwarePlatformPill(file) {
+  const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
+  if (key.includes("arm64") || key.includes("m1") || key.includes("m2") || key.includes("m3") || key.includes("m4") || key.includes("apple_silicon")) return "M系列";
+  if (key.includes("intel") || key.includes("x64") || key.includes("x86_64")) return "Intel";
+  if (key.endsWith(".dmg") || key.endsWith(".pkg")) return "Mac";
+  if (key.endsWith(".exe") || key.endsWith(".msi")) return "Win64";
+  if (key.endsWith(".apk")) return "APK";
+  if (key.endsWith(".ipa")) return "IPA";
+  return "App";
+}
+
+function openAppStoreDetail(fileOrKey) {
+  const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
+  bringToFront("appstore");
+  appStoreModal.value.visible = true;
+  appStoreModal.value.minimized = false;
+  setTimeout(() => {
+    appStoreRef.value?.openDetailByKey(key);
+  }, 60);
+}
+
+function openAppStoreEditor(fileOrKey) {
+  const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
+  bringToFront("appstore");
+  appStoreModal.value.visible = true;
+  appStoreModal.value.minimized = false;
+  setTimeout(() => {
+    appStoreRef.value?.openEditorByKey(key);
+  }, 60);
+}
+
 function isArchive(file) {
   const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
   if (isSoftware(file)) return false;
@@ -639,8 +671,7 @@ function handleFinderUpload() {
 // Open File Action (Directly Dispatches to macOS Dedicated Windows and brings them to the very front)
 function handleOpenFile(file) {
   if (isSoftware(file)) {
-    bringToFront("appstore");
-    appStoreModal.value = { visible: true, minimized: false };
+    openAppStoreDetail(file);
     return;
   }
   if (isImage(file)) {
@@ -749,7 +780,7 @@ function onDropFiles(e) {
   if (!files.length) return;
   emit("drop-files", { files, cwd: props.cwd });
 }
-defineExpose({ handleOpenFile, bringToFront, launchApp });
+defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, openAppStoreEditor });
 </script>
 
 <template>
@@ -1019,6 +1050,7 @@ defineExpose({ handleOpenFile, bringToFront, launchApp });
               </div>
 
               <span class="item-title" :title="file.key">{{ displayFileName(file.key, viewMode === 'grid') }}</span>
+              <span v-if="isSoftware(file)" class="item-platform-badge">{{ getSoftwarePlatformPill(file) }}</span>
               <span v-if="viewMode === 'list'" class="item-size">{{ formatSize(file.size) }}</span>
               <span v-if="viewMode === 'list'" class="item-date">{{ formatDate(file.uploaded) }}</span>
             </article>
@@ -1124,6 +1156,7 @@ defineExpose({ handleOpenFile, bringToFront, launchApp });
 
     <!-- 🛍️ Window 7: macOS App Store & Software Hub Modal -->
     <MacAppStoreModal
+      ref="appStoreRef"
       :visible="appStoreModal.visible"
       :minimized="appStoreModal.minimized"
       :files="files"
@@ -1665,6 +1698,22 @@ defineExpose({ handleOpenFile, bringToFront, launchApp });
   font-size: 11px;
   color: #8e8e93;
   font-family: monospace;
+}
+
+.item-platform-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  margin-top: 3px;
+  border-radius: 4px;
+  background: rgba(0, 122, 255, 0.14);
+  color: #0a84ff;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.finder-file-item.is-selected .item-platform-badge {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
 }
 
 .finder-file-item.is-selected .item-size,

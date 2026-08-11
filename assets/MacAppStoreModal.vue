@@ -51,23 +51,51 @@ function detectPlatform(key) {
   const lower = (key || "").toLowerCase();
   if (lower.endsWith(".dmg") || lower.endsWith(".pkg") || lower.includes("macos") || lower.includes("mac_")) {
     if (lower.includes("arm64") || lower.includes("apple_silicon") || lower.includes("m1") || lower.includes("m2") || lower.includes("m3") || lower.includes("m4")) {
-      return "macOS (Apple Silicon)";
+      return "macOS (Apple Silicon M系列)";
     }
     if (lower.includes("intel") || lower.includes("x64") || lower.includes("x86_64")) {
-      return "macOS (Intel)";
+      return "macOS (Intel x86_64)";
     }
-    return "macOS (通用)";
+    return "macOS (Universal 通用)";
   }
   if (lower.endsWith(".exe") || lower.endsWith(".msi") || lower.includes("win_") || lower.includes("windows")) {
     return lower.includes("arm") ? "Windows (ARM64)" : "Windows (x64)";
   }
   if (lower.endsWith(".apk")) return "Android (APK)";
   if (lower.endsWith(".ipa")) return "iOS (IPA)";
-  if (lower.endsWith(".deb") || lower.endsWith(".appimage")) return "Linux";
+  if (lower.endsWith(".deb") || lower.endsWith(".appimage")) return "Linux (Deb/AppImage)";
   return "跨平台通用";
 }
 
-// Helper: Parse title & version from file key
+// Global Knowledge Base for Popular Software
+const PRESET_APP_DB = [
+  { match: ["photoshop", "ps"], title: "Adobe Photoshop", category: "design", appName: "Adobe Photoshop 2024.app", summary: "全球行业标准的图像处理、合成与创意设计生产力旗舰软件。", features: ["生成式 AI 智能填充", "无损高保真图像合成", "RAW 格式全色彩深度调优"] },
+  { match: ["premiere", "pr"], title: "Adobe Premiere Pro", category: "entertainment", appName: "Adobe Premiere Pro 2024.app", summary: "专业非线性视频编辑与电影级调色套件。", features: ["原生 8K ProRes 极速剪辑", "AI 自动文字转语音字幕", "Lumetri 电影级色彩调校"] },
+  { match: ["after effects", "ae"], title: "Adobe After Effects", category: "design", appName: "Adobe After Effects 2024.app", summary: "电影级视觉特效制作与动态图形设计工作站。", features: ["3D 动态图形合成引擎", "精准 Roto 抠像与追踪", "电影级粒子与光效插件兼容"] },
+  { match: ["illustrator", "ai"], title: "Adobe Illustrator", category: "design", appName: "Adobe Illustrator 2024.app", summary: "行业标准矢量插画、图标与品牌视觉设计利器。", features: ["无损矢量排版与排版设计", "生成式矢量绘图引擎", "精准几何图形构筑工具"] },
+  { match: ["final cut", "fcp"], title: "Final Cut Pro", category: "entertainment", appName: "Final Cut Pro.app", summary: "Apple 专为 Mac 硬件深度优化的专业非线性剪辑神器。", features: ["Metal 硬件加速秒速渲染", "磁性时间线流线型剪辑", "智能面部与对象自动追踪"] },
+  { match: ["logic pro"], title: "Logic Pro", category: "entertainment", appName: "Logic Pro.app", summary: "Apple 专业级音乐创作、录音、音效设计与母带处理工作站。", features: ["数千款高品质合成器音源", "空间音频杜比全景声混音", "实时打击乐伴奏生成器"] },
+  { match: ["cleanmymac"], title: "CleanMyMac X", category: "utilities", appName: "CleanMyMac X.app", summary: "macOS 经典的全能系统深度清理、安全防护与性能提速管家。", features: ["一键全盘垃圾与系统缓存扫描", "恶意软件实时查杀拦截", "深度卸载与残留文件彻底粉碎"] },
+  { match: ["vscode", "visual studio code"], title: "Visual Studio Code", category: "developer", appName: "Visual Studio Code.app", summary: "微软轻量级、跨平台且生态极度丰富的现代化代码编辑器。", features: ["海量插件与主题生态支持", "内置 Git 版本控制与终端", "智能代码提示与调试器集成"] },
+  { match: ["intellij", "idea"], title: "IntelliJ IDEA Ultimate", category: "developer", appName: "IntelliJ IDEA.app", summary: "Java / Kotlin 业界天花板级企业应用开发集成环境。", features: ["深度智能代码分析与重构", "全栈框架与数据库工具集成", "AI 编程助手深度嵌入"] },
+  { match: ["pycharm"], title: "PyCharm Professional", category: "developer", appName: "PyCharm.app", summary: "Python 专业开发者首选的全栈开发与数据科学 IDE。", features: ["Django / Flask 框架深度支持", "科学计算与 Jupyter 交互", "远程容器与 SSH 部署环境"] },
+  { match: ["webstorm"], title: "WebStorm", category: "developer", appName: "WebStorm.app", summary: "专为 JavaScript / TypeScript / Vue / React 生态打造的最聪明的前端 IDE。", features: ["前端全套框架深度智能提示", "CSS / Sass / Tailwind 实时校验", "强大的重构与单元测试工具"] },
+  { match: ["tableplus"], title: "TablePlus", category: "developer", appName: "TablePlus.app", summary: "轻量、极速且颜值爆表的原生关系型数据库管理客户端。", features: ["支持 MySQL/PostgreSQL/Redis/SQLite", "内联编辑与多标签页管理", "端到端 SSH 隧道加密连接"] },
+  { match: ["navicat"], title: "Navicat Premium", category: "developer", appName: "Navicat Premium.app", summary: "企业级多连接数据库管理与数据迁移建模套件。", features: ["可视化数据模型设计器", "跨库结构与数据实时同步", "自动化定时备份与脚本执行"] },
+  { match: ["docker"], title: "Docker Desktop", category: "developer", appName: "Docker.app", summary: "容器化应用构建、分发与本地运行的一体化桌面工作流。", features: ["一键启动 Kubernetes 环境", "多架构镜像跨平台编译", "低功耗虚拟化后台引擎"] },
+  { match: ["notion"], title: "Notion", category: "productivity", appName: "Notion.app", summary: "All-in-one 知识库、项目管理与协作笔记神器。", features: ["自由无限制的 Block 模块化排版", "强大的 Database 多视图联动", "Notion AI 智能写作辅助"] },
+  { match: ["obsidian"], title: "Obsidian", category: "productivity", appName: "Obsidian.app", summary: "本地离线优先、基于 Markdown 双向链接的第二大脑知识库。", features: ["无缝构建个人网状知识图谱", "数千款社区插件与主题拓展", "数据纯本地保存，隐私绝对自主"] },
+  { match: ["typora"], title: "Typora", category: "productivity", appName: "Typora.app", summary: "极简纯粹、所见即所得的顶级 Markdown 写作体验利器。", features: ["输入即渲染，去除繁琐分屏", "支持数学公式与 Mermaid 图表", "丰富的高颜值 PDF / HTML 导出主题"] },
+  { match: ["iina"], title: "IINA 播放器", category: "entertainment", appName: "IINA.app", summary: "专为 macOS 设计的现代化全能开源影音播放器，基于 mpv 内核。", features: ["4K HDR 与杜比视界高保真回放", "原生 macOS 毛玻璃与画中画", "支持在线字幕自动精准匹配"] },
+  { match: ["downie"], title: "Downie 4", category: "utilities", appName: "Downie 4.app", summary: "macOS 最好用的全网高清音视频一键解析下载器。", features: ["支持全球数千个主流视频网站", "一键拖拽直链与批量抓取", "最高支持 4K/8K 与 HDR 原画下载"] },
+  { match: ["permute"], title: "Permute 3", category: "utilities", appName: "Permute 3.app", summary: "精美优雅且极速的音视频/图片格式转换神器。", features: ["多核心硬件加速极速转码", "批量压制与体积大幅瘦身", "音视频一键拼接与提取伴奏"] },
+  { match: ["clash", "clash verge"], title: "Clash Verge Rev", category: "network", appName: "Clash Verge.app", summary: "基于 Tauri 架构的高颜值全能网络代理工具与分流调度中心。", features: ["支持 Meta / Mihomo 新内核", "强大的规则订阅与自定义分流", "全平台统一极简毛玻璃界面"] },
+  { match: ["surge"], title: "Surge for Mac", category: "network", appName: "Surge.app", summary: "macOS 上最强大的高级网络调试、抓包与流量接管工具。", features: ["精准分流与本地 DNS 高性能优化", "全协议请求实时解密抓包分析", "支持网关接管全屋局域网流量"] },
+  { match: ["raycast"], title: "Raycast", category: "productivity", appName: "Raycast.app", summary: "新一代键盘驱动的极速 macOS 效率启动台与工作流中心。", features: ["海量插件生态秒级唤醒操作", "内置剪贴板历史与快捷短语", "深度集成 AI 交互与系统设置"] },
+  { match: ["betterdisplay"], title: "BetterDisplay", category: "utilities", appName: "BetterDisplay.app", summary: "外接显示器 HiDPI 渲染与屏幕亮度精准调节神器。", features: ["一键解锁外接屏最佳 HiDPI 分辨率", "键盘原生亮度与音量 DDC 控制", "支持画中画与自定义色域映射"] },
+];
+
+// Helper: Parse title & version from file key with knowledge base integration
 function parseDefaultMeta(file) {
   const key = file.key || "";
   let baseName = key.split("/").pop() || key;
@@ -80,8 +108,15 @@ function parseDefaultMeta(file) {
     version = `v${verMatch[1]}`;
   }
 
+  // Check Knowledge Base
+  const lowerName = baseName.toLowerCase();
+  const matched = PRESET_APP_DB.find(p => p.match.some(m => lowerName.includes(m)));
+
+  const platform = detectPlatform(key);
+  let appName = matched ? matched.appName : `${baseName}.app`;
+
   // Clean title
-  let title = baseName
+  let title = matched ? matched.title : baseName
     .replace(/[vV]?\d+\.\d+(\.\d+)?.*$/, "")
     .replace(/[_\-]+(mac|macos|win|windows|x64|arm64|universal|crack|patch|setup|installer)/gi, " ")
     .replace(/[_\-\.]+/g, " ")
@@ -89,26 +124,28 @@ function parseDefaultMeta(file) {
 
   if (!title) title = baseName;
 
-  // Auto category guess
-  let category = "utilities";
-  const l = baseName.toLowerCase();
-  if (l.includes("adobe") || l.includes("photoshop") || l.includes("sketch") || l.includes("figma") || l.includes("illustrator") || l.includes("blender") || l.includes("c4d")) category = "design";
-  else if (l.includes("notion") || l.includes("office") || l.includes("word") || l.includes("excel") || l.includes("obsidian") || l.includes("wps")) category = "productivity";
-  else if (l.includes("vscode") || l.includes("idea") || l.includes("pycharm") || l.includes("git") || l.includes("docker") || l.includes("navicat") || l.includes("tableplus")) category = "developer";
-  else if (l.includes("final") || l.includes("cut") || l.includes("premiere") || l.includes("logic") || l.includes("vlc") || l.includes("iina") || l.includes("music")) category = "entertainment";
-  else if (l.includes("clash") || l.includes("surge") || l.includes("chrome") || l.includes("edge") || l.includes("telegram") || l.includes("vpn")) category = "network";
-  else if (l.endsWith(".apk") || l.endsWith(".ipa")) category = "mobile";
+  let category = matched ? matched.category : "utilities";
+  let summary = matched ? matched.summary : `${title} 官方高保真安装包，纯净无广告，极速直连下载。`;
+  let features = matched ? matched.features : ["极速云端直连下载", "经过完整兼容性校验", "支持断点续传"];
+
+  let installGuide = "";
+  if (platform.includes("macOS")) {
+    installGuide = `1. 双击打开 DMG 镜像包；\n2. 将【${title}】拖入 Applications 应用程序文件夹；\n3. 若打开提示「文件已损坏」或无法打开，请在终端输入并回车：\nsudo xattr -rd com.apple.quarantine /Applications/${appName.replace(/\s/g, "\\ ")}`;
+  } else if (platform.includes("Windows")) {
+    installGuide = `1. 下载安装包后双击运行；\n2. 按照屏幕提示点击「下一步」选择安装路径完成安装。`;
+  } else {
+    installGuide = `1. 手机端直接扫码或下载原安装包；\n2. 授权安装未知来源应用即可畅快体验。`;
+  }
 
   return {
     title,
     version,
     category,
-    platform: detectPlatform(key),
-    summary: `${title} 官方高保真安装包，纯净无广告，极速直连下载。`,
-    features: ["极速云端直连下载", "经过完整兼容性校验", "支持断点续传"],
-    installGuide: detectPlatform(key).includes("macOS")
-      ? "1. 双击打开 DMG 镜像包；\n2. 将应用图标拖拽至「Applications / 应用程序」文件夹；\n3. 若打开提示「文件已损坏」或无法打开，请在终端输入并回车：\nsudo xattr -rd com.apple.quarantine /Applications/应用名.app"
-      : "1. 下载安装包后双击运行；\n2. 按照安装向导提示点击「下一步」完成安装。",
+    platform,
+    summary,
+    features,
+    installGuide,
+    appName,
   };
 }
 
@@ -132,6 +169,7 @@ const softwareItems = computed(() => {
       summary: custom.summary || def.summary,
       features: custom.features && custom.features.length ? custom.features : def.features,
       installGuide: custom.installGuide || def.installGuide,
+      appName: def.appName,
       icon: custom.icon || "",
       screenshots: custom.screenshots || [],
       custom: !!props.metadata[file.key],
@@ -263,6 +301,18 @@ function copyText(text, label = "已复制到剪贴板") {
     copySuccessTip.value = "";
   }, 2500);
 }
+
+defineExpose({
+  openDetailByKey(key) {
+    const item = softwareItems.value.find(a => a.key === key);
+    if (item) selectedApp.value = item;
+  },
+  openEditorByKey(key) {
+    const item = softwareItems.value.find(a => a.key === key);
+    if (item) openEditor(item);
+  },
+  softwareItems,
+});
 </script>
 
 <template>
@@ -538,7 +588,7 @@ function copyText(text, label = "已复制到剪贴板") {
                 <select v-model="editingApp.category">
                   <option value="design">🎨 设计创意</option>
                   <option value="productivity">⚡ 效率办公</option>
-                  <option value="developer">💻 开发者工具</option>
+                  <option value="developer">💻 开发工具</option>
                   <option value="utilities">🛠️ 系统工具</option>
                   <option value="entertainment">🎬 影音娱乐</option>
                   <option value="network">🌐 网络通讯</option>
