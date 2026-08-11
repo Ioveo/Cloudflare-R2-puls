@@ -56,18 +56,35 @@ function handleSoftwareFileSelect(e) {
     .trim();
   if (!title) title = base;
 
-  let platform = "macOS (Apple Silicon & Intel)";
+  let platform = "macOS (Universal 通用)";
   const lower = file.name.toLowerCase();
-  if (lower.endsWith(".exe") || lower.endsWith(".msi")) platform = "Windows (x64)";
-  else if (lower.endsWith(".apk")) platform = "Android";
-  else if (lower.endsWith(".ipa")) platform = "iOS";
+  if (lower.endsWith(".dmg") || lower.endsWith(".pkg")) {
+    if (lower.includes("arm64") || lower.includes("m1") || lower.includes("m2") || lower.includes("m3") || lower.includes("m4") || lower.includes("apple_silicon")) {
+      platform = "macOS (Apple Silicon M系列)";
+    } else if (lower.includes("intel") || lower.includes("x64") || lower.includes("x86_64")) {
+      platform = "macOS (Intel x86_64)";
+    } else {
+      platform = "macOS (Universal 通用)";
+    }
+  } else if (lower.endsWith(".exe") || lower.endsWith(".msi")) {
+    platform = lower.includes("arm") ? "Windows (ARM64)" : "Windows (x64)";
+  } else if (lower.endsWith(".apk")) {
+    platform = "Android (APK)";
+  } else if (lower.endsWith(".ipa")) {
+    platform = "iOS (IPA)";
+  } else if (lower.endsWith(".deb") || lower.endsWith(".appimage") || lower.endsWith(".rpm")) {
+    platform = "Linux (Deb / AppImage)";
+  } else {
+    platform = "跨平台通用";
+  }
 
   let category = "utilities";
-  if (lower.includes("adobe") || lower.includes("photo") || lower.includes("sketch") || lower.includes("figma")) category = "design";
-  else if (lower.includes("office") || lower.includes("notion") || lower.includes("word") || lower.includes("wps")) category = "productivity";
-  else if (lower.includes("code") || lower.includes("git") || lower.includes("idea") || lower.includes("dev")) category = "developer";
-  else if (lower.includes("vlc") || lower.includes("video") || lower.includes("music") || lower.includes("player")) category = "entertainment";
-  else if (lower.includes("clash") || lower.includes("vpn") || lower.includes("net")) category = "network";
+  if (lower.includes("adobe") || lower.includes("photo") || lower.includes("sketch") || lower.includes("figma") || lower.includes("illustrator") || lower.includes("blender")) category = "design";
+  else if (lower.includes("office") || lower.includes("notion") || lower.includes("word") || lower.includes("wps") || lower.includes("typora") || lower.includes("obsidian")) category = "productivity";
+  else if (lower.includes("code") || lower.includes("git") || lower.includes("idea") || lower.includes("dev") || lower.includes("studio") || lower.includes("tableplus") || lower.includes("docker") || lower.includes("postman")) category = "developer";
+  else if (lower.includes("vlc") || lower.includes("video") || lower.includes("music") || lower.includes("player") || lower.includes("iina") || lower.includes("premiere") || lower.includes("logic") || lower.includes("audio")) category = "entertainment";
+  else if (lower.includes("clash") || lower.includes("vpn") || lower.includes("net") || lower.includes("surge") || lower.includes("chrome") || lower.includes("telegram")) category = "network";
+  else if (lower.endsWith(".apk") || lower.endsWith(".ipa")) category = "mobile";
 
   softwareForm.value = {
     title,
@@ -78,7 +95,7 @@ function handleSoftwareFileSelect(e) {
     featuresText: "极速云端直连下载\n经过完整兼容性校验\n支持断点续传",
     installGuide: platform.includes("macOS")
       ? "1. 双击打开 DMG 镜像包；\n2. 将应用图标拖入 Applications 应用程序文件夹；\n3. 如提示损坏请在终端运行: sudo xattr -rd com.apple.quarantine /Applications/应用名.app"
-      : "1. 双击运行安装程序；\n2. 按照屏幕提示完成安装向导。",
+      : (platform.includes("Windows") ? "1. 双击运行安装程序；\n2. 按照屏幕提示完成安装向导。" : "1. 手机扫码或下载原安装包；\n2. 授权安装即可使用。"),
   };
 
   isSoftwareMode.value = true;
@@ -211,7 +228,17 @@ function handleCreateFolder() {
             </div>
             <div class="field-item">
               <label>💻 适用平台与架构 (Platform)</label>
-              <input v-model="softwareForm.platform" type="text" placeholder="如 macOS (Apple Silicon M系列)" />
+              <select v-model="softwareForm.platform">
+                <option value="Windows (x64)">🪟 Windows (x64)</option>
+                <option value="Windows (ARM64)">🪟 Windows (ARM64)</option>
+                <option value="macOS (Universal 通用)">🍎 macOS (Universal 通用)</option>
+                <option value="macOS (Apple Silicon M系列)">🍎 macOS (Apple Silicon M系列)</option>
+                <option value="macOS (Intel x86_64)">🍎 macOS (Intel x86_64)</option>
+                <option value="Android (APK)">📱 Android (APK)</option>
+                <option value="iOS (IPA)">📱 iOS (IPA)</option>
+                <option value="Linux (Deb / AppImage)">🐧 Linux (Deb / AppImage)</option>
+                <option value="跨平台通用">🌐 跨平台通用</option>
+              </select>
             </div>
           </div>
 

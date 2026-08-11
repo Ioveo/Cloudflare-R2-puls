@@ -1169,10 +1169,14 @@ export default {
     },
     async handleSoftwareUpload({ file, metadata, targetFolder }) {
       const folder = targetFolder || "软件/";
-      const targetKey = `${folder}${file.name}`;
+      const cleanFolder = folder.endsWith("/") ? folder : `${folder}/`;
+      const fileName = file.name;
+      const targetKeyWithFolder = `${cleanFolder}${fileName}`;
+      const targetKeySimple = fileName;
       const updated = {
         ...this.appsMetadata,
-        [targetKey]: metadata
+        [targetKeyWithFolder]: metadata,
+        [targetKeySimple]: metadata,
       };
       await this.saveAppsMetadata(updated);
       this.uploadFiles([file], folder);

@@ -148,6 +148,9 @@ function detectPlatform(key) {
 
 // Global Knowledge Base for Popular Software
 const PRESET_APP_DB = [
+  { match: ["studioone", "studio one", "studio_one"], title: "PreSonus Studio One Pro", category: "entertainment", appName: "Studio One.app", summary: "专业级全能音乐创作、录音混音与母带制作宿主工作站 (DAW)。", features: ["原生 64 位双精度音频引擎", "极速拖拽编曲工作流", "内置海量母带级别 DSP 效果器"] },
+  { match: ["fl studio", "flstudio", "fruity"], title: "FL Studio Producer", category: "entertainment", appName: "FL Studio.app", summary: "全球电子音乐人与编曲制作人首选的全功能音乐制作环境。", features: ["经典步进音序器与钢琴卷帘", "矢量全动态缩放界面", "终身免费升级官方音色库"] },
+  { match: ["cubase"], title: "Steinberg Cubase Pro", category: "entertainment", appName: "Cubase.app", summary: "影视配乐与流行音乐工业级标准数字音频工作站。", features: ["VariAudio 人声精准音高修正", "MixConsole 模拟调音台通道条", "支持 Dolby Atmos 全景声混音"] },
   { match: ["photoshop", "ps"], title: "Adobe Photoshop", category: "design", appName: "Adobe Photoshop 2024.app", summary: "全球行业标准的图像处理、合成与创意设计生产力旗舰软件。", features: ["生成式 AI 智能填充", "无损高保真图像合成", "RAW 格式全色彩深度调优"] },
   { match: ["premiere", "pr"], title: "Adobe Premiere Pro", category: "entertainment", appName: "Adobe Premiere Pro 2024.app", summary: "专业非线性视频编辑与电影级调色套件。", features: ["原生 8K ProRes 极速剪辑", "AI 自动文字转语音字幕", "Lumetri 电影级色彩调校"] },
   { match: ["after effects", "ae"], title: "Adobe After Effects", category: "design", appName: "Adobe After Effects 2024.app", summary: "电影级视觉特效制作与动态图形设计工作站。", features: ["3D 动态图形合成引擎", "精准 Roto 抠像与追踪", "电影级粒子与光效插件兼容"] },
@@ -155,6 +158,8 @@ const PRESET_APP_DB = [
   { match: ["final cut", "fcp"], title: "Final Cut Pro", category: "entertainment", appName: "Final Cut Pro.app", summary: "Apple 专为 Mac 硬件深度优化的专业非线性剪辑神器。", features: ["Metal 硬件加速秒速渲染", "磁性时间线流线型剪辑", "智能面部与对象自动追踪"] },
   { match: ["logic pro"], title: "Logic Pro", category: "entertainment", appName: "Logic Pro.app", summary: "Apple 专业级音乐创作、录音、音效设计与母带处理工作站。", features: ["数千款高品质合成器音源", "空间音频杜比全景声混音", "实时打击乐伴奏生成器"] },
   { match: ["cleanmymac"], title: "CleanMyMac X", category: "utilities", appName: "CleanMyMac X.app", summary: "macOS 经典的全能系统深度清理、安全防护与性能提速管家。", features: ["一键全盘垃圾与系统缓存扫描", "恶意软件实时查杀拦截", "深度卸载与残留文件彻底粉碎"] },
+  { match: ["snipaste", "pixpin"], title: "Snipaste 截图利器", category: "utilities", appName: "Snipaste.app", summary: "极其强大便捷的屏幕截图、贴图与取色标注神器。", features: ["像素级精准智能边缘吸附", "截图置顶贴图与透明度调节", "高级取色与标注工具箱"] },
+  { match: ["bandizip", "7-zip", "7zip"], title: "Bandizip 全能压缩", category: "utilities", appName: "Bandizip.app", summary: "轻巧极速、支持全格式解压与多核心极速压缩的必备工具。", features: ["多核 CPU 满速并行压缩", "免解压直接预览图片文档", "支持长文件名与全字符集"] },
   { match: ["vscode", "visual studio code"], title: "Visual Studio Code", category: "developer", appName: "Visual Studio Code.app", summary: "微软轻量级、跨平台且生态极度丰富的现代化代码编辑器。", features: ["海量插件与主题生态支持", "内置 Git 版本控制与终端", "智能代码提示与调试器集成"] },
   { match: ["intellij", "idea"], title: "IntelliJ IDEA Ultimate", category: "developer", appName: "IntelliJ IDEA.app", summary: "Java / Kotlin 业界天花板级企业应用开发集成环境。", features: ["深度智能代码分析与重构", "全栈框架与数据库工具集成", "AI 编程助手深度嵌入"] },
   { match: ["pycharm"], title: "PyCharm Professional", category: "developer", appName: "PyCharm.app", summary: "Python 专业开发者首选的全栈开发与数据科学 IDE。", features: ["Django / Flask 框架深度支持", "科学计算与 Jupyter 交互", "远程容器与 SSH 部署环境"] },
@@ -165,7 +170,7 @@ const PRESET_APP_DB = [
   { match: ["notion"], title: "Notion", category: "productivity", appName: "Notion.app", summary: "All-in-one 知识库、项目管理与协作笔记神器。", features: ["自由无限制的 Block 模块化排版", "强大的 Database 多视图联动", "Notion AI 智能写作辅助"] },
   { match: ["obsidian"], title: "Obsidian", category: "productivity", appName: "Obsidian.app", summary: "本地离线优先、基于 Markdown 双向链接的第二大脑知识库。", features: ["无缝构建个人网状知识图谱", "数千款社区插件与主题拓展", "数据纯本地保存，隐私绝对自主"] },
   { match: ["typora"], title: "Typora", category: "productivity", appName: "Typora.app", summary: "极简纯粹、所见即所得的顶级 Markdown 写作体验利器。", features: ["输入即渲染，去除繁琐分屏", "支持数学公式与 Mermaid 图表", "丰富的高颜值 PDF / HTML 导出主题"] },
-  { match: ["iina"], title: "IINA 播放器", category: "entertainment", appName: "IINA.app", summary: "专为 macOS 设计的现代化全能开源影音播放器，基于 mpv 内核。", features: ["4K HDR 与杜比视界高保真回放", "原生 macOS 毛玻璃与画中画", "支持在线字幕自动精准匹配"] },
+  { match: ["iina", "potplayer"], title: "IINA 全能播放器", category: "entertainment", appName: "IINA.app", summary: "现代化全能影音播放器，基于 mpv 内核，支持全格式硬解。", features: ["4K HDR 与杜比视界高保真回放", "原生毛玻璃与画中画模式", "支持在线字幕自动精准匹配"] },
   { match: ["downie"], title: "Downie 4", category: "utilities", appName: "Downie 4.app", summary: "macOS 最好用的全网高清音视频一键解析下载器。", features: ["支持全球数千个主流视频网站", "一键拖拽直链与批量抓取", "最高支持 4K/8K 与 HDR 原画下载"] },
   { match: ["permute"], title: "Permute 3", category: "utilities", appName: "Permute 3.app", summary: "精美优雅且极速的音视频/图片格式转换神器。", features: ["多核心硬件加速极速转码", "批量压制与体积大幅瘦身", "音视频一键拼接与提取伴奏"] },
   { match: ["clash", "clash verge"], title: "Clash Verge Rev", category: "network", appName: "Clash Verge.app", summary: "基于 Tauri 架构的高颜值全能网络代理工具与分流调度中心。", features: ["支持 Meta / Mihomo 新内核", "强大的规则订阅与自定义分流", "全平台统一极简毛玻璃界面"] },
@@ -173,6 +178,31 @@ const PRESET_APP_DB = [
   { match: ["raycast"], title: "Raycast", category: "productivity", appName: "Raycast.app", summary: "新一代键盘驱动的极速 macOS 效率启动台与工作流中心。", features: ["海量插件生态秒级唤醒操作", "内置剪贴板历史与快捷短语", "深度集成 AI 交互与系统设置"] },
   { match: ["betterdisplay"], title: "BetterDisplay", category: "utilities", appName: "BetterDisplay.app", summary: "外接显示器 HiDPI 渲染与屏幕亮度精准调节神器。", features: ["一键解锁外接屏最佳 HiDPI 分辨率", "键盘原生亮度与音量 DDC 控制", "支持画中画与自定义色域映射"] },
 ];
+
+// Helper: Normalize lookup of metadata regardless of folder prefixes
+function getAppMetadata(metadata, fileKey) {
+  if (!metadata || typeof metadata !== "object" || !fileKey) return {};
+  if (metadata[fileKey]) return metadata[fileKey];
+
+  // Try with "软件/" prefix
+  const withPrefix = fileKey.startsWith("软件/") ? fileKey : `软件/${fileKey}`;
+  if (metadata[withPrefix]) return metadata[withPrefix];
+
+  // Try without "软件/" prefix
+  const withoutPrefix = fileKey.replace(/^软件\//, "");
+  if (metadata[withoutPrefix]) return metadata[withoutPrefix];
+
+  // Try matching by base filename
+  const fileName = fileKey.split("/").pop();
+  if (fileName && metadata[fileName]) return metadata[fileName];
+
+  for (const [k, v] of Object.entries(metadata)) {
+    if (k.split("/").pop() === fileName) {
+      return v;
+    }
+  }
+  return {};
+}
 
 // Helper: Parse title & version from file key with knowledge base integration
 function parseDefaultMeta(file) {
@@ -242,7 +272,7 @@ const softwareItems = computed(() => {
   const list = source.filter(isSoftware);
 
   return list.map((file) => {
-    const custom = props.metadata[file.key] || {};
+    const custom = getAppMetadata(props.metadata, file.key);
     const def = parseDefaultMeta(file);
     return {
       file,
@@ -259,7 +289,7 @@ const softwareItems = computed(() => {
       appName: def.appName,
       icon: custom.icon || "",
       screenshots: custom.screenshots || [],
-      custom: !!props.metadata[file.key],
+      custom: !!(custom && custom.title),
     };
   });
 });
@@ -269,27 +299,24 @@ const filteredApps = computed(() => {
   let list = softwareItems.value;
 
   if (currentTab.value !== "discover" && currentTab.value !== "all") {
-    list = list.filter((app) => app.category === currentTab.value);
+    list = list.filter((app) => (app.category || "").toLowerCase() === currentTab.value.toLowerCase());
   }
 
   if (selectedPlatform.value !== "all") {
-    if (selectedPlatform.value === "mac") list = list.filter((app) => app.platform.toLowerCase().includes("mac"));
-    else if (selectedPlatform.value === "win") list = list.filter((app) => app.platform.toLowerCase().includes("win"));
-    else if (selectedPlatform.value === "mobile") list = list.filter((app) => app.platform.toLowerCase().includes("android") || app.platform.toLowerCase().includes("ios"));
+    if (selectedPlatform.value === "mac") list = list.filter((app) => (app.platform || "").toLowerCase().includes("mac"));
+    else if (selectedPlatform.value === "win") list = list.filter((app) => (app.platform || "").toLowerCase().includes("win"));
+    else if (selectedPlatform.value === "mobile") list = list.filter((app) => (app.platform || "").toLowerCase().includes("android") || (app.platform || "").toLowerCase().includes("ios") || (app.platform || "").toLowerCase().includes("mobile"));
   }
 
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase();
     list = list.filter((app) =>
-      app.title.toLowerCase().includes(q) ||
-      app.summary.toLowerCase().includes(q) ||
-      app.key.toLowerCase().includes(q) ||
-      app.version.toLowerCase().includes(q)
+      (app.title || "").toLowerCase().includes(q) ||
+      (app.summary || "").toLowerCase().includes(q) ||
+      (app.key || "").toLowerCase().includes(q) ||
+      (app.version || "").toLowerCase().includes(q)
     );
   }
-
-  return list;
-});
 
 // Spotlight Hero App (Top 1 app for Discover view)
 const heroApp = computed(() => {
@@ -388,27 +415,35 @@ function saveAppEditor() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const metaData = {
+    title: editingApp.value.title,
+    version: editingApp.value.version,
+    category: editingApp.value.category,
+    platform: editingApp.value.platform,
+    summary: editingApp.value.summary,
+    features,
+    installGuide: editingApp.value.installGuide,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const currentKey = editingApp.value.key;
+  const fullKey = currentKey.startsWith("软件/") ? currentKey : `软件/${currentKey}`;
+  const baseKey = currentKey.split("/").pop();
+
   const updated = {
     ...props.metadata,
-    [editingApp.value.key]: {
-      title: editingApp.value.title,
-      version: editingApp.value.version,
-      category: editingApp.value.category,
-      platform: editingApp.value.platform,
-      summary: editingApp.value.summary,
-      features,
-      installGuide: editingApp.value.installGuide,
-      updatedAt: new Date().toISOString(),
-    },
+    [currentKey]: metaData,
+    [fullKey]: metaData,
+    [baseKey]: metaData,
   };
 
   emit("save-metadata", updated);
   editingApp.value = null;
 
-  if (selectedApp.value && selectedApp.value.key === editingApp.value?.key) {
+  if (selectedApp.value && (selectedApp.value.key === currentKey || selectedApp.value.key === fullKey || selectedApp.value.key === baseKey)) {
     selectedApp.value = {
       ...selectedApp.value,
-      ...updated[selectedApp.value.key],
+      ...metaData,
     };
   }
 }
@@ -533,7 +568,7 @@ defineExpose({
               <span class="nav-cat-name">{{ cat.name }}</span>
             </div>
             <span v-if="cat.id !== 'discover'" class="nav-cat-badge">
-              {{ cat.id === 'all' ? softwareItems.length : softwareItems.filter(a => a.category === cat.id).length }}
+              {{ cat.id === 'all' ? softwareItems.length : softwareItems.filter(a => (a.category || '').toLowerCase() === cat.id.toLowerCase()).length }}
             </span>
           </button>
         </nav>
@@ -902,7 +937,17 @@ defineExpose({
               </div>
               <div class="form-group">
                 <label>💻 适用平台与架构 (Platform)</label>
-                <input v-model="editingApp.platform" type="text" placeholder="如 macOS (Apple Silicon M系列)" />
+                <select v-model="editingApp.platform">
+                  <option value="Windows (x64)">🪟 Windows (x64)</option>
+                  <option value="Windows (ARM64)">🪟 Windows (ARM64)</option>
+                  <option value="macOS (Universal 通用)">🍎 macOS (Universal 通用)</option>
+                  <option value="macOS (Apple Silicon M系列)">🍎 macOS (Apple Silicon M系列)</option>
+                  <option value="macOS (Intel x86_64)">🍎 macOS (Intel x86_64)</option>
+                  <option value="Android (APK)">📱 Android (APK)</option>
+                  <option value="iOS (IPA)">📱 iOS (IPA)</option>
+                  <option value="Linux (Deb / AppImage)">🐧 Linux (Deb / AppImage)</option>
+                  <option value="跨平台通用">🌐 跨平台通用</option>
+                </select>
               </div>
             </div>
 
