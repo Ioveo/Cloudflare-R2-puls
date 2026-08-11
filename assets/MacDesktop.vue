@@ -1160,7 +1160,7 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
       :visible="appStoreModal.visible"
       :minimized="appStoreModal.minimized"
       :files="files"
-      :all-files="allBucketFiles"
+      :all-files="allFiles"
       :metadata="appsMetadata"
       :storage-id="storageId"
       :z-index="windowZ.appstore"
@@ -1171,6 +1171,7 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
       @minimize="appStoreModal.minimized = true"
       @save-metadata="emit('save-apps-metadata', $event)"
       @upload="emit('upload', '软件/')"
+      @refresh="emit('refresh')"
     />
 
     <!-- ⚙️ Window 4: macOS System Settings -->

@@ -788,7 +788,10 @@ export default {
     isAudio(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("audio/")) return true; return /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma|aiff|alac)$/i.test(file.key || ""); },
     isSoftware(file) {
       const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
-      return /\.(dmg|pkg|exe|msi|apk|ipa|deb|appimage|rpm)$/i.test(key) || (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("app")));
+      if (!key || key.endsWith("_$folder$")) return false;
+      return /\.(dmg|pkg|exe|msi|apk|ipa|deb|appimage|rpm|iso)$/i.test(key) ||
+        key.startsWith("软件/") ||
+        (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("app") || key.includes("软件") || key.includes("setup") || key.includes("install")));
     },
     isArchive(file) {
       if (this.isSoftware(file)) return false;
@@ -962,7 +965,10 @@ export default {
         this.folders = items.folders || [];
         this.sortItems();
         if (this.autoGlobalScan && (!this.globalFilesLoaded || forceScan)) {
-          this.fetchGlobalFiles(true);
+          await this.fetchGlobalFiles(true);
+        }
+        if (forceScan) {
+          await this.fetchAppsMetadata();
         }
       } catch (error) {
         console.error("Fetch files failed", error);
@@ -1021,6 +1027,8 @@ export default {
     async processUploadQueue() {
       if (!this.uploadQueue.length) {
         await this.fetchFiles(true);
+        await this.fetchGlobalFiles(true);
+        await this.fetchAppsMetadata();
         this.uploadProgress = null;
         this.uploadFileName = "";
         this.speedText = "";

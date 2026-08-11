@@ -118,8 +118,10 @@ const categorySuggestions = {
 function isSoftware(file) {
   if (!file || !file.key) return false;
   const key = file.key.toLowerCase();
-  return /\.(dmg|pkg|app\.zip|exe|msi|apk|ipa|deb|appimage|rpm)$/i.test(key) ||
-    (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("v1.") || key.includes("v2.") || key.includes("app")));
+  if (key.endsWith("_$folder$")) return false;
+  return /\.(dmg|pkg|app\.zip|exe|msi|apk|ipa|deb|appimage|rpm|iso)$/i.test(key) ||
+    key.startsWith("软件/") ||
+    (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("v1.") || key.includes("v2.") || key.includes("app") || key.includes("软件") || key.includes("setup") || key.includes("install")));
 }
 
 // Helper: Detect platform from file
@@ -222,9 +224,20 @@ function parseDefaultMeta(file) {
   };
 }
 
-// All parsed software items with merged metadata
+// All parsed software items with merged metadata (merging current files and all bucket files)
 const softwareItems = computed(() => {
-  const source = props.allFiles && props.allFiles.length ? props.allFiles : props.files;
+  const map = new Map();
+  if (Array.isArray(props.files)) {
+    for (const f of props.files) {
+      if (f && f.key) map.set(f.key, f);
+    }
+  }
+  if (Array.isArray(props.allFiles)) {
+    for (const f of props.allFiles) {
+      if (f && f.key) map.set(f.key, f);
+    }
+  }
+  const source = Array.from(map.values());
   const list = source.filter(isSoftware);
 
   return list.map((file) => {
@@ -369,6 +382,21 @@ function copyText(text, label = "已复制到剪贴板") {
     copySuccessTip.value = "";
   }, 2500);
 }
+
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      emit("refresh");
+    }
+  }
+);
+
+onMounted(() => {
+  if (props.visible) {
+    emit("refresh");
+  }
+});
 
 defineExpose({
   openDetailByKey(key) {
