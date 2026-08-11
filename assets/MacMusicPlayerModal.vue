@@ -4,6 +4,7 @@ import MacWindow from "./MacWindow.vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  minimized: { type: Boolean, default: false },
   file: { type: Object, default: null },
   items: { type: Array, default: () => [] },
   index: { type: Number, default: 0 },
@@ -12,7 +13,7 @@ const props = defineProps({
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change", "focus", "upload"]);
+const emit = defineEmits(["close", "minimize", "change", "focus", "upload"]);
 
 const audioRef = ref(null);
 const isPlaying = ref(false);
@@ -159,14 +160,14 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
     :title="songTitle"
     icon="ph-music-notes-fill"
     :visible="visible"
+    :minimized="minimized"
     :width="820"
     :height="480"
-    :initial-x="180"
-    :initial-y="90"
     :z-index="zIndex"
     :is-active="isActive"
     @focus="emit('focus')"
     @close="emit('close')"
+    @minimize="emit('minimize')"
   >
     <template #titlebar-right>
       <div class="apple-music-header">

@@ -203,15 +203,26 @@ function onResizeEnd() {
   window.removeEventListener("touchend", onResizeEnd);
 }
 
+const isMinimized = ref(props.minimized);
+
+watch(() => props.minimized, (val) => {
+  isMinimized.value = val;
+});
+
+function handleMinimize() {
+  isMinimized.value = true;
+  emit("minimize");
+}
+
 onMounted(() => {
   checkMobile();
   window.addEventListener("resize", checkMobile);
   // On mobile: force maximized; on desktop: center window
   if (isMobile.value) {
     isMaximized.value = true;
-  } else if (props.initialX === 80 && window.innerWidth > props.width) {
-    posX.value = Math.max(40, Math.round((window.innerWidth - props.width) / 2));
-    posY.value = Math.max(60, Math.round((window.innerHeight - props.height - 80) / 2));
+  } else {
+    posX.value = Math.max(20, Math.round((window.innerWidth - winWidth.value) / 2));
+    posY.value = Math.max(45, Math.round((window.innerHeight - winHeight.value - 60) / 2));
   }
 });
 
@@ -230,7 +241,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    v-show="visible && !minimized"
+    v-show="visible && !isMinimized"
     class="mac-window"
     :class="{ 'is-active': isActive, 'is-maximized': isMaximized }"
     :style="windowStyle"
@@ -243,7 +254,7 @@ onUnmounted(() => {
         <button class="traffic-btn btn-close" type="button" title="关闭 (⌘W)" @click.stop="emit('close')">
           <span class="icon-sym">×</span>
         </button>
-        <button class="traffic-btn btn-minimize" type="button" title="最小化 (⌘M)" @click.stop="emit('minimize')">
+        <button class="traffic-btn btn-minimize" type="button" title="最小化 (⌘M)" @click.stop="handleMinimize">
           <span class="icon-sym">–</span>
         </button>
         <button class="traffic-btn btn-maximize" type="button" :title="isMaximized ? '还原' : '全屏'" @click.stop="toggleMaximize">

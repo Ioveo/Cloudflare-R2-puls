@@ -4,11 +4,12 @@ import MacWindow from "./MacWindow.vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  minimized: { type: Boolean, default: false },
   zIndex: { type: Number, default: 42 },
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "focus"]);
+const emit = defineEmits(["close", "minimize", "focus"]);
 
 const display = ref("0");
 const equation = ref("");
@@ -94,14 +95,14 @@ function calculate() {
     title="计算器 (Calculator)"
     icon="ph-calculator-fill"
     :visible="visible"
+    :minimized="minimized"
     :width="280"
     :height="400"
-    :initial-x="220"
-    :initial-y="120"
     :z-index="zIndex"
     :is-active="isActive"
     @focus="emit('focus')"
     @close="emit('close')"
+    @minimize="emit('minimize')"
   >
     <div class="calc-body">
       <!-- Screen Display -->

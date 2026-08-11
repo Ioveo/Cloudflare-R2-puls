@@ -4,6 +4,7 @@ import MacWindow from "./MacWindow.vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  minimized: { type: Boolean, default: false },
   file: { type: Object, default: null },
   items: { type: Array, default: () => [] },
   index: { type: Number, default: 0 },
@@ -12,7 +13,7 @@ const props = defineProps({
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change", "set-wallpaper", "focus", "upload"]);
+const emit = defineEmits(["close", "minimize", "change", "set-wallpaper", "focus", "upload"]);
 
 // Views: 'grid' (All Photos Library) vs 'canvas' (Single Photo Detail)
 const viewMode = ref("grid");
@@ -379,14 +380,14 @@ onUnmounted(() => {
     :title="photoTitle"
     icon="ph-image-square-fill"
     :visible="visible"
+    :minimized="minimized"
     :width="windowBounds.width"
     :height="windowBounds.height"
-    :initial-x="110"
-    :initial-y="50"
     :z-index="zIndex"
     :is-active="isActive"
     @focus="emit('focus')"
     @close="emit('close')"
+    @minimize="emit('minimize')"
   >
     <!-- macOS Native Photos Toolbar -->
     <template #titlebar-right>

@@ -4,11 +4,12 @@ import MacWindow from "./MacWindow.vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  minimized: { type: Boolean, default: false },
   zIndex: { type: Number, default: 41 },
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "focus"]);
+const emit = defineEmits(["close", "minimize", "focus"]);
 
 const notes = ref(JSON.parse(localStorage.getItem("mac-user-notes") || "[]"));
 const activeIndex = ref(0);
@@ -62,14 +63,14 @@ function onBodyInput(e) {
     title="备忘录 (Notes)"
     icon="ph-note-pencil-fill"
     :visible="visible"
+    :minimized="minimized"
     :width="640"
     :height="440"
-    :initial-x="180"
-    :initial-y="100"
     :z-index="zIndex"
     :is-active="isActive"
     @focus="emit('focus')"
     @close="emit('close')"
+    @minimize="emit('minimize')"
   >
     <template #titlebar-right>
       <div class="notes-titlebar-tools">

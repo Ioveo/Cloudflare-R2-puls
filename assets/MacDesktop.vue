@@ -220,11 +220,11 @@ const windows = ref({
   settings: { visible: false, minimized: false, zIndex: 11 },
 });
 
-const videoModal = ref({ visible: false, file: null, items: [], index: 0 });
-const musicModal = ref({ visible: false, file: null, items: [], index: 0 });
-const photosModal = ref({ visible: false, file: null, items: [], index: 0 });
-const calculatorModal = ref({ visible: false });
-const notesModal = ref({ visible: false });
+const videoModal = ref({ visible: false, minimized: false, file: null, items: [], index: 0 });
+const musicModal = ref({ visible: false, minimized: false, file: null, items: [], index: 0 });
+const photosModal = ref({ visible: false, minimized: false, file: null, items: [], index: 0 });
+const calculatorModal = ref({ visible: false, minimized: false });
+const notesModal = ref({ visible: false, minimized: false });
 const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
@@ -239,6 +239,11 @@ function bringToFront(appId) {
     windows.value[appId].minimized = false;
     windows.value[appId].visible = true;
   }
+  if (appId === "photos") { photosModal.value.minimized = false; photosModal.value.visible = true; }
+  if (appId === "video" || appId === "cinema") { videoModal.value.minimized = false; videoModal.value.visible = true; }
+  if (appId === "music") { musicModal.value.minimized = false; musicModal.value.visible = true; }
+  if (appId === "calculator") { calculatorModal.value.minimized = false; calculatorModal.value.visible = true; }
+  if (appId === "notes") { notesModal.value.minimized = false; notesModal.value.visible = true; }
 }
 
 function closeWindow(appId) {
@@ -270,40 +275,101 @@ const allAudios = computed(() => {
 
 function launchApp(appId) {
   if (appId === "finder") {
-    emit("update:filterCategory", "all");
-    bringToFront("finder");
+    if (windows.value.finder.minimized) {
+      windows.value.finder.minimized = false;
+      windows.value.finder.visible = true;
+      bringToFront("finder");
+    } else if (windows.value.finder.visible && activeAppId.value === "finder") {
+      windows.value.finder.minimized = true;
+    } else {
+      emit("update:filterCategory", "all");
+      bringToFront("finder");
+    }
   } else if (appId === "settings") {
-    bringToFront("settings");
+    if (windows.value.settings.minimized) {
+      windows.value.settings.minimized = false;
+      windows.value.settings.visible = true;
+      bringToFront("settings");
+    } else if (windows.value.settings.visible && activeAppId.value === "settings") {
+      windows.value.settings.minimized = true;
+    } else {
+      bringToFront("settings");
+    }
   } else if (appId === "calculator") {
-    bringToFront("calculator");
-    calculatorModal.value.visible = true;
+    if (calculatorModal.value.minimized) {
+      calculatorModal.value.minimized = false;
+      calculatorModal.value.visible = true;
+      bringToFront("calculator");
+    } else if (calculatorModal.value.visible && activeAppId.value === "calculator") {
+      calculatorModal.value.minimized = true;
+    } else {
+      calculatorModal.value.visible = true;
+      calculatorModal.value.minimized = false;
+      bringToFront("calculator");
+    }
   } else if (appId === "notes") {
-    bringToFront("notes");
-    notesModal.value.visible = true;
+    if (notesModal.value.minimized) {
+      notesModal.value.minimized = false;
+      notesModal.value.visible = true;
+      bringToFront("notes");
+    } else if (notesModal.value.visible && activeAppId.value === "notes") {
+      notesModal.value.minimized = true;
+    } else {
+      notesModal.value.visible = true;
+      notesModal.value.minimized = false;
+      bringToFront("notes");
+    }
   } else if (appId === "photos") {
-    bringToFront("photos");
-    photosModal.value = {
-      visible: true,
-      file: null, // open in all photos library grid view
-      items: allImages.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
-      index: 0,
-    };
+    if (photosModal.value.minimized) {
+      photosModal.value.minimized = false;
+      photosModal.value.visible = true;
+      bringToFront("photos");
+    } else if (photosModal.value.visible && activeAppId.value === "photos") {
+      photosModal.value.minimized = true;
+    } else {
+      bringToFront("photos");
+      photosModal.value = {
+        visible: true,
+        minimized: false,
+        file: null, // open in all photos library grid view
+        items: allImages.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+        index: 0,
+      };
+    }
   } else if (appId === "cinema") {
-    bringToFront("video");
-    videoModal.value = {
-      visible: true,
-      file: allVideos.value.length ? allVideos.value[0] : null,
-      items: allVideos.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
-      index: 0,
-    };
+    if (videoModal.value.minimized) {
+      videoModal.value.minimized = false;
+      videoModal.value.visible = true;
+      bringToFront("video");
+    } else if (videoModal.value.visible && activeAppId.value === "video") {
+      videoModal.value.minimized = true;
+    } else {
+      bringToFront("video");
+      videoModal.value = {
+        visible: true,
+        minimized: false,
+        file: allVideos.value.length ? allVideos.value[0] : null,
+        items: allVideos.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+        index: 0,
+      };
+    }
   } else if (appId === "music") {
-    bringToFront("music");
-    musicModal.value = {
-      visible: true,
-      file: allAudios.value.length ? allAudios.value[0] : null,
-      items: allAudios.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
-      index: 0,
-    };
+    if (musicModal.value.minimized) {
+      musicModal.value.minimized = false;
+      musicModal.value.visible = true;
+      bringToFront("music");
+    } else if (musicModal.value.visible && activeAppId.value === "music") {
+      musicModal.value.minimized = true;
+    } else {
+      bringToFront("music");
+      musicModal.value = {
+        visible: true,
+        minimized: false,
+        file: allAudios.value.length ? allAudios.value[0] : null,
+        items: allAudios.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+        index: 0,
+      };
+    }
   } else if (appId === "archive") {
     emit("update:filterCategory", "archive");
     bringToFront("finder");
@@ -321,11 +387,11 @@ const openApps = computed(() => {
   const list = [];
   if (windows.value.finder.visible && !windows.value.finder.minimized) list.push("finder");
   if (windows.value.settings.visible && !windows.value.settings.minimized) list.push("settings");
-  if (videoModal.value.visible) list.push("cinema");
-  if (musicModal.value.visible) list.push("music");
-  if (photosModal.value.visible) list.push("photos");
-  if (calculatorModal.value.visible) list.push("calculator");
-  if (notesModal.value.visible) list.push("notes");
+  if (videoModal.value.visible && !videoModal.value.minimized) list.push("cinema");
+  if (musicModal.value.visible && !musicModal.value.minimized) list.push("music");
+  if (photosModal.value.visible && !photosModal.value.minimized) list.push("photos");
+  if (calculatorModal.value.visible && !calculatorModal.value.minimized) list.push("calculator");
+  if (notesModal.value.visible && !notesModal.value.minimized) list.push("notes");
   return list;
 });
 
@@ -734,8 +800,6 @@ function onDropFiles(e) {
       :is-active="activeAppId === 'finder'"
       :width="920"
       :height="580"
-      :initial-x="120"
-      :initial-y="60"
       @focus="bringToFront('finder')"
       @close="closeWindow('finder')"
       @minimize="minimizeWindow('finder')"
@@ -944,6 +1008,7 @@ function onDropFiles(e) {
     <!-- 🎬 Window 2: macOS QuickTime Video Studio Modal -->
     <MacVideoPlayerModal
       :visible="videoModal.visible"
+      :minimized="videoModal.minimized"
       :file="videoModal.file"
       :items="videoModal.items"
       :index="videoModal.index"
@@ -952,6 +1017,7 @@ function onDropFiles(e) {
       :is-active="activeAppId === 'video'"
       @focus="bringToFront('video')"
       @close="videoModal.visible = false"
+      @minimize="videoModal.minimized = true"
       @change="videoModal.index = $event"
       @upload="emit('upload', '视频/')"
     />
@@ -959,6 +1025,7 @@ function onDropFiles(e) {
     <!-- 🎵 Window 3: macOS Apple Music Vinyl Turntable Modal -->
     <MacMusicPlayerModal
       :visible="musicModal.visible"
+      :minimized="musicModal.minimized"
       :file="musicModal.file"
       :items="musicModal.items"
       :index="musicModal.index"
@@ -967,6 +1034,7 @@ function onDropFiles(e) {
       :is-active="activeAppId === 'music'"
       @focus="bringToFront('music')"
       @close="musicModal.visible = false"
+      @minimize="musicModal.minimized = true"
       @change="musicModal.index = $event"
       @upload="emit('upload', '音乐/')"
     />
@@ -974,6 +1042,7 @@ function onDropFiles(e) {
     <!-- 🖼️ Window 4: macOS Photos Pro Viewer Modal -->
     <MacPhotosModal
       :visible="photosModal.visible"
+      :minimized="photosModal.minimized"
       :file="photosModal.file"
       :items="photosModal.items"
       :index="photosModal.index"
@@ -982,6 +1051,7 @@ function onDropFiles(e) {
       :is-active="activeAppId === 'photos'"
       @focus="bringToFront('photos')"
       @close="photosModal.visible = false"
+      @minimize="photosModal.minimized = true"
       @change="photosModal.index = $event"
       @set-wallpaper="setAsWallpaper"
       @upload="emit('upload', '照片/')"
@@ -990,19 +1060,23 @@ function onDropFiles(e) {
     <!-- 🔢 Window 5: macOS Calculator Modal -->
     <MacCalculatorModal
       :visible="calculatorModal.visible"
+      :minimized="calculatorModal.minimized"
       :z-index="windowZ.calculator"
       :is-active="activeAppId === 'calculator'"
       @focus="bringToFront('calculator')"
       @close="calculatorModal.visible = false"
+      @minimize="calculatorModal.minimized = true"
     />
 
     <!-- 📝 Window 6: macOS Notes Modal -->
     <MacNotesModal
       :visible="notesModal.visible"
+      :minimized="notesModal.minimized"
       :z-index="windowZ.notes"
       :is-active="activeAppId === 'notes'"
       @focus="bringToFront('notes')"
       @close="notesModal.visible = false"
+      @minimize="notesModal.minimized = true"
     />
 
     <!-- ⚙️ Window 4: macOS System Settings -->
