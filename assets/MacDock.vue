@@ -15,6 +15,7 @@ const bouncingApp = ref(null);
 
 const apps = [
   { id: "finder", name: "访达 (Finder)", iconName: "finder" },
+  { id: "appstore", name: "App Store (软件工坊)", iconName: "appstore" },
   { id: "photos", name: "照片 (Photos)", iconName: "photos" },
   { id: "cinema", name: "影院 (QuickTime)", iconName: "cinema" },
   { id: "music", name: "音乐 (Music)", iconName: "music" },

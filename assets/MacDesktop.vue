@@ -14,12 +14,14 @@ import MacCalculatorModal from "./MacCalculatorModal.vue";
 import MacNotesModal from "./MacNotesModal.vue";
 import MacDesktopWidgets from "./MacDesktopWidgets.vue";
 import MacWidgetPickerModal from "./MacWidgetPickerModal.vue";
+import MacAppStoreModal from "./MacAppStoreModal.vue";
 import ContextMenu from "./ContextMenu.vue";
 
 const props = defineProps({
   files: { type: Array, default: () => [] },
   folders: { type: Array, default: () => [] },
   allFiles: { type: Array, default: () => [] },
+  appsMetadata: { type: Object, default: () => ({}) },
   cwd: { type: String, default: "" },
   storageId: { type: String, default: "default" },
   storageOptions: { type: Array, default: () => [{ id: "default", label: "主存储" }] },
@@ -29,7 +31,7 @@ const props = defineProps({
   search: { type: String, default: "" },
   filterCategory: { type: String, default: "all" },
   authCredentials: { type: Object, default: null },
-  categoryCounts: { type: Object, default: () => ({ image: 0, video: 0, audio: 0, archive: 0, document: 0 }) },
+  categoryCounts: { type: Object, default: () => ({ image: 0, video: 0, audio: 0, software: 0, archive: 0, document: 0 }) },
   totalStorageBytes: { type: Number, default: 0 },
 });
 
@@ -43,6 +45,7 @@ const emit = defineEmits([
   "rename",
   "move",
   "delete",
+  "save-apps-metadata",
   "copy-item",
   "cut-item",
   "paste",
@@ -213,6 +216,7 @@ const windowZ = ref({
   music: 14,
   calculator: 15,
   notes: 16,
+  appstore: 17,
 });
 
 const windows = ref({
@@ -225,6 +229,7 @@ const musicModal = ref({ visible: false, minimized: false, file: null, items: []
 const photosModal = ref({ visible: false, minimized: false, file: null, items: [], index: 0 });
 const calculatorModal = ref({ visible: false, minimized: false });
 const notesModal = ref({ visible: false, minimized: false });
+const appStoreModal = ref({ visible: false, minimized: false });
 const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
@@ -244,6 +249,7 @@ function bringToFront(appId) {
   if (appId === "music") { musicModal.value.minimized = false; musicModal.value.visible = true; }
   if (appId === "calculator") { calculatorModal.value.minimized = false; calculatorModal.value.visible = true; }
   if (appId === "notes") { notesModal.value.minimized = false; notesModal.value.visible = true; }
+  if (appId === "appstore" || appId === "apps") { appStoreModal.value.minimized = false; appStoreModal.value.visible = true; }
 }
 
 function closeWindow(appId) {
@@ -370,6 +376,18 @@ function launchApp(appId) {
         index: 0,
       };
     }
+  } else if (appId === "appstore" || appId === "apps") {
+    if (appStoreModal.value.minimized) {
+      appStoreModal.value.minimized = false;
+      appStoreModal.value.visible = true;
+      bringToFront("appstore");
+    } else if (appStoreModal.value.visible && activeAppId.value === "appstore") {
+      appStoreModal.value.minimized = true;
+    } else {
+      appStoreModal.value.visible = true;
+      appStoreModal.value.minimized = false;
+      bringToFront("appstore");
+    }
   } else if (appId === "archive") {
     emit("update:filterCategory", "archive");
     bringToFront("finder");
@@ -387,6 +405,7 @@ const openApps = computed(() => {
   const list = [];
   if (windows.value.finder.visible && !windows.value.finder.minimized) list.push("finder");
   if (windows.value.settings.visible && !windows.value.settings.minimized) list.push("settings");
+  if (appStoreModal.value.visible && !appStoreModal.value.minimized) list.push("appstore");
   if (videoModal.value.visible && !videoModal.value.minimized) list.push("cinema");
   if (musicModal.value.visible && !musicModal.value.minimized) list.push("music");
   if (photosModal.value.visible && !photosModal.value.minimized) list.push("photos");
@@ -563,8 +582,14 @@ function isAudio(file) {
   return type.startsWith("audio/") || /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(file.key || "");
 }
 
+function isSoftware(file) {
+  const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
+  return /\.(dmg|pkg|exe|msi|apk|ipa|deb|appimage|rpm)$/i.test(key) || (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("app")));
+}
+
 function isArchive(file) {
   const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
+  if (isSoftware(file)) return false;
   return /\.(zip|rar|7z|tar|gz|bz2|xz|iso|dmg|pkg|sql\.gz)$/i.test(key);
 }
 
@@ -592,6 +617,7 @@ function getArchiveExt(file) {
 
 function getFolderIcon(folder) {
   const name = folderName(folder).trim().toLowerCase();
+  if (name === "软件" || name === "applications" || name === "apps" || name === "app" || name === "software") return "folder-applications";
   if (name === "照片" || name === "pictures" || name === "photos" || name === "图片" || name === "相册") return "folder-pictures";
   if (name === "视频" || name === "movies" || name === "videos" || name === "影视") return "folder-movies";
   if (name === "音乐" || name === "music" || name === "歌曲") return "folder-music";
@@ -601,7 +627,8 @@ function getFolderIcon(folder) {
 }
 
 function handleFinderUpload() {
-  if (props.filterCategory === "image") emit("upload", "照片/");
+  if (props.filterCategory === "software" || props.filterCategory === "app") emit("upload", "软件/");
+  else if (props.filterCategory === "image") emit("upload", "照片/");
   else if (props.filterCategory === "video") emit("upload", "视频/");
   else if (props.filterCategory === "audio") emit("upload", "音乐/");
   else if (props.filterCategory === "document") emit("upload", "文档/");
@@ -611,6 +638,11 @@ function handleFinderUpload() {
 
 // Open File Action (Directly Dispatches to macOS Dedicated Windows and brings them to the very front)
 function handleOpenFile(file) {
+  if (isSoftware(file)) {
+    bringToFront("appstore");
+    appStoreModal.value = { visible: true, minimized: false };
+    return;
+  }
   if (isImage(file)) {
     const list = allImages.value.length ? allImages.value : props.files.filter(isImage);
     const idx = list.findIndex((f) => f.key === file.key);
@@ -836,6 +868,11 @@ defineExpose({ handleOpenFile, bringToFront, launchApp });
               <i class="ph ph-house-fill"></i>
               <span>全部文件</span>
             </button>
+            <button class="sidebar-row" :class="{ active: filterCategory === 'software' }" @click="emit('update:filterCategory', 'software')">
+              <i class="ph ph-app-store-logo-fill" style="color: #007aff;"></i>
+              <span>软件应用</span>
+              <span v-if="categoryCounts.software" class="sidebar-badge">{{ categoryCounts.software }}</span>
+            </button>
             <button class="sidebar-row" :class="{ active: filterCategory === 'image' }" @click="emit('update:filterCategory', 'image')">
               <i class="ph ph-image-fill" style="color: #ff2d55;"></i>
               <span>照片图库</span>
@@ -956,7 +993,12 @@ defineExpose({ handleOpenFile, bringToFront, launchApp });
                 <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
               </div>
 
-              <!-- 2. Archive File Icon (.sql.gz, .zip, .tar, etc.) -->
+              <!-- 2. Software Package Icon (.dmg, .pkg, .exe, .apk, .ipa) -->
+              <div v-else-if="isSoftware(file)" class="item-icon">
+                <MacIcons name="apps" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+              </div>
+
+              <!-- 2.1 Archive File Icon (.sql.gz, .zip, .tar, etc.) -->
               <div v-else-if="isArchive(file)" class="item-icon">
                 <MacIcons name="zip" :size="viewMode === 'grid' ? 52 : 22" :extension="getArchiveExt(file)" />
               </div>
@@ -1078,6 +1120,24 @@ defineExpose({ handleOpenFile, bringToFront, launchApp });
       @focus="bringToFront('notes')"
       @close="notesModal.visible = false"
       @minimize="notesModal.minimized = true"
+    />
+
+    <!-- 🛍️ Window 7: macOS App Store & Software Hub Modal -->
+    <MacAppStoreModal
+      :visible="appStoreModal.visible"
+      :minimized="appStoreModal.minimized"
+      :files="files"
+      :all-files="allBucketFiles"
+      :metadata="appsMetadata"
+      :storage-id="storageId"
+      :z-index="windowZ.appstore"
+      :is-active="activeAppId === 'appstore'"
+      :auth-credentials="authCredentials"
+      @focus="bringToFront('appstore')"
+      @close="appStoreModal.visible = false"
+      @minimize="appStoreModal.minimized = true"
+      @save-metadata="emit('save-apps-metadata', $event)"
+      @upload="emit('upload', '软件/')"
     />
 
     <!-- ⚙️ Window 4: macOS System Settings -->

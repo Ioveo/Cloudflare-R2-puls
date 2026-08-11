@@ -7,6 +7,7 @@
     :files="filteredFiles"
     :folders="filteredFolders"
     :all-files="allBucketFiles"
+    :apps-metadata="appsMetadata"
     :cwd="cwd"
     :storage-id="storageId"
     :storage-options="storageOptions"
@@ -23,6 +24,7 @@
     @upload="openUploadWithAuth"
     @upload-to-folder="uploadFiles($event.files, $event.targetFolder)"
     @init-system-folders="autoInitSystemFolders"
+    @save-apps-metadata="saveAppsMetadata"
     @create-folder="createFolder"
     @rename="renameFile"
     @move="moveFile"
@@ -415,7 +417,7 @@
   </Transition>
 
   <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
-  <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
+  <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @upload-software="handleSoftwareUpload" @createFolder="createFolder" />
   <ContextMenu :visible="showContextMenu" :x="contextPosition.x" :y="contextPosition.y" :title="contextTitle" :actions="contextActions" @close="closeContext" @select="runContextAction" />
   <LightboxModal v-if="uiMode !== 'macos'" :visible="lightbox.visible" :items="imageItems" :index="lightbox.index" @close="lightbox.visible = false" @change="lightbox.index = $event" />
   <MediaPlayerModal v-if="uiMode !== 'macos'" :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
@@ -469,6 +471,7 @@ export default {
     globalFilesLoaded: false,
     autoGlobalScan: true,
     filterCategory: "all",
+    appsMetadata: {},
     clipboard: null,
     focusedItem: null,
     contextPosition: { x: 0, y: 0 },
@@ -645,6 +648,7 @@ export default {
         if (this.filterCategory === "image") return this.isImage(file);
         if (this.filterCategory === "video") return this.isVideo(file);
         if (this.filterCategory === "audio") return this.isAudio(file);
+        if (this.filterCategory === "software" || this.filterCategory === "app") return this.isSoftware(file);
         if (this.filterCategory === "archive") return this.isArchive(file);
         if (this.filterCategory === "document") return this.isDocument(file);
         return true;
@@ -668,11 +672,12 @@ export default {
         }
       }
       const list = Array.from(map.values());
-      const counts = { image: 0, video: 0, audio: 0, archive: 0, document: 0 };
+      const counts = { image: 0, video: 0, audio: 0, software: 0, archive: 0, document: 0 };
       for (const f of list) {
         if (this.isImage(f)) counts.image++;
         else if (this.isVideo(f)) counts.video++;
         else if (this.isAudio(f)) counts.audio++;
+        else if (this.isSoftware(f)) counts.software++;
         else if (this.isArchive(f)) counts.archive++;
         else if (this.isDocument(f)) counts.document++;
       }
@@ -777,7 +782,16 @@ export default {
     isImage(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("image/")) return true; return /\.(jpg|jpeg|png|gif|webp|avif|svg|bmp|heic|ico)$/i.test(file.key || ""); },
     isVideo(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("video/")) return true; return /\.(mp4|webm|mkv|mov|m4v|avi|flv|wmv|3gp)$/i.test(file.key || ""); },
     isAudio(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.startsWith("audio/")) return true; return /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma|aiff|alac)$/i.test(file.key || ""); },
-    isArchive(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("zip") || type.includes("rar") || type.includes("compressed") || type.includes("tar") || type.includes("archive")) return true; return /\.(zip|rar|7z|tar|gz|bz2|xz|iso|dmg|apk|exe|deb|pkg)$/i.test(file.key || ""); },
+    isSoftware(file) {
+      const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
+      return /\.(dmg|pkg|exe|msi|apk|ipa|deb|appimage|rpm)$/i.test(key) || (key.endsWith(".zip") && (key.includes("mac") || key.includes("win") || key.includes("app")));
+    },
+    isArchive(file) {
+      if (this.isSoftware(file)) return false;
+      const type = (file?.httpMetadata?.contentType || "").toLowerCase();
+      if (type.includes("zip") || type.includes("rar") || type.includes("compressed") || type.includes("tar") || type.includes("archive")) return true;
+      return /\.(zip|rar|7z|tar|gz|bz2|xz|iso|dmg|pkg|sql\.gz)$/i.test(file?.key || "");
+    },
     isDocument(file) { const type = (file.httpMetadata?.contentType || "").toLowerCase(); if (type.includes("pdf") || type.includes("word") || type.includes("document") || type.includes("text")) return true; return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|json|csv|epub)$/i.test(file.key || ""); },
     isEditable(file) { if (!file || !file.key) return false; return /\.(txt|md|markdown|json|js|ts|css|html|vue|py|sh|yaml|yml|sql|xml|env|ini|conf|log|properties)$/i.test(file.key); },
     isMedia(file) { return this.isVideo(file) || this.isAudio(file); },
@@ -794,7 +808,7 @@ export default {
       }
       if (!file) return;
       if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
-        if (this.isImage(file) || this.isVideo(file) || this.isAudio(file)) {
+        if (this.isImage(file) || this.isVideo(file) || this.isAudio(file) || this.isSoftware(file)) {
           this.$refs.macDesktopRef.handleOpenFile(file);
           return;
         }
@@ -1058,13 +1072,15 @@ export default {
         image: "照片/",
         video: "视频/",
         audio: "音乐/",
+        software: "软件/",
+        app: "软件/",
         document: "文档/",
         archive: "下载/",
       };
       return map[category] || "";
     },
     async autoInitSystemFolders() {
-      const defaultFolders = ["照片", "视频", "音乐", "文档", "下载"];
+      const defaultFolders = ["照片", "视频", "音乐", "软件", "文档", "下载"];
       if (!this.authCredentials) {
         this.promptLogin(() => this.autoInitSystemFolders());
         return;
@@ -1083,6 +1099,46 @@ export default {
       } catch (err) {
         this.handleWriteError(err);
       }
+    },
+    async fetchAppsMetadata() {
+      try {
+        const cached = localStorage.getItem(`mac_apps_meta_${this.storageId}`);
+        if (cached) {
+          try { this.appsMetadata = JSON.parse(cached); } catch {}
+        }
+        const res = await fetch(`/raw/_$flaredrive$/apps_meta.json?storage=${encodeURIComponent(this.storageId)}&t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === "object") {
+            this.appsMetadata = data;
+            localStorage.setItem(`mac_apps_meta_${this.storageId}`, JSON.stringify(data));
+          }
+        }
+      } catch (e) {
+        console.warn("Fetch apps metadata notice:", e);
+      }
+    },
+    async saveAppsMetadata(updated) {
+      this.appsMetadata = updated;
+      localStorage.setItem(`mac_apps_meta_${this.storageId}`, JSON.stringify(updated));
+      try {
+        const blob = new Blob([JSON.stringify(updated, null, 2)], { type: "application/json" });
+        await axios.put(`/api/write/items/_$flaredrive$/apps_meta.json`, blob, {
+          headers: { ...this.storageHeaders(), "Content-Type": "application/json" }
+        });
+      } catch (err) {
+        console.warn("Save apps metadata failed, preserved in local cache:", err);
+      }
+    },
+    async handleSoftwareUpload({ file, metadata, targetFolder }) {
+      const folder = targetFolder || "软件/";
+      const targetKey = `${folder}${file.name}`;
+      const updated = {
+        ...this.appsMetadata,
+        [targetKey]: metadata
+      };
+      await this.saveAppsMetadata(updated);
+      this.uploadFiles([file], folder);
     },
     openUploadWithAuth(targetFolder = null) {
       if (!this.authCredentials) {
@@ -1243,6 +1299,7 @@ export default {
     this.loadCachedGlobalIndex();
     this.fetchStorages();
     this.fetchGlobalFiles(true);
+    this.fetchAppsMetadata();
     window.addEventListener("popstate", () => {
       const url = new URL(window.location);
       this.cwd = url.searchParams.get("p") || "";

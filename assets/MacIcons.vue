@@ -259,6 +259,49 @@ const iconSize = computed(() => (typeof props.size === "number" ? `${props.size}
       <line x1="28" y1="32" x2="28" y2="90" stroke="#ff453a" stroke-width="1.5" opacity="0.6" />
     </svg>
 
+    <!-- 10.3 🛍️ macOS App Store App Icon -->
+    <svg v-else-if="name === 'appstore' || name === 'apps'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="aps-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#2563eb" />
+          <stop offset="50%" stop-color="#1d4ed8" />
+          <stop offset="100%" stop-color="#0284c7" />
+        </linearGradient>
+        <filter id="aps-sh" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.3" />
+        </filter>
+      </defs>
+      <rect x="6" y="6" width="88" height="88" rx="20" fill="url(#aps-bg)" filter="url(#aps-sh)" />
+      <!-- App Store Stylus/Ruler/Pencil Triangle "A" -->
+      <g transform="translate(50, 50)" stroke="#ffffff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <line x1="-22" y1="24" x2="0" y2="-24" />
+        <line x1="22" y1="24" x2="0" y2="-24" />
+        <line x1="-16" y1="8" x2="16" y2="8" />
+      </g>
+    </svg>
+
+    <!-- 10.4 🚀 macOS Applications System Folder Icon -->
+    <svg v-else-if="name === 'folder-applications' || name === 'folder-apps' || name === 'folder-software'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="fld-app-b" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#1d4ed8" />
+          <stop offset="100%" stop-color="#1e40af" />
+        </linearGradient>
+        <linearGradient id="fld-app-f" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6" />
+          <stop offset="100%" stop-color="#2563eb" />
+        </linearGradient>
+      </defs>
+      <path d="M 12 28 C 12 22 17 18 24 18 L 42 18 C 47 18 50 22 53 26 L 57 30 L 82 30 C 88 30 92 34 92 40 L 92 74 C 92 80 88 84 82 84 L 18 84 C 12 84 8 80 8 74 Z" fill="url(#fld-app-b)" />
+      <rect x="18" y="24" width="64" height="20" rx="3" fill="#ffffff" opacity="0.7" />
+      <path d="M 8 40 C 8 36 11 32 16 32 L 84 32 C 89 32 92 36 92 40 L 92 78 C 92 84 88 88 82 88 L 18 88 C 12 88 8 84 8 78 Z" fill="url(#fld-app-f)" />
+      <g transform="translate(50, 62) scale(0.6)" stroke="#ffffff" stroke-width="6" stroke-linecap="round" fill="none">
+        <line x1="-16" y1="18" x2="0" y2="-18" />
+        <line x1="16" y1="18" x2="0" y2="-18" />
+        <line x1="-12" y1="6" x2="12" y2="6" />
+      </g>
+    </svg>
+
     <!-- 11.0 🖼️ macOS Pictures / Photos System Folder Icon -->
     <svg v-else-if="name === 'folder-pictures' || name === 'folder-photos'" viewBox="0 0 100 100" class="mac-svg-icon">
       <defs>
