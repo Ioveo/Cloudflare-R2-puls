@@ -15,14 +15,15 @@ const props = defineProps({
   authCredentials: { type: Object, default: null },
 });
 
-const emit = defineEmits(["close", "minimize", "focus", "save-metadata", "upload", "download"]);
+const emit = defineEmits(["close", "minimize", "focus", "save-metadata", "upload", "download", "refresh"]);
 
 // State
 const currentTab = ref("discover");
 const selectedPlatform = ref("all"); // 'all' | 'mac' | 'win' | 'mobile'
 const searchQuery = ref("");
-const selectedApp = ref(null);
-const editingApp = ref(null);
+const selectedApp = ref(null); // For detail view modal
+const editingApp = ref(null); // For metadata editor modal
+const linkModalApp = ref(null); // For "获取下载链接" multi-link picker modal
 const copySuccessTip = ref("");
 
 // Category definitions with rich, tactile multi-stop gradient color tokens & SF glyphs
@@ -200,14 +201,14 @@ function parseDefaultMeta(file) {
   if (!title) title = baseName;
 
   let category = matched ? matched.category : "utilities";
-  let summary = matched ? matched.summary : `${title} 官方高保真安装包，纯净无广告，极速直连下载。`;
+  let summary = matched ? matched.summary : `${title} 官方完整安装包，直连高速下载。`;
   let features = matched ? matched.features : ["极速云端直连下载", "经过完整兼容性校验", "支持断点续传"];
 
   let installGuide = "";
   if (platform.includes("macOS")) {
     installGuide = `1. 双击打开 DMG 镜像包；\n2. 将【${title}】拖入 Applications 应用程序文件夹；\n3. 若打开提示「文件已损坏」或无法打开，请在终端输入并回车：\nsudo xattr -rd com.apple.quarantine /Applications/${appName.replace(/\s/g, "\\ ")}`;
   } else if (platform.includes("Windows")) {
-    installGuide = `1. 下载安装包后双击运行；\n2. 按照屏幕提示点击「下一步」选择安装路径完成安装。`;
+    installGuide = `1. 双击运行安装程序；\n2. 按照屏幕提示完成安装向导。`;
   } else {
     installGuide = `1. 手机端直接扫码或下载原安装包；\n2. 授权安装未知来源应用即可畅快体验。`;
   }
@@ -326,8 +327,45 @@ function rawUrl(key) {
   return props.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(props.storageId)}`;
 }
 
+function fullDirectUrl(key) {
+  const origin = window.location.origin;
+  const path = `/raw/${key}`;
+  const query = props.storageId === "default" ? "" : `?storage=${encodeURIComponent(props.storageId)}`;
+  return `${origin}${path}${query}`;
+}
+
+function fullShareUrl(key) {
+  const origin = window.location.origin;
+  let folder = key.split("/").slice(0, -1).join("/");
+  if (folder) folder = `${folder}/`;
+  const query = props.storageId === "default" ? `?p=${encodeURIComponent(folder)}` : `?p=${encodeURIComponent(folder)}&storage=${encodeURIComponent(props.storageId)}`;
+  return `${origin}/${query}`;
+}
+
+function curlCommand(app) {
+  if (!app || !app.key) return "";
+  const url = fullDirectUrl(app.key);
+  const fname = app.key.split("/").pop() || app.title;
+  return `curl -L -o "${fname}" "${url}"`;
+}
+
+function quarantineCommand(app) {
+  if (!app) return "";
+  return `sudo xattr -rd com.apple.quarantine /Applications/${(app.appName || "App.app").replace(/\s/g, "\\ ")}`;
+}
+
+function qrCodeUrl(key) {
+  if (!key) return "";
+  const url = fullDirectUrl(key);
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
+}
+
 function openDetail(app) {
   selectedApp.value = app;
+}
+
+function openGetLinks(app) {
+  linkModalApp.value = app;
 }
 
 function openEditor(app) {
@@ -406,6 +444,10 @@ defineExpose({
   openEditorByKey(key) {
     const item = softwareItems.value.find(a => a.key === key);
     if (item) openEditor(item);
+  },
+  openLinksByKey(key) {
+    const item = softwareItems.value.find(a => a.key === key);
+    if (item) openGetLinks(item);
   },
   softwareItems,
 });
@@ -520,10 +562,10 @@ defineExpose({
               <span v-if="heroApp.size" class="meta-pill size-pill"><i class="ph ph-hard-drive-fill"></i> {{ formatSize(heroApp.size) }}</span>
             </div>
             <div class="hero-actions">
-              <a v-if="heroApp.file" :href="rawUrl(heroApp.key)" :download="heroApp.title" class="hero-get-btn">
-                <i class="ph ph-arrow-circle-down-bold"></i>
-                <span>立即下载</span>
-              </a>
+              <button v-if="heroApp.file" class="hero-get-btn" type="button" @click="openGetLinks(heroApp)">
+                <i class="ph ph-link-simple-bold"></i>
+                <span>获取下载链接</span>
+              </button>
               <button v-if="heroApp.file" class="hero-detail-btn" type="button" @click="openDetail(heroApp)">
                 <i class="ph ph-info-bold"></i>
                 <span>功能与安装指南</span>
@@ -627,10 +669,10 @@ defineExpose({
 
             <!-- Card Bottom Buttons -->
             <div class="app-card-footer" @click.stop>
-              <a :href="rawUrl(app.key)" :download="app.title" class="app-download-btn" title="直连极速下载">
-                <i class="ph ph-arrow-circle-down-bold"></i>
+              <button class="app-download-btn" type="button" title="获取下载链接与安装包" @click="openGetLinks(app)">
+                <i class="ph ph-download-simple-bold"></i>
                 <span>获取</span>
-              </a>
+              </button>
               <button class="app-meta-edit-btn" type="button" title="编辑软件简介与安装说明" @click="openEditor(app)">
                 <i class="ph ph-pencil-simple-bold"></i>
               </button>
@@ -640,7 +682,7 @@ defineExpose({
       </main>
     </div>
 
-    <!-- 📖 3. macOS App Detail Full Modal -->
+    <!-- 📖 5. macOS App Detail Full Modal -->
     <Transition name="fade-slide">
       <div v-if="selectedApp" class="app-detail-overlay" @click.self="selectedApp = null">
         <div class="app-detail-card">
@@ -663,11 +705,11 @@ defineExpose({
 
             <!-- Top Actions -->
             <div class="detail-actions">
-              <a :href="rawUrl(selectedApp.key)" :download="selectedApp.title" class="detail-get-btn">
-                <i class="ph ph-download-simple-bold"></i>
-                <span>极速下载 ({{ formatSize(selectedApp.size) }})</span>
-              </a>
-              <button class="detail-copy-btn" type="button" @click="copyText(rawUrl(selectedApp.key), '直链已复制！')">
+              <button class="detail-get-btn" type="button" @click="openGetLinks(selectedApp)">
+                <i class="ph ph-link-simple-bold"></i>
+                <span>获取下载链接 ({{ formatSize(selectedApp.size) }})</span>
+              </button>
+              <button class="detail-copy-btn" type="button" @click="copyText(fullDirectUrl(selectedApp.key), '原生极速直链已复制！')">
                 <i class="ph ph-link-bold"></i>
                 <span>复制直链</span>
               </button>
@@ -716,7 +758,115 @@ defineExpose({
       </div>
     </Transition>
 
-    <!-- ✏️ 4. macOS App Metadata Editor Modal -->
+    <!-- 🔗 6. Get Download Links & Multi-Link Picker Modal -->
+    <Transition name="fade-slide">
+      <div v-if="linkModalApp" class="app-links-overlay" @click.self="linkModalApp = null">
+        <div class="app-links-card">
+          <header class="links-header">
+            <div class="links-header-info">
+              <div class="links-app-icon">
+                <MacIcons name="apps" :size="46" />
+              </div>
+              <div class="links-titles">
+                <h3>获取「{{ linkModalApp.title }}」下载与链接</h3>
+                <div class="links-sub-meta">
+                  <span class="l-pill l-ver">{{ linkModalApp.version }}</span>
+                  <span class="l-pill l-plat">{{ linkModalApp.platform }}</span>
+                  <span class="l-pill l-size">{{ formatSize(linkModalApp.size) }}</span>
+                </div>
+              </div>
+            </div>
+            <button class="links-close-btn" type="button" @click="linkModalApp = null">×</button>
+          </header>
+
+          <div class="links-body">
+            <!-- 1. Direct Browser Download -->
+            <a :href="rawUrl(linkModalApp.key)" :download="linkModalApp.title" class="link-action-card primary-action" @click="linkModalApp = null">
+              <div class="action-left-icon icon-direct">
+                <i class="ph ph-arrow-circle-down-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🚀 本地极速直接下载</strong>
+                  <span class="action-tag">推荐</span>
+                </div>
+                <span class="action-subtext">通过 Cloudflare 全球边缘 CDN 极速下载原包体 ({{ formatSize(linkModalApp.size) }})</span>
+              </div>
+              <i class="ph ph-caret-right-bold action-arrow"></i>
+            </a>
+
+            <!-- 2. Copy Raw Direct Link -->
+            <button class="link-action-card" type="button" @click="copyText(fullDirectUrl(linkModalApp.key), '原生极速直链已复制！')">
+              <div class="action-left-icon icon-link">
+                <i class="ph ph-link-simple-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🔗 复制 Cloudflare R2 原生直链</strong>
+                </div>
+                <span class="action-subtext">可粘贴至迅雷、IDM、Downie 或浏览器地址栏直接开启多线程下载</span>
+              </div>
+              <span class="action-btn-pill">复制直链</span>
+            </button>
+
+            <!-- 3. Copy Web Share Link -->
+            <button class="link-action-card" type="button" @click="copyText(fullShareUrl(linkModalApp.key), '网盘分享链接已复制！')">
+              <div class="action-left-icon icon-share">
+                <i class="ph ph-share-network-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🌐 复制网盘分享/浏览页面链接</strong>
+                </div>
+                <span class="action-subtext">可发送给好友或团队，支持在带有 macOS 展厅界面的网盘中浏览</span>
+              </div>
+              <span class="action-btn-pill">复制分享</span>
+            </button>
+
+            <!-- 4. Terminal cURL Command -->
+            <button class="link-action-card" type="button" @click="copyText(curlCommand(linkModalApp), 'cURL 终端下载命令已复制！')">
+              <div class="action-left-icon icon-terminal">
+                <i class="ph ph-terminal-window-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>💻 复制终端 cURL 极速下载命令</strong>
+                </div>
+                <span class="action-subtext"><code>{{ curlCommand(linkModalApp) }}</code></span>
+              </div>
+              <span class="action-btn-pill">复制命令</span>
+            </button>
+
+            <!-- 5. macOS Quarantine Bypass (If macOS) -->
+            <button v-if="linkModalApp.platform.includes('macOS')" class="link-action-card" type="button" @click="copyText(quarantineCommand(linkModalApp), 'macOS 免隔离命令已复制！')">
+              <div class="action-left-icon icon-apple">
+                <i class="ph ph-shield-check-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🍎 复制 macOS 终端绕过隔离命令</strong>
+                </div>
+                <span class="action-subtext">解决打开 DMG / APP 提示「文件已损坏」或「无法打开」报错</span>
+              </div>
+              <span class="action-btn-pill">复制指令</span>
+            </button>
+
+            <!-- 6. Mobile QR Code -->
+            <div class="qr-download-section">
+              <div class="qr-box">
+                <img :src="qrCodeUrl(linkModalApp.key)" alt="扫码下载" loading="lazy" />
+              </div>
+              <div class="qr-desc-col">
+                <strong>📱 手机扫码直连极速下载</strong>
+                <p>使用手机自带相机或扫一扫，即可直接在移动端下载并安装该应用包。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ✏️ 7. macOS App Metadata Editor Modal -->
     <Transition name="fade-slide">
       <div v-if="editingApp" class="app-editor-overlay" @click.self="editingApp = null">
         <div class="app-editor-card">
@@ -810,6 +960,7 @@ defineExpose({
   border: 1px solid rgba(0, 0, 0, 0.04);
 }
 :root.dark .platform-segment,
+[data-theme="dark"] .platform-segment,
 @media (prefers-color-scheme: dark) {
   .platform-segment {
     background: rgba(255, 255, 255, 0.08);
@@ -836,6 +987,7 @@ defineExpose({
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 :root.dark .platform-segment button.active,
+[data-theme="dark"] .platform-segment button.active,
 @media (prefers-color-scheme: dark) {
   .platform-segment button.active {
     background: rgba(255, 255, 255, 0.22);
@@ -870,6 +1022,7 @@ defineExpose({
   transition: all 0.22s ease;
 }
 :root.dark .store-search-box input,
+[data-theme="dark"] .store-search-box input,
 @media (prefers-color-scheme: dark) {
   .store-search-box input {
     border-color: rgba(255, 255, 255, 0.15);
@@ -883,7 +1036,8 @@ defineExpose({
   background: #ffffff;
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.25);
 }
-:root.dark .store-search-box input:focus {
+:root.dark .store-search-box input:focus,
+[data-theme="dark"] .store-search-box input:focus {
   background: rgba(0, 0, 0, 0.6);
 }
 
@@ -1122,6 +1276,7 @@ defineExpose({
   font-weight: 600;
 }
 :root.dark .footer-chip,
+[data-theme="dark"] .footer-chip,
 @media (prefers-color-scheme: dark) {
   .footer-chip {
     background: rgba(16, 185, 129, 0.15);
@@ -1196,6 +1351,7 @@ defineExpose({
   font-size: 23px;
   font-weight: 800;
   letter-spacing: -0.5px;
+  color: #ffffff;
 }
 
 .hero-summary {
@@ -1321,7 +1477,8 @@ defineExpose({
   text-align: center;
   overflow: hidden;
 }
-:root.dark .store-empty-showcase {
+:root.dark .store-empty-showcase,
+[data-theme="dark"] .store-empty-showcase {
   background: rgba(0, 0, 0, 0.2);
   border-color: rgba(255, 255, 255, 0.1);
 }
@@ -1363,6 +1520,7 @@ defineExpose({
   font-size: 11.5px;
 }
 :root.dark .empty-desc code,
+[data-theme="dark"] .empty-desc code,
 @media (prefers-color-scheme: dark) {
   .empty-desc code { background: rgba(255, 255, 255, 0.1); }
 }
@@ -1401,6 +1559,7 @@ defineExpose({
   max-width: 500px;
 }
 :root.dark .empty-suggestions,
+[data-theme="dark"] .empty-suggestions,
 @media (prefers-color-scheme: dark) {
   .empty-suggestions { border-top-color: rgba(255, 255, 255, 0.06); }
 }
@@ -1429,6 +1588,7 @@ defineExpose({
   transition: all 0.15s;
 }
 :root.dark .sugg-tag,
+[data-theme="dark"] .sugg-tag,
 @media (prefers-color-scheme: dark) {
   .sugg-tag { background: rgba(0, 122, 255, 0.16); color: #60a5fa; }
 }
@@ -1451,12 +1611,13 @@ defineExpose({
   padding: 16px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 2px 10px rgba(0,0,0,0.04);
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 :root.dark .app-card,
+[data-theme="dark"] .app-card,
 @media (prefers-color-scheme: dark) {
   .app-card {
     border-color: rgba(255, 255, 255, 0.08);
@@ -1521,6 +1682,7 @@ defineExpose({
   white-space: nowrap;
 }
 :root.dark .app-platform-tag,
+[data-theme="dark"] .app-platform-tag,
 @media (prefers-color-scheme: dark) {
   .app-platform-tag { background: rgba(0, 122, 255, 0.2); color: #60a5fa; }
 }
@@ -1537,6 +1699,7 @@ defineExpose({
   flex: 1;
 }
 :root.dark .app-summary-text,
+[data-theme="dark"] .app-summary-text,
 @media (prefers-color-scheme: dark) {
   .app-summary-text { color: #94a3b8; }
 }
@@ -1549,6 +1712,7 @@ defineExpose({
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 :root.dark .app-card-footer,
+[data-theme="dark"] .app-card-footer,
 @media (prefers-color-scheme: dark) {
   .app-card-footer { border-top-color: rgba(255, 255, 255, 0.06); }
 }
@@ -1556,19 +1720,21 @@ defineExpose({
 .app-download-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 5px 16px;
+  border: none;
   border-radius: 14px;
   background: rgba(0, 122, 255, 0.12);
   color: #007aff;
   font-size: 11.5px;
   font-weight: 700;
-  text-decoration: none;
+  cursor: pointer;
   transition: all 0.15s;
 }
 .app-download-btn:hover {
   background: #007aff;
   color: #ffffff;
+  transform: scale(1.04);
 }
 
 .app-meta-edit-btn {
@@ -1590,13 +1756,15 @@ defineExpose({
   color: #007aff;
 }
 :root.dark .app-meta-edit-btn:hover,
+[data-theme="dark"] .app-meta-edit-btn:hover,
 @media (prefers-color-scheme: dark) {
   .app-meta-edit-btn:hover { background: rgba(255, 255, 255, 0.1); color: #60a5fa; }
 }
 
-/* Detail Modal Overlay */
+/* Detail Modal Overlay & High Contrast Card */
 .app-detail-overlay,
-.app-editor-overlay {
+.app-editor-overlay,
+.app-links-overlay {
   position: absolute;
   inset: 0;
   z-index: 50;
@@ -1604,30 +1772,40 @@ defineExpose({
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(16px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(18px);
 }
 
 .app-detail-card,
-.app-editor-card {
+.app-editor-card,
+.app-links-card {
   width: 100%;
   max-width: 680px;
   max-height: 88%;
   display: flex;
   flex-direction: column;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  background: #ffffff;
+  color: #1d1d1f;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
+
+[data-theme="dark"] .app-detail-card,
+[data-theme="dark"] .app-editor-card,
+[data-theme="dark"] .app-links-card,
 :root.dark .app-detail-card,
 :root.dark .app-editor-card,
+:root.dark .app-links-card,
 @media (prefers-color-scheme: dark) {
   .app-detail-card,
-  .app-editor-card {
-    background: rgba(30, 30, 38, 0.96);
-    color: #ffffff;
-    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+  .app-editor-card,
+  .app-links-card {
+    background: #1e1e26;
+    color: #f1f5f9;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
   }
 }
 
@@ -1635,6 +1813,7 @@ defineExpose({
   padding: 22px 24px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
+[data-theme="dark"] .detail-header,
 :root.dark .detail-header,
 @media (prefers-color-scheme: dark) {
   .detail-header { border-bottom-color: rgba(255, 255, 255, 0.08); }
@@ -1649,13 +1828,21 @@ defineExpose({
   margin: 0 0 6px;
   font-size: 21px;
   font-weight: 800;
+  color: #1d1d1f;
 }
+[data-theme="dark"] .detail-titles h2,
+:root.dark .detail-titles h2,
+@media (prefers-color-scheme: dark) {
+  .detail-titles h2 { color: #ffffff; }
+}
+
 .detail-summary-lead {
   margin: 0 0 10px;
   color: #64748b;
   font-size: 13px;
   line-height: 1.45;
 }
+[data-theme="dark"] .detail-summary-lead,
 :root.dark .detail-summary-lead,
 @media (prefers-color-scheme: dark) {
   .detail-summary-lead { color: #94a3b8; }
@@ -1678,6 +1865,7 @@ defineExpose({
 .dpill-platform { background: rgba(0, 122, 255, 0.12); color: #007aff; }
 .dpill-ver { background: rgba(16, 185, 129, 0.12); color: #059669; }
 .dpill-size, .dpill-date { background: rgba(0, 0, 0, 0.06); color: #64748b; }
+[data-theme="dark"] .dpill-size, [data-theme="dark"] .dpill-date,
 :root.dark .dpill-size, :root.dark .dpill-date,
 @media (prefers-color-scheme: dark) {
   .dpill-size, .dpill-date { background: rgba(255, 255, 255, 0.1); color: #94a3b8; }
@@ -1694,13 +1882,19 @@ defineExpose({
   align-items: center;
   gap: 6px;
   padding: 8px 18px;
+  border: none;
   border-radius: 12px;
   background: #007aff;
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
-  text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  transition: all 0.15s;
+}
+.detail-get-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.45);
 }
 
 .detail-copy-btn,
@@ -1708,18 +1902,27 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 8px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 8px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 10px;
-  background: transparent;
-  color: inherit;
+  background: #f4f4f7;
+  color: #1d1d1f;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s;
 }
-:root.dark .detail-copy-btn, :root.dark .detail-edit-btn,
+[data-theme="dark"] .detail-copy-btn,
+[data-theme="dark"] .detail-edit-btn,
+:root.dark .detail-copy-btn,
+:root.dark .detail-edit-btn,
 @media (prefers-color-scheme: dark) {
-  .detail-copy-btn, .detail-edit-btn { border-color: rgba(255, 255, 255, 0.15); }
+  .detail-copy-btn,
+  .detail-edit-btn {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+  }
 }
 
 .detail-close-btn {
@@ -1733,6 +1936,7 @@ defineExpose({
   font-size: 14px;
   cursor: pointer;
 }
+[data-theme="dark"] .detail-close-btn,
 :root.dark .detail-close-btn,
 @media (prefers-color-scheme: dark) {
   .detail-close-btn { background: rgba(255, 255, 255, 0.1); }
@@ -1754,7 +1958,13 @@ defineExpose({
   gap: 6px;
   margin: 0 0 12px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 750;
+  color: #1d1d1f;
+}
+[data-theme="dark"] .section-heading,
+:root.dark .section-heading,
+@media (prefers-color-scheme: dark) {
+  .section-heading { color: #ffffff; }
 }
 .section-heading i { color: #007aff; }
 
@@ -1792,26 +2002,31 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.03);
+  background: #f4f4f7;
+  color: #1d1d1f;
   font-size: 12px;
+  font-weight: 550;
 }
+[data-theme="dark"] .feature-item,
 :root.dark .feature-item,
 @media (prefers-color-scheme: dark) {
-  .feature-item { background: rgba(255, 255, 255, 0.05); }
+  .feature-item { background: rgba(255, 255, 255, 0.06); color: #f1f5f9; }
 }
 .feature-item i { color: #10b981; font-size: 15px; }
 
 .install-guide-box {
   padding: 12px 16px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.05);
+  background: #f4f4f7;
   border-left: 3px solid #007aff;
+  color: #1d1d1f;
 }
+[data-theme="dark"] .install-guide-box,
 :root.dark .install-guide-box,
 @media (prefers-color-scheme: dark) {
-  .install-guide-box { background: rgba(0, 0, 0, 0.35); }
+  .install-guide-box { background: rgba(0, 0, 0, 0.45); color: #f1f5f9; }
 }
 
 .guide-pre {
@@ -1821,6 +2036,233 @@ defineExpose({
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+  color: inherit;
+}
+
+/* 🔗 Links & Download Picker Modal */
+.links-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .links-header,
+:root.dark .links-header,
+@media (prefers-color-scheme: dark) {
+  .links-header { border-bottom-color: rgba(255, 255, 255, 0.08); }
+}
+
+.links-header-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.links-titles h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1d1d1f;
+}
+[data-theme="dark"] .links-titles h3,
+:root.dark .links-titles h3,
+@media (prefers-color-scheme: dark) {
+  .links-titles h3 { color: #ffffff; }
+}
+
+.links-sub-meta {
+  display: flex;
+  gap: 6px;
+}
+.l-pill {
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.l-ver { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.l-plat { background: rgba(0, 122, 255, 0.12); color: #007aff; }
+.l-size { background: rgba(0, 0, 0, 0.06); color: #64748b; }
+[data-theme="dark"] .l-size,
+:root.dark .l-size,
+@media (prefers-color-scheme: dark) {
+  .l-size { background: rgba(255, 255, 255, 0.1); color: #94a3b8; }
+}
+
+.links-close-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.links-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.link-action-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #f8fafc;
+  color: #1d1d1f;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+}
+[data-theme="dark"] .link-action-card,
+:root.dark .link-action-card,
+@media (prefers-color-scheme: dark) {
+  .link-action-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+  }
+}
+.link-action-card:hover {
+  transform: translateY(-2px);
+  border-color: #007aff;
+  background: rgba(0, 122, 255, 0.04);
+  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.12);
+}
+.link-action-card.primary-action {
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.08) 0%, rgba(56, 189, 248, 0.08) 100%);
+  border-color: rgba(0, 122, 255, 0.3);
+}
+
+.action-left-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.icon-direct { background: #007aff; color: #ffffff; }
+.icon-link { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.icon-share { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
+.icon-terminal { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.icon-apple { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+
+.action-text-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.action-row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.action-row-title strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+.action-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #007aff;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.action-subtext {
+  font-size: 11.5px;
+  color: #64748b;
+}
+[data-theme="dark"] .action-subtext,
+:root.dark .action-subtext,
+@media (prefers-color-scheme: dark) {
+  .action-subtext { color: #94a3b8; }
+}
+.action-subtext code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+[data-theme="dark"] .action-subtext code,
+:root.dark .action-subtext code,
+@media (prefers-color-scheme: dark) {
+  .action-subtext code { background: rgba(255, 255, 255, 0.1); }
+}
+
+.action-btn-pill {
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
+  font-size: 11.5px;
+  font-weight: 650;
+  flex-shrink: 0;
+}
+.link-action-card:hover .action-btn-pill {
+  background: #007aff;
+  color: #ffffff;
+}
+
+.action-arrow {
+  color: #8e8e93;
+  font-size: 14px;
+}
+
+.qr-download-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  margin-top: 4px;
+}
+[data-theme="dark"] .qr-download-section,
+:root.dark .qr-download-section,
+@media (prefers-color-scheme: dark) {
+  .qr-download-section { background: rgba(255, 255, 255, 0.04); }
+}
+.qr-box {
+  width: 76px;
+  height: 76px;
+  background: #ffffff;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+.qr-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.qr-desc-col strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.qr-desc-col p {
+  margin: 0;
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+}
+[data-theme="dark"] .qr-desc-col p,
+:root.dark .qr-desc-col p,
+@media (prefers-color-scheme: dark) {
+  .qr-desc-col p { color: #94a3b8; }
 }
 
 /* Editor Form */
@@ -1831,6 +2273,7 @@ defineExpose({
   padding: 16px 20px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
+[data-theme="dark"] .editor-header,
 :root.dark .editor-header,
 @media (prefers-color-scheme: dark) {
   .editor-header { border-bottom-color: rgba(255, 255, 255, 0.08); }
@@ -1842,7 +2285,14 @@ defineExpose({
   margin: 0;
   font-size: 15px;
   font-weight: 700;
+  color: #1d1d1f;
 }
+[data-theme="dark"] .editor-header h3,
+:root.dark .editor-header h3,
+@media (prefers-color-scheme: dark) {
+  .editor-header h3 { color: #ffffff; }
+}
+
 .editor-close-btn {
   border: none;
   background: transparent;

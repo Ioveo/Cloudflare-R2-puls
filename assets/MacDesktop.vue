@@ -619,6 +619,16 @@ function openAppStoreEditor(fileOrKey) {
   }, 60);
 }
 
+function openAppStoreLinks(fileOrKey) {
+  const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
+  bringToFront("appstore");
+  appStoreModal.value.visible = true;
+  appStoreModal.value.minimized = false;
+  setTimeout(() => {
+    appStoreRef.value?.openLinksByKey(key);
+  }, 60);
+}
+
 function isArchive(file) {
   const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
   if (isSoftware(file)) return false;
@@ -780,7 +790,7 @@ function onDropFiles(e) {
   if (!files.length) return;
   emit("drop-files", { files, cwd: props.cwd });
 }
-defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, openAppStoreEditor });
+defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, openAppStoreEditor, openAppStoreLinks });
 </script>
 
 <template>

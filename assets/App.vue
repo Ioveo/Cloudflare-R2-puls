@@ -537,7 +537,10 @@ export default {
       const isMacApp = isSoft && (this.focusedItem.key?.endsWith(".dmg") || this.focusedItem.key?.endsWith(".pkg") || this.focusedItem.key?.toLowerCase().includes("mac"));
       return [
         { id: "preview", label: isSoft ? "在软件工坊中检视" : "查看/播放 (Space)", icon: isSoft ? "ph-app-store-logo" : "ph-eye" },
-        ...(isSoft ? [{ id: "app-edit-meta", label: "编辑软件简介与说明", icon: "ph-pencil-simple" }] : []),
+        ...(isSoft ? [
+          { id: "app-get-links", label: "获取下载链接与指令", icon: "ph-link-simple" },
+          { id: "app-edit-meta", label: "编辑软件简介与说明", icon: "ph-pencil-simple" }
+        ] : []),
         ...(isMacApp ? [{ id: "copy-quarantine-cmd", label: "复制终端免隔离命令", icon: "ph-terminal-window" }] : []),
         ...(isImg ? [{ id: "set-wallpaper", label: "设置为桌面壁纸", icon: "ph-image" }] : []),
         { id: "inspect", label: "查看属性 (I)", icon: "ph-info" },
@@ -897,6 +900,12 @@ export default {
       if (action === "app-edit-meta") {
         if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
           this.$refs.macDesktopRef.openAppStoreEditor(item);
+        }
+        return;
+      }
+      if (action === "app-get-links") {
+        if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
+          this.$refs.macDesktopRef.openAppStoreLinks(item);
         }
         return;
       }
