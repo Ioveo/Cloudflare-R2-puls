@@ -9,6 +9,8 @@ export async function generateThumbnail(file) {
   canvas.height = THUMBNAIL_SIZE;
   const ctx = canvas.getContext("2d");
 
+  if (file.size > 60 * 1024 * 1024) return null; // Guard against heavy memory usage
+
   if (file.type.startsWith("image/")) {
     const image = await new Promise((resolve) => {
       const img = new Image();
@@ -61,21 +63,23 @@ const MIN_PART_SIZE = 5 * MEBIBYTE;
 const MAX_MULTIPART_PARTS = 10_000;
 const MAX_RETRIES = 4;
 
-// Threshold for multipart uploads: lowered to 12MB so files > 12MB immediately gain multi-threaded parallel uploads!
-export const MULTIPART_THRESHOLD = 12 * MEBIBYTE;
+// Threshold for multipart uploads: files > 10MB immediately gain multi-threaded parallel chunk uploads
+export const MULTIPART_THRESHOLD = 10 * MEBIBYTE;
 
 function getPartSize(fileSize) {
-  if (fileSize > 1024 * MEBIBYTE) return 32 * MEBIBYTE; // 32MB chunk for >1GB
-  if (fileSize > 256 * MEBIBYTE) return 16 * MEBIBYTE;  // 16MB chunk for >256MB
+  if (fileSize > 5 * 1024 * MEBIBYTE) return 64 * MEBIBYTE; // 64MB chunk for >5GB
+  if (fileSize > 1024 * MEBIBYTE) return 32 * MEBIBYTE;     // 32MB chunk for >1GB
+  if (fileSize > 256 * MEBIBYTE) return 16 * MEBIBYTE;      // 16MB chunk for >256MB
+  if (fileSize > 50 * MEBIBYTE) return 10 * MEBIBYTE;       // 10MB chunk for >50MB
   const sizeForPartLimit = Math.ceil(fileSize / MAX_MULTIPART_PARTS);
-  return Math.max(10 * MEBIBYTE, MIN_PART_SIZE, sizeForPartLimit);
+  return Math.max(8 * MEBIBYTE, MIN_PART_SIZE, sizeForPartLimit);
 }
 
 function getConcurrentUploads() {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   if (connection?.saveData || connection?.effectiveType === "2g") return 2;
-  if (connection?.effectiveType === "3g") return 3;
-  return 6; // Max 6 parallel upload threads for maximum HTTP/2 speed!
+  if (connection?.effectiveType === "3g") return 4;
+  return 8; // High speed 8 parallel upload threads for maximum throughput!
 }
 
 function sleep(milliseconds) {

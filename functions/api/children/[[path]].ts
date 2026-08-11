@@ -23,7 +23,10 @@ export async function onRequestGet(context) {
       folders = folders.filter((folder) => folder !== "_$flaredrive$/");
 
     return new Response(JSON.stringify({ value: objKeys, folders }), {
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, max-age=3, stale-while-revalidate=30",
+      },
     });
   } catch (e) {
     return new Response(e.toString(), { status: 500 });
