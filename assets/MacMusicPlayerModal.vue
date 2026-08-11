@@ -12,7 +12,7 @@ const props = defineProps({
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change", "focus"]);
+const emit = defineEmits(["close", "change", "focus", "upload"]);
 
 const audioRef = ref(null);
 const isPlaying = ref(false);
@@ -171,7 +171,10 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
     <template #titlebar-right>
       <div class="apple-music-header">
         <span class="lossless-chip">Hi-Res Lossless · 24bit/48kHz</span>
-        <button class="am-hdr-btn" :class="{ active: showPlaylist }" type="button" title="播放列表" @click="showPlaylist = !showPlaylist">
+        <button class="am-hdr-btn" type="button" title="添加音乐到音乐文件夹" @click="emit('upload')">
+          <i class="ph ph-plus-bold" style="font-size: 13px;"></i>
+        </button>
+        <button v-if="items.length > 0" class="am-hdr-btn" :class="{ active: showPlaylist }" type="button" title="播放列表" @click="showPlaylist = !showPlaylist">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
           </svg>
@@ -180,28 +183,46 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
     </template>
 
     <div class="apple-music-stage">
-      <!-- Hidden Audio -->
-      <audio
-        ref="audioRef"
-        :src="currentItem?.url"
-        preload="metadata"
-        @timeupdate="onTimeUpdate"
-        @ended="onEnded"
-        @play="isPlaying = true"
-        @pause="isPlaying = false"
-      ></audio>
+      <!-- Empty State -->
+      <div v-if="!currentItem" class="am-empty-library">
+        <div class="am-empty-icon">
+          <svg viewBox="0 0 100 100" width="72" height="72">
+            <rect x="6" y="6" width="88" height="88" rx="20" fill="#fa233b" />
+            <path d="M 68 28 L 44 34 L 44 62 C 41 60 36 60 33 62 C 28 65 28 72 32 75 C 36 78 44 76 44 69 L 44 42 L 64 37 L 64 56 C 61 54 56 54 53 56 C 48 59 48 66 52 69 C 56 72 64 70 64 63 L 64 32 Q 64 28 68 28 Z" fill="#ffffff" />
+          </svg>
+        </div>
+        <h3>音乐曲库暂无音频</h3>
+        <p>保存在「音乐」系统目录中的曲目将在此以黑胶唱片视效播放</p>
+        <button class="am-empty-upload-btn" type="button" @click="emit('upload')">
+          <i class="ph ph-plus-circle-fill"></i>
+          <span>添加无损音乐</span>
+        </button>
+      </div>
 
-      <!-- Main Stage Flex Grid -->
-      <div class="am-main-grid">
-        <!-- 1. Left: 3D High-End Vinyl Turntable -->
-        <div class="turntable-wrapper">
-          <div class="turntable-chassis">
-            <!-- Pivot & Metallic Tone Arm -->
-            <div class="tone-arm-assembly" :class="{ 'arm-playing': isPlaying }">
-              <div class="arm-pivot"></div>
-              <div class="arm-metal-bar"></div>
-              <div class="arm-headshell"></div>
-            </div>
+      <!-- Main Player Grid -->
+      <template v-else>
+        <!-- Hidden Audio -->
+        <audio
+          ref="audioRef"
+          :src="currentItem?.url"
+          preload="metadata"
+          @timeupdate="onTimeUpdate"
+          @ended="onEnded"
+          @play="isPlaying = true"
+          @pause="isPlaying = false"
+        ></audio>
+
+        <!-- Main Stage Flex Grid -->
+        <div class="am-main-grid">
+          <!-- 1. Left: 3D High-End Vinyl Turntable -->
+          <div class="turntable-wrapper">
+            <div class="turntable-chassis">
+              <!-- Pivot & Metallic Tone Arm -->
+              <div class="tone-arm-assembly" :class="{ 'arm-playing': isPlaying }">
+                <div class="arm-pivot"></div>
+                <div class="arm-metal-bar"></div>
+                <div class="arm-headshell"></div>
+              </div>
 
             <!-- Rotating Vinyl Record -->
             <div class="vinyl-platter" :class="{ 'vinyl-spinning': isPlaying }">
@@ -343,12 +364,71 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </MacWindow>
 </template>
 
 <style scoped>
+/* Empty Music Library State */
+.am-empty-library {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  padding: 30px;
+}
+
+.am-empty-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  margin-bottom: 18px;
+}
+
+.am-empty-library h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px;
+}
+
+[data-theme="light"] .am-empty-library h3 {
+  color: #1d1d1f;
+}
+
+.am-empty-library p {
+  font-size: 13px;
+  color: #8e8e93;
+  margin: 0 0 20px;
+}
+
+.am-empty-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #fa233b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(250, 35, 59, 0.4);
+  transition: all 0.16s ease;
+}
+
+.am-empty-upload-btn:hover {
+  background: #e0162e;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(250, 35, 59, 0.5);
+}
+
 .apple-music-stage {
   width: 100%;
   height: 100%;

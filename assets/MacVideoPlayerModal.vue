@@ -12,7 +12,7 @@ const props = defineProps({
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change", "focus"]);
+const emit = defineEmits(["close", "change", "focus", "upload"]);
 
 const videoRef = ref(null);
 const isPlaying = ref(false);
@@ -224,6 +224,9 @@ onUnmounted(() => {
     <template #titlebar-right>
       <div class="qt-header-actions">
         <span class="qt-tag">QuickTime 4K</span>
+        <button class="qt-hdr-btn" type="button" title="添加视频到视频文件夹" @click="emit('upload')">
+          <i class="ph ph-plus-bold" style="font-size: 13px;"></i>
+        </button>
         <button v-if="items.length > 1" class="qt-hdr-btn" type="button" title="上一个视频" @click="prevVideo">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
         </button>
@@ -234,30 +237,50 @@ onUnmounted(() => {
     </template>
 
     <div class="quicktime-stage" @mousemove="onUserActivity" @click="onUserActivity">
-      <!-- Native Video Frame -->
-      <video
-        ref="videoRef"
-        class="quicktime-video-el"
-        :src="currentItem?.url"
-        playsinline
-        preload="metadata"
-        @timeupdate="onTimeUpdate"
-        @ended="nextVideo"
-        @click="togglePlay"
-        @play="isPlaying = true"
-        @pause="isPlaying = false"
-      ></video>
-
-      <!-- Center Big Play Button (Paused State) -->
-      <Transition name="fade">
-        <div v-if="!isPlaying" class="qt-center-play" @click="togglePlay">
-          <div class="qt-play-disc">
-            <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
+      <!-- Empty Video Library State -->
+      <div v-if="!currentItem" class="qt-empty-library">
+        <div class="qt-empty-icon">
+          <svg viewBox="0 0 100 100" width="72" height="72">
+            <rect x="6" y="6" width="88" height="88" rx="20" fill="#1e1b4b" />
+            <circle cx="50" cy="46" r="25" fill="none" stroke="#38bdf8" stroke-width="10" />
+            <path d="M 54 50 L 74 76" stroke="#38bdf8" stroke-width="10" stroke-linecap="round" />
+            <polygon points="46,38 46,54 58,46" fill="#ffffff" />
+          </svg>
         </div>
-      </Transition>
+        <h3>影视库暂无视频</h3>
+        <p>保存在「视频」系统目录中的影片将在此呈现与播放</p>
+        <button class="qt-empty-upload-btn" type="button" @click="emit('upload')">
+          <i class="ph ph-plus-circle-fill"></i>
+          <span>添加视频文件</span>
+        </button>
+      </div>
+
+      <!-- Native Video Frame -->
+      <template v-else>
+        <video
+          ref="videoRef"
+          class="quicktime-video-el"
+          :src="currentItem?.url"
+          playsinline
+          preload="metadata"
+          @timeupdate="onTimeUpdate"
+          @ended="nextVideo"
+          @click="togglePlay"
+          @play="isPlaying = true"
+          @pause="isPlaying = false"
+        ></video>
+
+        <!-- Center Big Play Button (Paused State) -->
+        <Transition name="fade">
+          <div v-if="!isPlaying" class="qt-center-play" @click="togglePlay">
+            <div class="qt-play-disc">
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
+        </Transition>
+      </template>
 
       <!-- 1:1 macOS Sequoia Frosted Glass Transport HUD -->
       <Transition name="hud-fade">
@@ -620,5 +643,60 @@ onUnmounted(() => {
 .hud-fade-enter-from, .hud-fade-leave-to {
   opacity: 0;
   transform: translate(-50%, 10px);
+}
+
+/* Empty Video Library State */
+.qt-empty-library {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  padding: 30px;
+}
+
+.qt-empty-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  margin-bottom: 18px;
+}
+
+.qt-empty-library h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px;
+}
+
+.qt-empty-library p {
+  font-size: 13px;
+  color: #8e8e93;
+  margin: 0 0 20px;
+}
+
+.qt-empty-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #0a84ff;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+  transition: all 0.16s ease;
+}
+
+.qt-empty-upload-btn:hover {
+  background: #0071e3;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.5);
 }
 </style>

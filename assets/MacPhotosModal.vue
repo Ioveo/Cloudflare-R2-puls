@@ -12,10 +12,10 @@ const props = defineProps({
   isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change", "set-wallpaper", "focus"]);
+const emit = defineEmits(["close", "change", "set-wallpaper", "focus", "upload"]);
 
 // Views: 'grid' (All Photos Library) vs 'canvas' (Single Photo Detail)
-const viewMode = ref("canvas");
+const viewMode = ref("grid");
 const showSidebar = ref(true);
 const currentTab = ref("all"); // 'all' | 'recents' | 'favorites'
 const gridThumbSize = ref(130); // 80px to 240px
@@ -43,7 +43,7 @@ watch(() => props.index, (val) => {
 
 watch(() => props.visible, (val) => {
   if (val) {
-    if (props.file || props.items.length) {
+    if (props.file) {
       viewMode.value = "canvas";
     } else {
       viewMode.value = "grid";
@@ -393,6 +393,11 @@ onUnmounted(() => {
             <i class="ph ph-square"></i>
           </div>
 
+          <button class="mac-action-pill highlight" type="button" title="上传照片至照片文件夹" @click="emit('upload')">
+            <i class="ph ph-plus-bold"></i>
+            <span>添加照片</span>
+          </button>
+
           <div class="tools-divider"></div>
 
           <!-- Selection Info & Batch Actions -->
@@ -517,7 +522,34 @@ onUnmounted(() => {
       <div class="photos-main-stage">
         <!-- 🖼️ VIEW A: All Photos Grid -->
         <div v-if="viewMode === 'grid'" class="photos-grid-scroll">
+          <!-- Empty State -->
+          <div v-if="displayPhotos.length === 0" class="photos-empty-state">
+            <div class="empty-icon-wrap">
+              <svg viewBox="0 0 100 100" width="80" height="80">
+                <rect x="6" y="6" width="88" height="88" rx="20" fill="#ffffff" />
+                <g transform="translate(50, 50)">
+                  <ellipse cx="0" cy="-22" rx="7.5" ry="15" fill="#ff2d55" opacity="0.9" />
+                  <ellipse cx="15.5" cy="-15.5" rx="7.5" ry="15" fill="#ff9500" opacity="0.9" transform="rotate(45)" />
+                  <ellipse cx="22" cy="0" rx="7.5" ry="15" fill="#ffcc00" opacity="0.9" transform="rotate(90)" />
+                  <ellipse cx="15.5" cy="15.5" rx="7.5" ry="15" fill="#34c759" opacity="0.9" transform="rotate(135)" />
+                  <ellipse cx="0" cy="22" rx="7.5" ry="15" fill="#00c7be" opacity="0.9" transform="rotate(180)" />
+                  <ellipse cx="-15.5" cy="15.5" rx="7.5" ry="15" fill="#007aff" opacity="0.9" transform="rotate(225)" />
+                  <ellipse cx="-22" cy="0" rx="7.5" ry="15" fill="#5856d6" opacity="0.9" transform="rotate(270)" />
+                  <ellipse cx="-15.5" cy="-15.5" rx="7.5" ry="15" fill="#af52de" opacity="0.9" transform="rotate(315)" />
+                  <circle cx="0" cy="0" r="6" fill="#ffffff" />
+                </g>
+              </svg>
+            </div>
+            <h3>图库暂无照片</h3>
+            <p>全盘照片及保存在「照片」系统目录中的图像将自动在此同步呈现</p>
+            <button class="empty-upload-btn" type="button" @click="emit('upload')">
+              <i class="ph ph-plus-circle-fill"></i>
+              <span>添加第一张照片</span>
+            </button>
+          </div>
+
           <div
+            v-else
             class="photos-masonry-grid"
             :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${gridThumbSize}px, 1fr))`, gridAutoRows: `${gridThumbSize}px` }"
           >
@@ -1156,5 +1188,69 @@ onUnmounted(() => {
   height: 16px;
   background: rgba(255, 255, 255, 0.15);
   margin: 0 2px;
+}
+
+/* Photos Empty State */
+.photos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 380px;
+  padding: 30px;
+}
+
+.empty-icon-wrap {
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  margin-bottom: 20px;
+}
+
+.photos-empty-state h3 {
+  font-size: 19px;
+  font-weight: 700;
+  color: #f2f2f7;
+  margin: 0 0 8px;
+}
+
+[data-theme="light"] .photos-empty-state h3 {
+  color: #1d1d1f;
+}
+
+.photos-empty-state p {
+  font-size: 13px;
+  color: #8e8e93;
+  max-width: 360px;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.empty-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: none;
+  background: #0a84ff;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4);
+  transition: all 0.16s ease;
+}
+
+.empty-upload-btn:hover {
+  background: #0071e3;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(10, 132, 255, 0.5);
 }
 </style>

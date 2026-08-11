@@ -19,6 +19,7 @@ import ContextMenu from "./ContextMenu.vue";
 const props = defineProps({
   files: { type: Array, default: () => [] },
   folders: { type: Array, default: () => [] },
+  allFiles: { type: Array, default: () => [] },
   cwd: { type: String, default: "" },
   storageId: { type: String, default: "default" },
   storageOptions: { type: Array, default: () => [{ id: "default", label: "主存储" }] },
@@ -36,6 +37,8 @@ const emit = defineEmits([
   "navigate",
   "open-file",
   "upload",
+  "upload-to-folder",
+  "init-system-folders",
   "create-folder",
   "rename",
   "move",
@@ -186,6 +189,21 @@ function minimizeWindow(appId) {
   }
 }
 
+const allImages = computed(() => {
+  const list = props.allFiles && props.allFiles.length ? props.allFiles : props.files;
+  return list.filter(isImage);
+});
+
+const allVideos = computed(() => {
+  const list = props.allFiles && props.allFiles.length ? props.allFiles : props.files;
+  return list.filter(isVideo);
+});
+
+const allAudios = computed(() => {
+  const list = props.allFiles && props.allFiles.length ? props.allFiles : props.files;
+  return list.filter(isAudio);
+});
+
 function launchApp(appId) {
   if (appId === "finder") {
     emit("update:filterCategory", "all");
@@ -199,42 +217,29 @@ function launchApp(appId) {
     bringToFront("notes");
     notesModal.value.visible = true;
   } else if (appId === "photos") {
-    const imgFiles = props.files.filter(isImage);
     bringToFront("photos");
     photosModal.value = {
       visible: true,
-      file: imgFiles.length ? imgFiles[0] : null,
-      items: imgFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      file: null, // open in all photos library grid view
+      items: allImages.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
       index: 0,
     };
   } else if (appId === "cinema") {
-    const vFiles = props.files.filter(isVideo);
-    if (vFiles.length > 0) {
-      bringToFront("video");
-      videoModal.value = {
-        visible: true,
-        file: vFiles[0],
-        items: vFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
-        index: 0,
-      };
-    } else {
-      emit("update:filterCategory", "video");
-      bringToFront("finder");
-    }
+    bringToFront("video");
+    videoModal.value = {
+      visible: true,
+      file: allVideos.value.length ? allVideos.value[0] : null,
+      items: allVideos.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      index: 0,
+    };
   } else if (appId === "music") {
-    const aFiles = props.files.filter(isAudio);
-    if (aFiles.length > 0) {
-      bringToFront("music");
-      musicModal.value = {
-        visible: true,
-        file: aFiles[0],
-        items: aFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
-        index: 0,
-      };
-    } else {
-      emit("update:filterCategory", "audio");
-      bringToFront("finder");
-    }
+    bringToFront("music");
+    musicModal.value = {
+      visible: true,
+      file: allAudios.value.length ? allAudios.value[0] : null,
+      items: allAudios.value.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      index: 0,
+    };
   } else if (appId === "archive") {
     emit("update:filterCategory", "archive");
     bringToFront("finder");
@@ -242,7 +247,7 @@ function launchApp(appId) {
     emit("update:filterCategory", "document");
     bringToFront("finder");
   } else if (appId === "upload") {
-    emit("upload");
+    handleFinderUpload();
   } else if (appId === "trash") {
     bringToFront("settings");
   }
@@ -430,40 +435,59 @@ function getArchiveExt(file) {
   return "ZIP";
 }
 
+function getFolderIcon(folder) {
+  const name = folderName(folder).trim().toLowerCase();
+  if (name === "照片" || name === "pictures" || name === "photos" || name === "图片" || name === "相册") return "folder-pictures";
+  if (name === "视频" || name === "movies" || name === "videos" || name === "影视") return "folder-movies";
+  if (name === "音乐" || name === "music" || name === "歌曲") return "folder-music";
+  if (name === "文档" || name === "documents" || name === "docs") return "folder-documents";
+  if (name === "下载" || name === "downloads") return "folder-downloads";
+  return "folder";
+}
+
+function handleFinderUpload() {
+  if (props.filterCategory === "image") emit("upload", "照片/");
+  else if (props.filterCategory === "video") emit("upload", "视频/");
+  else if (props.filterCategory === "audio") emit("upload", "音乐/");
+  else if (props.filterCategory === "document") emit("upload", "文档/");
+  else if (props.filterCategory === "archive") emit("upload", "下载/");
+  else emit("upload", props.cwd);
+}
+
 // Open File Action (Directly Dispatches to macOS Dedicated Windows and brings them to the very front)
 function handleOpenFile(file) {
   if (isImage(file)) {
-    const imgFiles = props.files.filter(isImage);
-    const idx = imgFiles.findIndex((f) => f.key === file.key);
+    const list = allImages.value.length ? allImages.value : props.files.filter(isImage);
+    const idx = list.findIndex((f) => f.key === file.key);
     bringToFront("photos");
     photosModal.value = {
       visible: true,
       file,
-      items: imgFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      items: list.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
       index: Math.max(0, idx),
     };
     return;
   }
   if (isVideo(file)) {
-    const vFiles = props.files.filter(isVideo);
-    const idx = vFiles.findIndex((f) => f.key === file.key);
+    const list = allVideos.value.length ? allVideos.value : props.files.filter(isVideo);
+    const idx = list.findIndex((f) => f.key === file.key);
     bringToFront("video");
     videoModal.value = {
       visible: true,
       file,
-      items: vFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      items: list.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
       index: Math.max(0, idx),
     };
     return;
   }
   if (isAudio(file)) {
-    const aFiles = props.files.filter(isAudio);
-    const idx = aFiles.findIndex((f) => f.key === file.key);
+    const list = allAudios.value.length ? allAudios.value : props.files.filter(isAudio);
+    const idx = list.findIndex((f) => f.key === file.key);
     bringToFront("music");
     musicModal.value = {
       visible: true,
       file,
-      items: aFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      items: list.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
       index: Math.max(0, idx),
     };
     return;
@@ -642,7 +666,7 @@ function onDropFiles(e) {
           <button class="finder-action-icon-btn" type="button" title="新建文件夹" @click="emit('create-folder')">
             <i class="ph ph-folder-plus"></i>
           </button>
-          <button class="finder-action-icon-btn highlight" type="button" title="极速上传" @click="emit('upload')">
+          <button class="finder-action-icon-btn highlight" type="button" :title="filterCategory !== 'all' ? `极速上传到 ${filterCategory === 'image' ? '照片' : filterCategory === 'video' ? '视频' : filterCategory === 'audio' ? '音乐' : filterCategory === 'document' ? '文档' : '下载'} 文件夹` : '极速上传'" @click="handleFinderUpload">
             <i class="ph ph-cloud-arrow-up"></i>
           </button>
         </div>
@@ -655,22 +679,33 @@ function onDropFiles(e) {
           <div class="sidebar-section">
             <span class="section-title">收藏夹</span>
             <button class="sidebar-row" :class="{ active: filterCategory === 'all' && !cwd }" @click="emit('update:filterCategory', 'all'); emit('navigate', '')">
-              <i class="ph ph-house-fill"></i> 全部文件
+              <i class="ph ph-house-fill"></i>
+              <span>全部文件</span>
             </button>
             <button class="sidebar-row" :class="{ active: filterCategory === 'image' }" @click="emit('update:filterCategory', 'image')">
-              <i class="ph ph-image-fill"></i> 照片图库
+              <i class="ph ph-image-fill" style="color: #ff2d55;"></i>
+              <span>照片图库</span>
+              <span v-if="categoryCounts.image" class="sidebar-badge">{{ categoryCounts.image }}</span>
             </button>
             <button class="sidebar-row" :class="{ active: filterCategory === 'video' }" @click="emit('update:filterCategory', 'video')">
-              <i class="ph ph-film-strip-fill"></i> 高清影视
+              <i class="ph ph-film-strip-fill" style="color: #af52de;"></i>
+              <span>高清影视</span>
+              <span v-if="categoryCounts.video" class="sidebar-badge">{{ categoryCounts.video }}</span>
             </button>
             <button class="sidebar-row" :class="{ active: filterCategory === 'audio' }" @click="emit('update:filterCategory', 'audio')">
-              <i class="ph ph-music-notes-fill"></i> 无损音乐
-            </button>
-            <button class="sidebar-row" :class="{ active: filterCategory === 'archive' }" @click="emit('update:filterCategory', 'archive')">
-              <i class="ph ph-package-fill"></i> 压缩归档
+              <i class="ph ph-music-notes-fill" style="color: #34c759;"></i>
+              <span>无损音乐</span>
+              <span v-if="categoryCounts.audio" class="sidebar-badge">{{ categoryCounts.audio }}</span>
             </button>
             <button class="sidebar-row" :class="{ active: filterCategory === 'document' }" @click="emit('update:filterCategory', 'document')">
-              <i class="ph ph-file-text-fill"></i> 办公文档
+              <i class="ph ph-file-text-fill" style="color: #007aff;"></i>
+              <span>办公文档</span>
+              <span v-if="categoryCounts.document" class="sidebar-badge">{{ categoryCounts.document }}</span>
+            </button>
+            <button class="sidebar-row" :class="{ active: filterCategory === 'archive' }" @click="emit('update:filterCategory', 'archive')">
+              <i class="ph ph-package-fill" style="color: #ff9500;"></i>
+              <span>压缩归档</span>
+              <span v-if="categoryCounts.archive" class="sidebar-badge">{{ categoryCounts.archive }}</span>
             </button>
           </div>
 
@@ -706,6 +741,23 @@ function onDropFiles(e) {
             :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]"
             @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })"
           >
+            <!-- Category Target Guidance Pill -->
+            <div v-if="filterCategory !== 'all'" class="finder-category-guide-bar">
+              <i class="ph ph-info"></i>
+              <span>正在浏览「{{ filterCategory === 'image' ? '照片图库' : filterCategory === 'video' ? '高清影视' : filterCategory === 'audio' ? '无损音乐' : filterCategory === 'document' ? '办公文档' : '压缩归档' }}」· 上传将自动保存在 <strong>{{ filterCategory === 'image' ? '照片/' : filterCategory === 'video' ? '视频/' : filterCategory === 'audio' ? '音乐/' : filterCategory === 'document' ? '文档/' : '下载/' }}</strong></span>
+            </div>
+
+            <!-- Empty Root Setup Banner -->
+            <div v-if="!cwd && filterCategory === 'all' && folders.length === 0 && files.length === 0" class="mac-empty-setup-card">
+              <div class="setup-icon"><i class="ph ph-sparkle-fill"></i></div>
+              <h3>欢迎使用天才猫 macOS 空间</h3>
+              <p>一键创建 macOS 标准个人目录（照片、视频、音乐、文档、下载），让管理和分类井井有条：</p>
+              <button class="setup-btn" type="button" @click="emit('init-system-folders')">
+                <i class="ph ph-folder-simple-plus"></i>
+                <span>一键初始化系统目录</span>
+              </button>
+            </div>
+
             <!-- Parent Folder Card -->
             <article v-if="cwd && filterCategory === 'all'" class="finder-file-item folder-item parent-folder" @dblclick="emit('navigate', parentPath)">
               <div class="item-icon">
@@ -725,7 +777,7 @@ function onDropFiles(e) {
               @contextmenu.stop.prevent="$emit('context', { item: folder, event: $event })"
             >
               <div class="item-icon">
-                <MacIcons name="folder" :size="viewMode === 'grid' ? 56 : 22" />
+                <MacIcons :name="getFolderIcon(folder)" :size="viewMode === 'grid' ? 56 : 22" />
               </div>
               <span class="item-title" :title="folderName(folder)">{{ folderName(folder) }}</span>
             </article>
@@ -807,6 +859,7 @@ function onDropFiles(e) {
       @focus="bringToFront('video')"
       @close="videoModal.visible = false"
       @change="videoModal.index = $event"
+      @upload="emit('upload', '视频/')"
     />
 
     <!-- 🎵 Window 3: macOS Apple Music Vinyl Turntable Modal -->
@@ -821,6 +874,7 @@ function onDropFiles(e) {
       @focus="bringToFront('music')"
       @close="musicModal.visible = false"
       @change="musicModal.index = $event"
+      @upload="emit('upload', '音乐/')"
     />
 
     <!-- 🖼️ Window 4: macOS Photos Pro Viewer Modal -->
@@ -836,6 +890,7 @@ function onDropFiles(e) {
       @close="photosModal.visible = false"
       @change="photosModal.index = $event"
       @set-wallpaper="setAsWallpaper"
+      @upload="emit('upload', '照片/')"
     />
 
     <!-- 🔢 Window 5: macOS Calculator Modal -->
@@ -1080,10 +1135,129 @@ function onDropFiles(e) {
 .sidebar-row i {
   font-size: 16px;
   color: #0a84ff;
+  flex-shrink: 0;
+}
+
+.sidebar-row span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #8e8e93;
+}
+
+.sidebar-row.active .sidebar-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
 .sidebar-row.active i {
+  color: #ffffff !important;
+}
+
+/* Category Guide Bar in Finder */
+.finder-category-guide-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(10, 132, 255, 0.12);
+  border: 1px solid rgba(10, 132, 255, 0.25);
+  color: #0a84ff;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+[data-theme="light"] .finder-category-guide-bar {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: rgba(0, 122, 255, 0.2);
+  color: #007aff;
+}
+
+.finder-category-guide-bar strong {
   color: #ffffff;
+  background: rgba(10, 132, 255, 0.85);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+
+[data-theme="light"] .finder-category-guide-bar strong {
+  color: #ffffff;
+  background: #007aff;
+}
+
+/* Empty Setup Card in Finder */
+.mac-empty-setup-card {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  margin: 20px auto;
+  max-width: 480px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+.setup-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: #ffffff;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.35);
+}
+
+.mac-empty-setup-card h3 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0 0 6px;
+}
+
+.mac-empty-setup-card p {
+  font-size: 12.5px;
+  color: #8e8e93;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.setup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #0a84ff;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+  transition: all 0.16s ease;
+}
+
+.setup-btn:hover {
+  background: #0071e3;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(10, 132, 255, 0.5);
 }
 
 /* Main Pane */

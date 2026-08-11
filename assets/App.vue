@@ -5,6 +5,7 @@
     v-if="uiMode === 'macos'"
     :files="filteredFiles"
     :folders="filteredFolders"
+    :all-files="allBucketFiles"
     :cwd="cwd"
     :storage-id="storageId"
     :storage-options="storageOptions"
@@ -19,6 +20,8 @@
     @navigate="goToFolder"
     @open-file="openFile"
     @upload="openUploadWithAuth"
+    @upload-to-folder="uploadFiles($event.files, $event.targetFolder)"
+    @init-system-folders="autoInitSystemFolders"
     @create-folder="createFolder"
     @rename="renameFile"
     @move="moveFile"
@@ -491,6 +494,7 @@ export default {
     showHotkeysModal: false,
     shareModal: { visible: false, file: null, rawUrl: "" },
     authCredentials: loadAuthCredentials(),
+    pendingUploadTargetFolder: null,
     dialog: { visible: false, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "" },
     dialogAction: null
   }),
@@ -560,6 +564,19 @@ export default {
         document: { title: "📄 文档与办公资料", desc: "跨目录全盘自动归类 · PDF / Word / Markdown / 电子书" },
       };
       return map[this.filterCategory] || map.all;
+    },
+
+    allBucketFiles() {
+      const map = new Map();
+      for (const f of this.files) {
+        if (f && f.key) map.set(f.key, f);
+      }
+      if (this.globalFilesLoaded) {
+        for (const f of this.globalFiles) {
+          if (f && f.key) map.set(f.key, f);
+        }
+      }
+      return Array.from(map.values());
     },
 
     sourceFileList() {
@@ -912,7 +929,7 @@ export default {
         this.loading = false;
       }
     },
-    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "toggle-ui-mode") return this.toggleUiMode(); if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); if (value === "toggle-theme") return this.toggleTheme(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; this.uploadFiles(fileElement.files); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
+    formatSize(size) { if (!size || isNaN(size)) return "0 B"; const units = ["B", "KB", "MB", "GB", "TB"]; let index = 0; while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; } return `${size.toFixed(index ? 1 : 0)} ${units[index]}`; }, onDrop(event) { this.isDragging = false; const files = event.dataTransfer.items ? [...event.dataTransfer.items].filter((item) => item.kind === "file").map((item) => item.getAsFile()) : event.dataTransfer.files; this.uploadFiles(files); }, onMenuClick(value) { if (value === "toggle-ui-mode") return this.toggleUiMode(); if (value === "logout") return this.logout(); if (value === "paste") return this.pasteFile(); if (value === "toggle-theme") return this.toggleTheme(); this.order = value; this.sortItems(); }, onUploadClicked(fileElement) { if (!fileElement.value) return; const target = this.pendingUploadTargetFolder; this.pendingUploadTargetFolder = null; this.uploadFiles(fileElement.files, target); this.showUploadPopup = false; fileElement.value = null; }, preview(itemOrUrl) { if (typeof itemOrUrl === "object") return this.openFile(itemOrUrl); window.open(itemOrUrl, "_blank", "noopener"); },
     async pasteFile() {
       if (!this.clipboard || !this.clipboard.item) return;
       const { action, item } = this.clipboard;
@@ -1027,11 +1044,43 @@ export default {
     },
     handleWriteError(error) { if (error?.response?.status === 401) { this.promptLogin(() => { this.fetchFiles(true); }); } }, async removeFile(key) { this.openDialog({ mode: "confirm", title: "删除资源", message: `确定删除“${this.fileName(key)}”吗？`, confirmText: "删除" }, async () => { try { await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); }, async renameFile(key) { this.openDialog({ title: "重命名资源", message: "输入新的资源名称", initialValue: this.fileName(key), confirmText: "保存" }, async (name) => { if (!name || name === this.fileName(key)) return; try { await this.copyPaste(key, `${this.cwd}${name}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); this.fetchFiles(true); } catch (error) { this.handleWriteError(error); } }); },
     async moveFile(key) { this.openDialog({ title: "移动项目", message: "输入目标文件夹路径，留空移动到根目录", confirmText: "移动" }, async (destination) => { const target = destination ? `${destination.replace(/^\/+|\/+$/g, "")}/` : ""; const isFolder = key.endsWith("_$folder$"); const sourceName = isFolder ? this.folderName(key.slice(0, -9)) : this.fileName(key); try { if (isFolder) { const sourceBase = key.slice(0, -9); const targetBase = `${target}${sourceName}/`; const items = await this.getAllItems(sourceBase); for (const item of items) { const nextKey = `${targetBase}${item.key.slice(sourceBase.length)}`; await this.copyPaste(item.key, nextKey); await axios.delete(`/api/write/items/${item.key}`, { headers: this.storageHeaders() }); } await this.copyPaste(key, `${targetBase}_$folder$`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } else { await this.copyPaste(key, `${target}${sourceName}`); await axios.delete(`/api/write/items/${key}`, { headers: this.storageHeaders() }); } this.fetchFiles(true); } catch (error) { this.handleWriteError(error); console.error("Move failed", error); } }); },
-    openUploadWithAuth() {
+    getCategoryTargetFolder(category) {
+      const map = {
+        image: "照片/",
+        video: "视频/",
+        audio: "音乐/",
+        document: "文档/",
+        archive: "下载/",
+      };
+      return map[category] || "";
+    },
+    async autoInitSystemFolders() {
+      const defaultFolders = ["照片", "视频", "音乐", "文档", "下载"];
       if (!this.authCredentials) {
-        this.promptLogin(() => { this.showUploadPopup = true; });
+        this.promptLogin(() => this.autoInitSystemFolders());
         return;
       }
+      try {
+        for (const f of defaultFolders) {
+          const key = `${f}/_$folder$`;
+          try {
+            await axios.put(`/api/write/items/${key}`, "", { headers: this.storageHeaders() });
+          } catch (e) {
+            console.warn(`Create default folder ${f} failed:`, e);
+          }
+        }
+        await this.fetchFiles(true);
+        this.fetchGlobalFiles(true);
+      } catch (err) {
+        this.handleWriteError(err);
+      }
+    },
+    openUploadWithAuth(targetFolder = null) {
+      if (!this.authCredentials) {
+        this.promptLogin(() => { this.openUploadWithAuth(targetFolder); });
+        return;
+      }
+      this.pendingUploadTargetFolder = typeof targetFolder === "string" ? targetFolder : null;
       this.showUploadPopup = true;
     },
     uploadFiles(files, customCwd = null) {
@@ -1040,7 +1089,14 @@ export default {
         this.promptLogin(() => this.uploadFiles(files, customCwd));
         return;
       }
-      let targetCwd = customCwd !== null ? customCwd : this.cwd;
+      let targetCwd = customCwd;
+      if (targetCwd === null || targetCwd === undefined) {
+        if (this.filterCategory !== "all") {
+          targetCwd = this.getCategoryTargetFolder(this.filterCategory);
+        } else {
+          targetCwd = this.cwd;
+        }
+      }
       if (targetCwd && !targetCwd.endsWith("/")) targetCwd += "/";
       this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: targetCwd, file })));
       if (!this.isUploading && this.uploadQueue.length) {
@@ -1048,8 +1104,8 @@ export default {
         this.processUploadQueue();
       }
     },
-    handleMacDropFiles({ files, cwd }) {
-      this.uploadFiles(files, cwd);
+    handleMacDropFiles({ files, cwd, targetFolder }) {
+      this.uploadFiles(files, targetFolder || cwd);
     },
     toggleTheme() {
       this.theme = this.theme === "dark" ? "light" : "dark";
@@ -1177,6 +1233,7 @@ export default {
     document.documentElement.setAttribute("data-theme", this.theme);
     this.loadCachedGlobalIndex();
     this.fetchStorages();
+    this.fetchGlobalFiles(true);
     window.addEventListener("popstate", () => {
       const url = new URL(window.location);
       this.cwd = url.searchParams.get("p") || "";

@@ -259,6 +259,124 @@ const iconSize = computed(() => (typeof props.size === "number" ? `${props.size}
       <line x1="28" y1="32" x2="28" y2="90" stroke="#ff453a" stroke-width="1.5" opacity="0.6" />
     </svg>
 
+    <!-- 11.0 🖼️ macOS Pictures / Photos System Folder Icon -->
+    <svg v-else-if="name === 'folder-pictures' || name === 'folder-photos'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="fld-pic-b" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0284c7" />
+          <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+        <linearGradient id="fld-pic-f" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="100%" stop-color="#0284c7" />
+        </linearGradient>
+      </defs>
+      <path d="M 12 28 C 12 22 17 18 24 18 L 42 18 C 47 18 50 22 53 26 L 57 30 L 82 30 C 88 30 92 34 92 40 L 92 74 C 92 80 88 84 82 84 L 18 84 C 12 84 8 80 8 74 Z" fill="url(#fld-pic-b)" />
+      <rect x="18" y="24" width="64" height="20" rx="3" fill="#ffffff" opacity="0.7" />
+      <path d="M 8 40 C 8 36 11 32 16 32 L 84 32 C 89 32 92 36 92 40 L 92 78 C 92 84 88 88 82 88 L 18 88 C 12 88 8 84 8 78 Z" fill="url(#fld-pic-f)" />
+      <!-- Photos Flower Emblem on Folder -->
+      <g transform="translate(50, 60) scale(0.65)" opacity="0.95">
+        <ellipse cx="0" cy="-14" rx="5" ry="10" fill="#ff2d55" />
+        <ellipse cx="10" cy="-10" rx="5" ry="10" fill="#ff9500" transform="rotate(45)" />
+        <ellipse cx="14" cy="0" rx="5" ry="10" fill="#ffcc00" transform="rotate(90)" />
+        <ellipse cx="10" cy="10" rx="5" ry="10" fill="#34c759" transform="rotate(135)" />
+        <ellipse cx="0" cy="14" rx="5" ry="10" fill="#00c7be" transform="rotate(180)" />
+        <ellipse cx="-10" cy="10" rx="5" ry="10" fill="#007aff" transform="rotate(225)" />
+        <ellipse cx="-14" cy="0" rx="5" ry="10" fill="#5856d6" transform="rotate(270)" />
+        <ellipse cx="-10" cy="-10" rx="5" ry="10" fill="#af52de" transform="rotate(315)" />
+        <circle cx="0" cy="0" r="4" fill="#ffffff" />
+      </g>
+    </svg>
+
+    <!-- 11.1 🎬 macOS Movies / Videos System Folder Icon -->
+    <svg v-else-if="name === 'folder-movies' || name === 'folder-videos'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="fld-mov-b" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0284c7" />
+          <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+        <linearGradient id="fld-mov-f" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="100%" stop-color="#0284c7" />
+        </linearGradient>
+      </defs>
+      <path d="M 12 28 C 12 22 17 18 24 18 L 42 18 C 47 18 50 22 53 26 L 57 30 L 82 30 C 88 30 92 34 92 40 L 92 74 C 92 80 88 84 82 84 L 18 84 C 12 84 8 80 8 74 Z" fill="url(#fld-mov-b)" />
+      <rect x="18" y="24" width="64" height="20" rx="3" fill="#ffffff" opacity="0.7" />
+      <path d="M 8 40 C 8 36 11 32 16 32 L 84 32 C 89 32 92 36 92 40 L 92 78 C 92 84 88 88 82 88 L 18 88 C 12 88 8 84 8 78 Z" fill="url(#fld-mov-f)" />
+      <!-- Film Clapperboard Glyph -->
+      <g transform="translate(50, 60) scale(0.65)" fill="#ffffff" opacity="0.95">
+        <rect x="-18" y="-14" width="36" height="28" rx="4" fill="none" stroke="#ffffff" stroke-width="3.5" />
+        <polygon points="-6,-6 -6,8 8,1" fill="#ffffff" />
+      </g>
+    </svg>
+
+    <!-- 11.2 🎵 macOS Music System Folder Icon -->
+    <svg v-else-if="name === 'folder-music'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="fld-mus-b" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0284c7" />
+          <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+        <linearGradient id="fld-mus-f" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="100%" stop-color="#0284c7" />
+        </linearGradient>
+      </defs>
+      <path d="M 12 28 C 12 22 17 18 24 18 L 42 18 C 47 18 50 22 53 26 L 57 30 L 82 30 C 88 30 92 34 92 40 L 92 74 C 92 80 88 84 82 84 L 18 84 C 12 84 8 80 8 74 Z" fill="url(#fld-mus-b)" />
+      <rect x="18" y="24" width="64" height="20" rx="3" fill="#ffffff" opacity="0.7" />
+      <path d="M 8 40 C 8 36 11 32 16 32 L 84 32 C 89 32 92 36 92 40 L 92 78 C 92 84 88 88 82 88 L 18 88 C 12 88 8 84 8 78 Z" fill="url(#fld-mus-f)" />
+      <!-- Music Note Glyph -->
+      <g transform="translate(50, 60) scale(0.65)" fill="#ffffff" opacity="0.95">
+        <path d="M 10 -16 L -6 -12 L -6 8 C -8 6 -11 6 -13 7 C -16 9 -16 13 -14 15 C -11 17 -6 16 -6 11 L -6 -5 L 8 -8 L 8 4 C 6 2 3 2 1 3 C -2 5 -2 9 0 11 C 3 13 8 12 8 7 L 8 -13 Q 8 -16 10 -16 Z" />
+      </g>
+    </svg>
+
+    <!-- 11.3 📄 macOS Documents System Folder Icon -->
+    <svg v-else-if="name === 'folder-documents'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="fld-doc-b" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0284c7" />
+          <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+        <linearGradient id="fld-doc-f" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="100%" stop-color="#0284c7" />
+        </linearGradient>
+      </defs>
+      <path d="M 12 28 C 12 22 17 18 24 18 L 42 18 C 47 18 50 22 53 26 L 57 30 L 82 30 C 88 30 92 34 92 40 L 92 74 C 92 80 88 84 82 84 L 18 84 C 12 84 8 80 8 74 Z" fill="url(#fld-doc-b)" />
+      <rect x="18" y="24" width="64" height="20" rx="3" fill="#ffffff" opacity="0.7" />
+      <path d="M 8 40 C 8 36 11 32 16 32 L 84 32 C 89 32 92 36 92 40 L 92 78 C 92 84 88 88 82 88 L 18 88 C 12 88 8 84 8 78 Z" fill="url(#fld-doc-f)" />
+      <!-- Document Glyph -->
+      <g transform="translate(50, 60) scale(0.65)" fill="#ffffff" opacity="0.95">
+        <rect x="-12" y="-16" width="24" height="32" rx="3" fill="none" stroke="#ffffff" stroke-width="3" />
+        <line x1="-6" y1="-8" x2="6" y2="-8" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+        <line x1="-6" y1="-1" x2="6" y2="-1" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+        <line x1="-6" y1="6" x2="2" y2="6" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+      </g>
+    </svg>
+
+    <!-- 11.4 📥 macOS Downloads System Folder Icon -->
+    <svg v-else-if="name === 'folder-downloads'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="fld-dl-b" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0284c7" />
+          <stop offset="100%" stop-color="#0369a1" />
+        </linearGradient>
+        <linearGradient id="fld-dl-f" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" />
+          <stop offset="100%" stop-color="#0284c7" />
+        </linearGradient>
+      </defs>
+      <path d="M 12 28 C 12 22 17 18 24 18 L 42 18 C 47 18 50 22 53 26 L 57 30 L 82 30 C 88 30 92 34 92 40 L 92 74 C 92 80 88 84 82 84 L 18 84 C 12 84 8 80 8 74 Z" fill="url(#fld-dl-b)" />
+      <rect x="18" y="24" width="64" height="20" rx="3" fill="#ffffff" opacity="0.7" />
+      <path d="M 8 40 C 8 36 11 32 16 32 L 84 32 C 89 32 92 36 92 40 L 92 78 C 92 84 88 88 82 88 L 18 88 C 12 88 8 84 8 78 Z" fill="url(#fld-dl-f)" />
+      <!-- Download Arrow Circle Glyph -->
+      <g transform="translate(50, 60) scale(0.65)" fill="#ffffff" opacity="0.95">
+        <circle cx="0" cy="0" r="16" fill="none" stroke="#ffffff" stroke-width="3" />
+        <path d="M 0 -8 L 0 6 M -5 1 L 0 6 L 5 1" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      </g>
+    </svg>
+
     <!-- 11. 📁 macOS 3D Blue Folder File Icon -->
     <svg v-else-if="name === 'folder'" viewBox="0 0 100 100" class="mac-svg-icon">
       <defs>
