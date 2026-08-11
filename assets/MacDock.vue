@@ -33,6 +33,7 @@ function onMouseLeave() {
   mouseX.value = null;
 }
 
+// Authentic macOS Gaussian Magnification Physics
 function getIconScale(index) {
   if (mouseX.value === null) return 1;
   const iconEl = document.getElementById(`dock-item-${index}`);
@@ -41,10 +42,12 @@ function getIconScale(index) {
   const centerX = rect.left + rect.width / 2;
   const dist = Math.abs(mouseX.value - centerX);
   
-  // Magnification radius of 140px
-  if (dist > 140) return 1;
-  const scale = 1 + (0.45 * (1 - dist / 140));
-  return scale;
+  const maxDist = 160; // Influence radius
+  if (dist > maxDist) return 1;
+  
+  // Cosine bell curve for ultra-smooth fluid transition
+  const factor = (1 + Math.cos((Math.PI * dist) / maxDist)) / 2;
+  return 1 + 0.42 * factor;
 }
 
 function launchApp(app) {
@@ -69,7 +72,7 @@ function launchApp(app) {
         <!-- Tooltip -->
         <span class="dock-tooltip">{{ app.name }}</span>
 
-        <!-- Authentic macOS Vector Icon -->
+        <!-- Authentic macOS Vector Icon (No ugly duplicate square tile) -->
         <div class="dock-icon-tile">
           <MacIcons :name="app.iconName" :size="52" />
         </div>
@@ -97,11 +100,11 @@ function launchApp(app) {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: 22px;
-  background: rgba(30, 31, 38, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  padding: 8px 14px;
+  border-radius: 24px;
+  background: rgba(30, 31, 38, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(40px) saturate(220%);
   pointer-events: auto;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -109,7 +112,7 @@ function launchApp(app) {
 
 [data-theme="light"] .dock-bar {
   background: rgba(255, 255, 255, 0.75);
-  border-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.95);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), inset 0 1px 0 #ffffff;
 }
 
@@ -120,29 +123,41 @@ function launchApp(app) {
   align-items: center;
   cursor: pointer;
   transform-origin: bottom center;
-  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.08s ease-out;
 }
 
 .dock-icon-tile {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 13px;
-  color: #ffffff;
-  font-size: 26px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
   transition: filter 0.15s ease;
 }
 
 .dock-item:hover .dock-icon-tile {
-  filter: brightness(1.1);
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
 }
 
 /* Tooltip */
 .dock-tooltip {
   position: absolute;
+  top: -38px;
+  opacity: 0;
+  pointer-events: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(20, 21, 28, 0.85);
+  color: #f2f2f7;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  transform: translateY(4px);
+  transition: all 0.16s ease;
+}
   top: -38px;
   opacity: 0;
   pointer-events: none;

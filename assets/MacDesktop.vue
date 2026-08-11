@@ -9,6 +9,7 @@ import MacSettingsModal from "./MacSettingsModal.vue";
 import MacIcons from "./MacIcons.vue";
 import MacVideoPlayerModal from "./MacVideoPlayerModal.vue";
 import MacMusicPlayerModal from "./MacMusicPlayerModal.vue";
+import MacPhotosModal from "./MacPhotosModal.vue";
 import ContextMenu from "./ContextMenu.vue";
 
 const props = defineProps({
@@ -108,6 +109,7 @@ const windows = ref({
 
 const videoModal = ref({ visible: false, file: null, items: [], index: 0 });
 const musicModal = ref({ visible: false, file: null, items: [], index: 0 });
+const photosModal = ref({ visible: false, file: null, items: [], index: 0 });
 const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
@@ -142,8 +144,18 @@ function launchApp(appId) {
   } else if (appId === "settings") {
     bringToFront("settings");
   } else if (appId === "photos") {
-    emit("update:filterCategory", "image");
-    bringToFront("finder");
+    const imgFiles = props.files.filter(isImage);
+    if (imgFiles.length > 0) {
+      photosModal.value = {
+        visible: true,
+        file: imgFiles[0],
+        items: imgFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+        index: 0,
+      };
+    } else {
+      emit("update:filterCategory", "image");
+      bringToFront("finder");
+    }
   } else if (appId === "cinema") {
     emit("update:filterCategory", "video");
     bringToFront("finder");
@@ -169,6 +181,7 @@ const openApps = computed(() => {
   if (windows.value.settings.visible && !windows.value.settings.minimized) list.push("settings");
   if (videoModal.value.visible) list.push("cinema");
   if (musicModal.value.visible) list.push("music");
+  if (photosModal.value.visible) list.push("photos");
   return list;
 });
 
@@ -319,6 +332,17 @@ function getArchiveExt(file) {
 
 // Open File Action (Directly Dispatches to macOS Dedicated Windows)
 function handleOpenFile(file) {
+  if (isImage(file)) {
+    const imgFiles = props.files.filter(isImage);
+    const idx = imgFiles.findIndex((f) => f.key === file.key);
+    photosModal.value = {
+      visible: true,
+      file,
+      items: imgFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      index: Math.max(0, idx),
+    };
+    return;
+  }
   if (isVideo(file)) {
     const vFiles = props.files.filter(isVideo);
     const idx = vFiles.findIndex((f) => f.key === file.key);
@@ -639,6 +663,18 @@ function toggleFullscreen() {
       :storage-id="storageId"
       @close="musicModal.visible = false"
       @change="musicModal.index = $event"
+    />
+
+    <!-- 🖼️ Window 4: macOS Photos Pro Viewer Modal -->
+    <MacPhotosModal
+      :visible="photosModal.visible"
+      :file="photosModal.file"
+      :items="photosModal.items"
+      :index="photosModal.index"
+      :storage-id="storageId"
+      @close="photosModal.visible = false"
+      @change="photosModal.index = $event"
+      @set-wallpaper="setAsWallpaper"
     />
 
     <!-- ⚙️ Window 4: macOS System Settings -->
