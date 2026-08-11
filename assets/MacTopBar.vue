@@ -422,4 +422,48 @@ onUnmounted(() => {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ========== Mobile Responsive ========== */
+@media (max-width: 768px) {
+  .mac-menubar {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  .menubar-btn {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 11.5px;
+  }
+  .apple-logo-btn {
+    font-size: 13px;
+    padding: 0 4px;
+  }
+  .active-app-name {
+    font-size: 12px;
+    padding: 0 4px 0 2px;
+  }
+  /* Hide file/edit/view/help menus on mobile — save space */
+  .menubar-left .menu-item-group:not(:first-child) {
+    display: none;
+  }
+  .status-storage-badge,
+  .status-weather-pill {
+    display: none;
+  }
+  .status-btn {
+    width: 24px;
+    height: 22px;
+    font-size: 13px;
+  }
+  .status-clock {
+    gap: 4px;
+    padding: 0 4px;
+    font-size: 11px;
+  }
+  .mac-dropdown-menu {
+    min-width: 180px;
+    top: 24px;
+  }
+}
 </style>

@@ -1,5 +1,10 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+
+const isMobile = ref(false);
+function checkMobile() {
+  isMobile.value = window.innerWidth <= 768;
+}
 
 const props = defineProps({
   title: { type: String, default: "访达" },
@@ -47,11 +52,13 @@ let resizeStart = { mouseX: 0, mouseY: 0, winW: 0, winH: 0, winX: 0, winY: 0, di
 
 const windowStyle = computed(() => {
   if (isMaximized.value) {
+    const dockH = isMobile.value ? 62 : 72;
+    const barH = isMobile.value ? 28 : 32;
     return {
-      top: "32px",
+      top: `${barH}px`,
       left: "0px",
       width: "100vw",
-      height: "calc(100vh - 32px - 72px)",
+      height: `calc(100vh - ${barH}px - ${dockH}px)`,
       zIndex: props.zIndex,
       borderRadius: "0px",
     };
@@ -65,27 +72,38 @@ const windowStyle = computed(() => {
   };
 });
 
+function getEventXY(e) {
+  if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
 function handleMouseDownHeader(e) {
   if (e.target.closest(".traffic-lights") || e.target.closest("button") || e.target.closest("input")) return;
   emit("focus");
-  if (isMaximized.value) return;
+  if (isMaximized.value || isMobile.value) return;
 
   isDragging.value = true;
+  const { x, y } = getEventXY(e);
   dragStart = {
-    mouseX: e.clientX,
-    mouseY: e.clientY,
+    mouseX: x,
+    mouseY: y,
     winX: posX.value,
     winY: posY.value,
   };
 
   window.addEventListener("mousemove", onDragMove);
   window.addEventListener("mouseup", onDragEnd);
+  window.addEventListener("touchmove", onDragMove, { passive: false });
+  window.addEventListener("touchend", onDragEnd);
 }
 
 function onDragMove(e) {
   if (!isDragging.value) return;
-  const dx = e.clientX - dragStart.mouseX;
-  const dy = e.clientY - dragStart.mouseY;
+  if (e.cancelable) e.preventDefault();
+  const { x, y } = getEventXY(e);
+  const dx = x - dragStart.mouseX;
+  const dy = y - dragStart.mouseY;
   
   const newX = Math.max(0, Math.min(window.innerWidth - 100, dragStart.winX + dx));
   const newY = Math.max(32, Math.min(window.innerHeight - 100, dragStart.winY + dy));
@@ -99,6 +117,8 @@ function onDragEnd() {
   isDragging.value = false;
   window.removeEventListener("mousemove", onDragMove);
   window.removeEventListener("mouseup", onDragEnd);
+  window.removeEventListener("touchmove", onDragMove);
+  window.removeEventListener("touchend", onDragEnd);
 }
 
 function handleDoubleClickHeader() {
@@ -125,12 +145,13 @@ function startResize(e, direction) {
   e.preventDefault();
   e.stopPropagation();
   emit("focus");
-  if (isMaximized.value) return;
+  if (isMaximized.value || isMobile.value) return;
 
   isResizing.value = true;
+  const { x, y } = getEventXY(e);
   resizeStart = {
-    mouseX: e.clientX,
-    mouseY: e.clientY,
+    mouseX: x,
+    mouseY: y,
     winW: winWidth.value,
     winH: winHeight.value,
     winX: posX.value,
@@ -140,12 +161,16 @@ function startResize(e, direction) {
 
   window.addEventListener("mousemove", onResizeMove);
   window.addEventListener("mouseup", onResizeEnd);
+  window.addEventListener("touchmove", onResizeMove, { passive: false });
+  window.addEventListener("touchend", onResizeEnd);
 }
 
 function onResizeMove(e) {
   if (!isResizing.value) return;
-  const dx = e.clientX - resizeStart.mouseX;
-  const dy = e.clientY - resizeStart.mouseY;
+  if (e.cancelable) e.preventDefault();
+  const { x, y } = getEventXY(e);
+  const dx = x - resizeStart.mouseX;
+  const dy = y - resizeStart.mouseY;
   const dir = resizeStart.direction;
 
   if (dir.includes("e")) {
@@ -174,21 +199,32 @@ function onResizeEnd() {
   isResizing.value = false;
   window.removeEventListener("mousemove", onResizeMove);
   window.removeEventListener("mouseup", onResizeEnd);
+  window.removeEventListener("touchmove", onResizeMove);
+  window.removeEventListener("touchend", onResizeEnd);
 }
 
 onMounted(() => {
-  // Center window nicely within screen bounds
-  if (props.initialX === 80 && window.innerWidth > props.width) {
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+  // On mobile: force maximized; on desktop: center window
+  if (isMobile.value) {
+    isMaximized.value = true;
+  } else if (props.initialX === 80 && window.innerWidth > props.width) {
     posX.value = Math.max(40, Math.round((window.innerWidth - props.width) / 2));
     posY.value = Math.max(60, Math.round((window.innerHeight - props.height - 80) / 2));
   }
 });
 
 onUnmounted(() => {
+  window.removeEventListener("resize", checkMobile);
   window.removeEventListener("mousemove", onDragMove);
   window.removeEventListener("mouseup", onDragEnd);
+  window.removeEventListener("touchmove", onDragMove);
+  window.removeEventListener("touchend", onDragEnd);
   window.removeEventListener("mousemove", onResizeMove);
   window.removeEventListener("mouseup", onResizeEnd);
+  window.removeEventListener("touchmove", onResizeMove);
+  window.removeEventListener("touchend", onResizeEnd);
 });
 </script>
 
@@ -201,7 +237,7 @@ onUnmounted(() => {
     @mousedown="emit('focus')"
   >
     <!-- macOS Titlebar Header -->
-    <header class="mac-titlebar" @mousedown="handleMouseDownHeader" @dblclick="handleDoubleClickHeader">
+    <header class="mac-titlebar" @mousedown="handleMouseDownHeader" @touchstart.passive="handleMouseDownHeader" @dblclick="handleDoubleClickHeader">
       <!-- 🔴🟡🟢 Traffic Lights -->
       <div class="traffic-lights">
         <button class="traffic-btn btn-close" type="button" title="关闭 (⌘W)" @click.stop="emit('close')">
@@ -430,4 +466,32 @@ onUnmounted(() => {
 .res-ne { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
 .res-sw { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
 .res-se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+
+/* ========== Mobile Responsive ========== */
+@media (max-width: 768px) {
+  .mac-window {
+    border-radius: 0 !important;
+    border: none !important;
+    animation: none !important;
+  }
+  .mac-titlebar {
+    height: 32px;
+    padding: 0 10px;
+    cursor: default;
+  }
+  .traffic-btn {
+    width: 10px;
+    height: 10px;
+  }
+  .window-title-badge {
+    font-size: 12px;
+  }
+  .resize-handle {
+    display: none !important;
+  }
+  .mac-window-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
 </style>

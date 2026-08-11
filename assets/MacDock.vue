@@ -208,14 +208,40 @@ function launchApp(app) {
   65% { transform: translateY(-8px) scale(1.05); }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .dock-container {
+    bottom: 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
   .dock-bar {
-    gap: 4px;
-    padding: 6px 8px;
+    gap: 3px;
+    padding: 5px 8px;
+    border-radius: 18px;
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .dock-bar::-webkit-scrollbar {
+    display: none;
   }
   .dock-icon-tile {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+  }
+  .dock-item {
+    padding: 1px;
+    /* Disable magnification on touch — it doesn't work well */
+    transform: scale(1) !important;
+  }
+  .dock-tooltip {
+    display: none !important;
+  }
+  .active-dot {
+    width: 3px;
+    height: 3px;
+    margin-top: 2px;
   }
 }
 </style>

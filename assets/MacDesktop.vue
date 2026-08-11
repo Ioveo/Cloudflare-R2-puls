@@ -1457,4 +1457,143 @@ function onDropFiles(e) {
   color: #a1a1a6;
   margin: 0;
 }
+
+/* =============================================== */
+/* ========== Mobile Responsive (≤768px) ========= */
+/* =============================================== */
+@media (max-width: 768px) {
+  .mac-desktop-environment {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hide desktop icons on mobile — Dock is primary nav */
+  .desktop-icons-area {
+    display: none;
+  }
+
+  /* Rubberband selection not needed on mobile */
+  .rubberband-box {
+    display: none !important;
+  }
+
+  /* Finder Sidebar: collapse to horizontal tab bar on mobile */
+  .finder-window-inner {
+    flex-direction: column;
+  }
+
+  .finder-sidebar {
+    width: 100% !important;
+    flex-direction: row;
+    gap: 4px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+
+  .finder-sidebar .sidebar-section {
+    flex-direction: row;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .finder-sidebar .section-title {
+    display: none;
+  }
+
+  .finder-sidebar .sidebar-row {
+    height: 28px;
+    padding: 0 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 11.5px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .finder-sidebar .sidebar-row.active {
+    background: #0a84ff;
+    border-color: #0a84ff;
+  }
+
+  /* Pathbar compact */
+  .finder-pathbar {
+    padding: 6px 10px;
+    font-size: 11px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Content area: smaller grid, touch scroll */
+  .finder-content-area {
+    padding: 10px 10px;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    grid-auto-rows: 96px;
+    gap: 8px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .finder-file-item {
+    padding: 6px 4px;
+  }
+
+  .item-thumbnail {
+    width: 44px;
+    height: 44px;
+  }
+
+  .item-title {
+    font-size: 10.5px;
+  }
+
+  /* Bottom status bar */
+  .finder-path-statusbar {
+    height: 24px;
+    font-size: 10px;
+    padding: 0 8px;
+  }
+
+  .path-breadcrumbs {
+    overflow-x: auto;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  /* Titlebar tools compact */
+  .finder-titlebar-tools {
+    gap: 4px;
+  }
+
+  .finder-action-icon-btn {
+    width: 26px;
+    height: 24px;
+    font-size: 13px;
+  }
+
+  .finder-segmented-group {
+    display: none;
+  }
+
+  /* Dropzone compact */
+  .dropzone-card {
+    padding: 24px 20px;
+  }
+  .dropzone-card h2 {
+    font-size: 17px;
+  }
+  .dropzone-icon {
+    width: 54px;
+    height: 54px;
+    font-size: 28px;
+  }
+}
 </style>
+
