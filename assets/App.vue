@@ -243,7 +243,7 @@
               <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
             </div>
             <div class="file-main">
-              <strong>{{ fileName(file.key) }}</strong>
+              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
               <span>{{ formatDate(file.uploaded) }} · 照片</span>
             </div>
             <button class="more-button" type="button" title="更多操作" @click.stop="openContext(file, $event)"><i class="ph ph-dots-three-outline"></i></button>
@@ -264,7 +264,7 @@
               </div>
             </div>
             <div class="file-main">
-              <strong>{{ fileName(file.key) }}</strong>
+              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
               <span>{{ formatDate(file.uploaded) }} · 高清视频</span>
             </div>
             <footer class="file-footer">
@@ -289,7 +289,7 @@
               </div>
             </div>
             <div class="file-main">
-              <strong>{{ fileName(file.key) }}</strong>
+              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
               <span>无损音频 · {{ formatDate(file.uploaded) }}</span>
             </div>
             <footer class="file-footer">
@@ -306,7 +306,7 @@
             </div>
             <MimeIcon v-else :content-type="file.httpMetadata?.contentType || ''" :thumbnail="file.customMetadata?.thumbnail ? `/raw/_$flaredrive$/thumbnails/${file.customMetadata.thumbnail}.png?storage=${encodeURIComponent(storageId)}` : null" :size="40" />
             <div class="file-main">
-              <strong>{{ fileName(file.key) }}</strong>
+              <strong :title="fileName(file.key)" v-html="highlightText(fileName(file.key))"></strong>
               <span>{{ formatDate(file.uploaded) }}</span>
             </div>
             <footer class="file-footer">
@@ -345,6 +345,8 @@
     <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
     <ShareModal :visible="shareModal.visible" :file="shareModal.file" :raw-url="shareModal.rawUrl" @close="shareModal.visible = false" />
     <TextEditorModal :visible="textEditor.visible" :file="textEditor.file" :storage-headers="storageHeaders" @close="textEditor.visible = false" @saved="fetchFiles(true)" />
+    <FileInspectorModal :visible="inspector.visible" :file="inspector.file" :storage-id="storageId" @close="inspector.visible = false" @action="handleInspectorAction" />
+    <DocumentViewerModal :visible="docViewer.visible" :file="docViewer.file" :storage-id="storageId" @close="docViewer.visible = false" />
   </main>
 </div>
 </template>
@@ -364,6 +366,8 @@ import HotkeysModal from "./HotkeysModal.vue";
 import CatLogo from "./CatLogo.vue";
 import ShareModal from "./ShareModal.vue";
 import TextEditorModal from "./TextEditorModal.vue";
+import FileInspectorModal from "./FileInspectorModal.vue";
+import DocumentViewerModal from "./DocumentViewerModal.vue";
 
 function loadAuthCredentials() {
   try {
@@ -406,6 +410,8 @@ export default {
     mediaPlayer: { visible: false, index: 0 },
     archiveModal: { visible: false, file: null },
     textEditor: { visible: false, file: null },
+    inspector: { visible: false, file: null },
+    docViewer: { visible: false, file: null },
     showHotkeysModal: false,
     shareModal: { visible: false, file: null, rawUrl: "" },
     authCredentials: loadAuthCredentials(),
@@ -432,7 +438,8 @@ export default {
       ];
       const isEdit = this.focusedItem && this.isEditable(this.focusedItem);
       return [
-        { id: "preview", label: "查看/播放", icon: "ph-eye" },
+        { id: "preview", label: "查看/播放 (Space)", icon: "ph-eye" },
+        { id: "inspect", label: "查看属性 (I)", icon: "ph-info" },
         ...(isEdit ? [{ id: "edit", label: "在线编辑", icon: "ph-code" }] : []),
         { id: "download", label: "下载原文件", icon: "ph-download-simple" },
         { id: "share", label: "分享与二维码", icon: "ph-share-network" },
@@ -699,6 +706,10 @@ export default {
         this.archiveModal.visible = true;
         return;
       }
+      if (this.isDocViewer(file)) {
+        this.docViewer = { visible: true, file };
+        return;
+      }
       if (this.isEditable(file)) {
         this.textEditor.file = file;
         this.textEditor.visible = true;
@@ -707,7 +718,7 @@ export default {
       this.preview(this.rawPath(file.key));
     },
     onDragEnter(e) { if (e.dataTransfer?.types?.includes("Files")) this.isDragging = true; }, onDragLeave(e) { if (e.clientX === 0 || e.clientY === 0) this.isDragging = false; },
-    fileName(key) { return key.split("/").filter(Boolean).pop() || key; }, folderName(folder) { return folder.split("/").filter(Boolean).pop() || "文件"; }, pathUntil(index) { return `${this.pathParts.slice(0, index + 1).join("/")}/`; }, goToFolder(path) { this.filterCategory = "all"; this.mediaPlayer.visible = false; this.lightbox.visible = false; this.archiveModal.visible = false; this.cwd = path; }, formatDate(value) { return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }, rawPath(key) { const path = `/raw/${key}`; return this.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(this.storageId)}`; }, authHeaders() { if (!this.authCredentials) return {}; return { Authorization: `Basic ${btoa(`${this.authCredentials.username}:${this.authCredentials.password}`)}` }; }, storageHeaders() { return { "x-storage-id": this.storageId, ...this.authHeaders() }; }, copyLink(link) { navigator.clipboard.writeText(new URL(link, window.location.origin).toString()); this.closeContext(); }, openContext(item, event) { this.focusedItem = item; const width = 218; const height = 270; this.contextPosition = { x: Math.min(event?.clientX || 24, window.innerWidth - width - 12), y: Math.min(event?.clientY || 80, window.innerHeight - height - 12) }; this.showContextMenu = true; }, closeContext() { this.showContextMenu = false; },
+    fileName(key) { return key.split("/").filter(Boolean).pop() || key; }, folderName(folder) { return folder.split("/").filter(Boolean).pop() || "文件"; }, pathUntil(index) { return `${this.pathParts.slice(0, index + 1).join("/")}/`; }, goToFolder(path) { this.filterCategory = "all"; this.mediaPlayer.visible = false; this.lightbox.visible = false; this.archiveModal.visible = false; this.inspector.visible = false; this.docViewer.visible = false; this.cwd = path; }, formatDate(value) { return new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value)); }, rawPath(key) { const path = `/raw/${key}`; return this.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(this.storageId)}`; }, authHeaders() { if (!this.authCredentials) return {}; return { Authorization: `Basic ${btoa(`${this.authCredentials.username}:${this.authCredentials.password}`)}` }; }, storageHeaders() { return { "x-storage-id": this.storageId, ...this.authHeaders() }; }, copyLink(link) { navigator.clipboard.writeText(new URL(link, window.location.origin).toString()); this.closeContext(); }, openContext(item, event) { this.focusedItem = item; const width = 218; const height = 270; this.contextPosition = { x: Math.min(event?.clientX || 24, window.innerWidth - width - 12), y: Math.min(event?.clientY || 80, window.innerHeight - height - 12) }; this.showContextMenu = true; }, closeContext() { this.showContextMenu = false; },
     openDialog(options, action) { this.dialog = { visible: true, mode: "input", title: "", message: "", initialValue: "", confirmText: "确定", error: "", ...options }; this.dialogAction = action; }, closeDialog() { this.dialog.visible = false; this.dialogAction = null; }, onDialogSubmit(value) { const action = this.dialogAction; this.closeDialog(); action?.(value); },
     async login(credentials) {
       try {
@@ -740,6 +751,10 @@ export default {
       if (action === "create-folder") return this.createFolder();
       if (action === "paste") return this.pasteFile();
       if (!item) return;
+      if (action === "inspect") {
+        this.inspector = { visible: true, file: typeof item === "string" ? { key: item } : item };
+        return;
+      }
       if (action === "copy-item") {
         this.clipboard = { action: "copy", item };
         return;
@@ -941,6 +956,81 @@ export default {
       localStorage.setItem("drive-theme", this.theme);
       document.documentElement.setAttribute("data-theme", this.theme);
     },
+    isDocViewer(file) {
+      if (!file || !file.key) return false;
+      return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i.test(file.key);
+    },
+    highlightText(text) {
+      if (!this.search || !text) return text;
+      const escaped = this.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, "gi");
+      return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    },
+    handleInspectorAction({ type, file }) {
+      this.inspector.visible = false;
+      if (type === "preview") return this.openFile(file);
+      if (type === "share") {
+        this.shareModal = { visible: true, file, rawUrl: this.rawPath(file.key) };
+      }
+    },
+    onGlobalKeydown(e) {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
+      
+      // 1. Hotkey ? for HotkeysModal
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        this.showHotkeysModal = !this.showHotkeysModal;
+        return;
+      }
+      
+      // 2. Hotkey ⌘K / Ctrl+K for search
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        this.showSearchInput = true;
+        this.$nextTick(() => this.$refs.searchInputRef?.focus());
+        return;
+      }
+
+      // 3. Spacebar QuickLook
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        if (this.lightbox.visible || this.mediaPlayer.visible || this.archiveModal.visible || this.textEditor.visible || this.docViewer.visible || this.inspector.visible) {
+          this.lightbox.visible = false;
+          this.mediaPlayer.visible = false;
+          this.archiveModal.visible = false;
+          this.textEditor.visible = false;
+          this.docViewer.visible = false;
+          this.inspector.visible = false;
+          return;
+        }
+        const target = this.focusedItem || (this.filteredFiles.length ? this.filteredFiles[0] : null);
+        if (target) {
+          this.openFile(target);
+        }
+        return;
+      }
+
+      // 4. Hotkey "I" or "i" for Inspector
+      if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const target = this.focusedItem || (this.filteredFiles.length ? this.filteredFiles[0] : null);
+        if (target && typeof target === "object") {
+          this.inspector = { visible: !this.inspector.visible, file: target };
+        }
+        return;
+      }
+
+      // 5. Esc closes all modals & context menu
+      if (e.key === "Escape") {
+        this.closeContext();
+        this.showMenu = false;
+        this.showHotkeysModal = false;
+        this.showUploadPopup = false;
+        this.inspector.visible = false;
+        this.docViewer.visible = false;
+      }
+    },
   },
   watch: {
     theme: {
@@ -967,6 +1057,6 @@ export default {
   unmounted() {
     window.removeEventListener("keydown", this.onGlobalKeydown);
   },
-  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal, TextEditorModal },
+  components: { Menu, MimeIcon, UploadPopup, UploadProgress, ContextMenu, PromptDialog, LightboxModal, MediaPlayerModal, ArchiveModal, HotkeysModal, CatLogo, ShareModal, TextEditorModal, FileInspectorModal, DocumentViewerModal },
 };
 </script>

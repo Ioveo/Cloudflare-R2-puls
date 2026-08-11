@@ -35,6 +35,21 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
           </div>
 
           <div class="hotkey-item">
+            <div class="key-combo"><kbd>Space</kbd></div>
+            <div class="key-desc">macOS 风格快速预览 (QuickLook)</div>
+          </div>
+
+          <div class="hotkey-item">
+            <div class="key-combo"><kbd>I</kbd></div>
+            <div class="key-desc">检视文件属性与 EXIF 元数据</div>
+          </div>
+
+          <div class="hotkey-item">
+            <div class="key-combo"><kbd>Ctrl</kbd><kbd>S</kbd> / <kbd>⌘</kbd><kbd>S</kbd></div>
+            <div class="key-desc">代码/Markdown 编辑器极速保存</div>
+          </div>
+
+          <div class="hotkey-item">
             <div class="key-combo"><kbd>?</kbd></div>
             <div class="key-desc">打开此快捷键帮助</div>
           </div>
@@ -57,16 +72,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
           <div class="hotkey-item">
             <div class="key-combo"><kbd>R</kbd></div>
             <div class="key-desc">大图 90° 旋转</div>
-          </div>
-
-          <div class="hotkey-item">
-            <div class="key-combo"><kbd>0</kbd></div>
-            <div class="key-desc">重置 100% 原始尺寸</div>
-          </div>
-
-          <div class="hotkey-item">
-            <div class="key-combo"><kbd>Space</kbd></div>
-            <div class="key-desc">音视频 播放 / 暂停</div>
           </div>
         </div>
 
