@@ -427,6 +427,16 @@ onUnmounted(() => {
   letter-spacing: -0.1px;
   color: inherit;
   pointer-events: none;
+  max-width: calc(100% - 280px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-title-badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .window-title-badge i {

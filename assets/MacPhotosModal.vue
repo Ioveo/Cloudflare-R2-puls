@@ -122,18 +122,38 @@ function detectCurrentImageDimensions() {
 
     photoDimensions.value = { width: nw, height: nh, ratio, ratioText: text };
   };
-  img.src = currentItem.value.url;
+  if (currentItem.value?.url) img.src = currentItem.value.url;
+}
+
+function cleanFileName(key) {
+  if (!key) return "";
+  let name = key.split("/").filter(Boolean).pop() || key;
+  name = name.replace(/~[a-zA-Z0-9_\-]+(?=\.[a-zA-Z0-9]+$)/, "");
+  name = name.split("?")[0];
+  return name;
+}
+
+function truncateMiddle(str, maxLen = 22) {
+  if (!str || str.length <= maxLen) return str;
+  const extIndex = str.lastIndexOf(".");
+  const ext = extIndex !== -1 ? str.slice(extIndex) : "";
+  const base = extIndex !== -1 ? str.slice(0, extIndex) : str;
+  const avail = maxLen - ext.length - 3;
+  if (avail <= 4) return str.slice(0, maxLen - 3) + "..." + ext;
+  const front = Math.ceil(avail / 2);
+  const back = Math.floor(avail / 2);
+  return `${base.slice(0, front)}...${base.slice(-back)}${ext}`;
 }
 
 const photoTitle = computed(() => {
   if (viewMode.value === "canvas") {
-    return currentItem.value?.name || "照片 (Photos)";
+    return "照片";
   }
   return `照片图库 (${displayPhotos.value.length} 张照片)`;
 });
 
 function fileName(key) {
-  return key ? key.split("/").filter(Boolean).pop() || key : "";
+  return cleanFileName(key);
 }
 
 function rawPath(key) {
@@ -418,7 +438,6 @@ onUnmounted(() => {
         <!-- 3. Canvas Mode Controls -->
         <template v-else>
           <span v-if="items.length > 1" class="photo-badge">{{ activeIndex + 1 }} / {{ items.length }}</span>
-          <span class="photo-badge zoom-pill">{{ Math.round(zoomScale * 100) }}%</span>
           <span class="photo-badge ratio-pill">{{ photoDimensions.ratioText }}</span>
 
           <div class="tools-divider"></div>
@@ -434,35 +453,22 @@ onUnmounted(() => {
             <i class="ph" :class="isCurrentFavorite ? 'ph-heart-fill' : 'ph-heart'"></i>
           </button>
 
-          <!-- Rotate Left / Right -->
-          <button class="mac-tool-btn" type="button" title="向左旋转 90°" @click="rotateLeft">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.51-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.89-1.6-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.52-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c3.37 0 6.09 2.72 6.09 6.09s-2.72 6.09-6.09 6.09c-.86 0-1.69-.19-2.46-.51l-1.46 1.46C10.15 19.68 11.53 20 13 20c4.42 0 8-3.58 8-8s-3.58-8-8-8z"/>
-            </svg>
-          </button>
-
+          <!-- Rotate Right -->
           <button class="mac-tool-btn" type="button" title="向右旋转 90° (R)" @click="rotateRight">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M15.55 5.55L11 1v3.07C6.58 4.07 3 7.65 3 12s3.58 8 8 8c1.47 0 2.85-.32 4.08-.88l-1.46-1.46c-.77.32-1.6.51-2.62.51-3.37 0-6.09-2.72-6.09-6.09s2.72-6.09 6.09-6.09V10l4.55-4.45zM19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.41 1.42c.52.75.89 1.6 1.01 2.47h2.02zm-2.03 2c-.14.87-.51 1.72-1.02 2.47l1.41 1.41c.9-1.16 1.45-2.5 1.62-3.88h-2.01zm-1.01 5.32c-1.16.9-2.51 1.44-3.9 1.61V17.9c.87-.15 1.71-.52 2.46-1.03l1.44 1.45z"/>
-            </svg>
+            <i class="ph ph-arrow-clockwise"></i>
           </button>
 
-          <!-- Zoom Controls -->
+          <!-- Zoom In / Out -->
           <button class="mac-tool-btn" type="button" title="放大 (+)" @click="zoomIn">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm.5-7H9v2H7v1h2v2h1v-2h2V9h-2z"/>
-            </svg>
+            <i class="ph ph-magnifying-glass-plus"></i>
           </button>
-
           <button class="mac-tool-btn" type="button" title="缩小 (-)" @click="zoomOut">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/>
-            </svg>
+            <i class="ph ph-magnifying-glass-minus"></i>
           </button>
 
           <!-- ℹ️ Info Exif Inspector Popover Toggle -->
           <button
-            class="mac-tool-btn"
+            class="mac-tool-btn info-btn"
             :class="{ active: showInfoPanel }"
             type="button"
             title="显示照片信息 (I)"
@@ -470,6 +476,8 @@ onUnmounted(() => {
           >
             <i class="ph ph-info"></i>
           </button>
+
+          <div class="tools-divider"></div>
 
           <!-- Set as Wallpaper Special Action -->
           <button
@@ -479,17 +487,13 @@ onUnmounted(() => {
             :title="wallpaperSavedTip ? '已成功设置为桌面壁纸' : '将此照片设置为桌面壁纸'"
             @click="setAsDesktopWallpaper()"
           >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-            </svg>
-            <span>{{ wallpaperSavedTip ? '✓ 已设为壁纸' : '设为壁纸' }}</span>
+            <i class="ph ph-image"></i>
+            <span>{{ wallpaperSavedTip ? '✓ 已设壁纸' : '设为壁纸' }}</span>
           </button>
 
           <!-- Download Button -->
           <a class="mac-tool-btn" :href="currentItem?.url" download title="下载高清原图">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-            </svg>
+            <i class="ph ph-download-simple"></i>
           </a>
         </template>
       </div>

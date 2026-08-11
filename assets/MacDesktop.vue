@@ -347,8 +347,33 @@ const parentPath = computed(() => {
   return lastSlash >= 0 ? clean.slice(0, lastSlash + 1) : "";
 });
 
+function cleanFileName(key) {
+  if (!key) return "";
+  let name = key.split("/").filter(Boolean).pop() || key;
+  name = name.replace(/~[a-zA-Z0-9_\-]+(?=\.[a-zA-Z0-9]+$)/, "");
+  name = name.split("?")[0];
+  return name;
+}
+
+function truncateMiddle(str, maxLen = 20) {
+  if (!str || str.length <= maxLen) return str;
+  const extIndex = str.lastIndexOf(".");
+  const ext = extIndex !== -1 ? str.slice(extIndex) : "";
+  const base = extIndex !== -1 ? str.slice(0, extIndex) : str;
+  const avail = maxLen - ext.length - 3;
+  if (avail <= 4) return str.slice(0, maxLen - 3) + "..." + ext;
+  const front = Math.ceil(avail / 2);
+  const back = Math.floor(avail / 2);
+  return `${base.slice(0, front)}...${base.slice(-back)}${ext}`;
+}
+
+function displayFileName(key, isGrid = true) {
+  const clean = cleanFileName(key);
+  return isGrid ? truncateMiddle(clean, 20) : clean;
+}
+
 function fileName(key) {
-  return key ? key.split("/").filter(Boolean).pop() || key : "";
+  return cleanFileName(key);
 }
 
 function folderName(folder) {
@@ -727,10 +752,21 @@ function onDropFiles(e) {
         <main class="finder-main-pane" @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })">
           <!-- Finder Path Bar -->
           <div class="finder-pathbar">
-            <button class="path-btn" @click="emit('navigate', '')"><i class="ph ph-house"></i> 根目录</button>
-            <template v-for="(part, idx) in pathParts" :key="part + idx">
+            <button class="path-btn" @click="emit('update:filterCategory', 'all'); emit('navigate', '')">
+              <i class="ph ph-house"></i> 根目录
+            </button>
+            <template v-if="filterCategory !== 'all'">
               <span class="path-divider">/</span>
-              <button class="path-btn" @click="emit('navigate', pathUntil(idx))">{{ part }}</button>
+              <span class="path-category-pill">
+                <i class="ph" :class="filterCategory === 'image' ? 'ph-image-fill' : filterCategory === 'video' ? 'ph-film-strip-fill' : filterCategory === 'audio' ? 'ph-music-notes-fill' : filterCategory === 'document' ? 'ph-file-text-fill' : 'ph-package-fill'"></i>
+                <span>{{ filterCategory === 'image' ? '照片图库' : filterCategory === 'video' ? '高清影视' : filterCategory === 'audio' ? '无损音乐' : filterCategory === 'document' ? '办公文档' : '压缩归档' }}</span>
+              </span>
+            </template>
+            <template v-else-if="cwd">
+              <template v-for="(part, idx) in pathParts" :key="part + idx">
+                <span class="path-divider">/</span>
+                <button class="path-btn" @click="emit('navigate', pathUntil(idx))">{{ part }}</button>
+              </template>
             </template>
             <span class="finder-status-count">{{ files.length + folders.length }} 个项目</span>
           </div>
@@ -741,12 +777,6 @@ function onDropFiles(e) {
             :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]"
             @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })"
           >
-            <!-- Category Target Guidance Pill -->
-            <div v-if="filterCategory !== 'all'" class="finder-category-guide-bar">
-              <i class="ph ph-info"></i>
-              <span>正在浏览「{{ filterCategory === 'image' ? '照片图库' : filterCategory === 'video' ? '高清影视' : filterCategory === 'audio' ? '无损音乐' : filterCategory === 'document' ? '办公文档' : '压缩归档' }}」· 上传将自动保存在 <strong>{{ filterCategory === 'image' ? '照片/' : filterCategory === 'video' ? '视频/' : filterCategory === 'audio' ? '音乐/' : filterCategory === 'document' ? '文档/' : '下载/' }}</strong></span>
-            </div>
-
             <!-- Empty Root Setup Banner -->
             <div v-if="!cwd && filterCategory === 'all' && folders.length === 0 && files.length === 0" class="mac-empty-setup-card">
               <div class="setup-icon"><i class="ph ph-sparkle-fill"></i></div>
@@ -817,7 +847,7 @@ function onDropFiles(e) {
                 <MacIcons name="doc" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
               </div>
 
-              <span class="item-title" :title="fileName(file.key)">{{ fileName(file.key) }}</span>
+              <span class="item-title" :title="file.key">{{ displayFileName(file.key, viewMode === 'grid') }}</span>
               <span v-if="viewMode === 'list'" class="item-size">{{ formatSize(file.size) }}</span>
               <span v-if="viewMode === 'list'" class="item-date">{{ formatDate(file.uploaded) }}</span>
             </article>
@@ -1371,13 +1401,36 @@ function onDropFiles(e) {
 }
 
 .item-thumbnail {
-  width: 54px;
-  height: 54px;
-  border-radius: 8px;
+  width: 58px;
+  height: 58px;
+  border-radius: 9px;
   overflow: hidden;
-  margin-bottom: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42), 0 1px 3px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.finder-file-item:hover .item-thumbnail {
+  transform: scale(1.04);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+}
+
+.path-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #0a84ff;
+  background: rgba(10, 132, 255, 0.14);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+[data-theme="light"] .path-category-pill {
+  color: #007aff;
+  background: rgba(0, 122, 255, 0.1);
 }
 
 .item-thumbnail img {
