@@ -3,6 +3,7 @@
   <!-- 🍏 Mode 1: macOS 26 Desktop Mode (DEFAULT) -->
   <MacDesktop
     v-if="uiMode === 'macos'"
+    ref="macDesktopRef"
     :files="filteredFiles"
     :folders="filteredFolders"
     :all-files="allBucketFiles"
@@ -791,6 +792,13 @@ export default {
         const found = (this.autoGlobalScan ? this.sourceFileList : this.files).find((f) => f.key === file);
         if (found) file = found;
       }
+      if (!file) return;
+      if (this.uiMode === "macos" && this.$refs.macDesktopRef) {
+        if (this.isImage(file) || this.isVideo(file) || this.isAudio(file)) {
+          this.$refs.macDesktopRef.handleOpenFile(file);
+          return;
+        }
+      }
       if (this.isImage(file)) {
         const index = this.imageItems.findIndex((item) => item.file.key === file.key);
         if (index !== -1) {
@@ -884,7 +892,8 @@ export default {
         return;
       }
       if (action === "preview") {
-        const targetFile = typeof item === "string" ? this.files.find((f) => f.key === item) : item;
+        let targetFile = typeof item === "string" ? (this.autoGlobalScan ? this.sourceFileList : this.files).find((f) => f.key === item) : item;
+        if (!targetFile && typeof item === "string") targetFile = { key: item };
         if (targetFile) return this.openFile(targetFile);
         return this.preview(this.rawPath(item.key || item));
       }

@@ -185,7 +185,7 @@ function handleDesktopKeydown(e) {
       return;
     }
     if (selectedFileKey.value) {
-      const selFile = props.files.find((f) => f.key === selectedFileKey.value);
+      const selFile = props.files.find((f) => f.key === selectedFileKey.value) || (props.allFiles && props.allFiles.find((f) => f.key === selectedFileKey.value));
       if (selFile) {
         handleOpenFile(selFile);
       }
@@ -717,6 +717,7 @@ function onDropFiles(e) {
   if (!files.length) return;
   emit("drop-files", { files, cwd: props.cwd });
 }
+defineExpose({ handleOpenFile, bringToFront, launchApp });
 </script>
 
 <template>
