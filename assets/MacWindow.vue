@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 
 const props = defineProps({
   title: { type: String, default: "访达" },
@@ -27,6 +27,18 @@ const winWidth = ref(props.width);
 const winHeight = ref(props.height);
 const isMaximized = ref(false);
 const prevBounds = ref(null);
+
+watch(() => props.width, (val) => {
+  if (val && !isMaximized.value && !isResizing.value) {
+    winWidth.value = val;
+  }
+});
+
+watch(() => props.height, (val) => {
+  if (val && !isMaximized.value && !isResizing.value) {
+    winHeight.value = val;
+  }
+});
 
 const isDragging = ref(false);
 const isResizing = ref(false);
@@ -248,8 +260,13 @@ onUnmounted(() => {
   overflow: hidden;
   user-select: none;
   animation: mac-window-open 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: box-shadow 0.2s ease, opacity 0.18s ease;
-  will-change: transform, opacity;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.18s ease;
+  will-change: width, height, transform, opacity;
+}
+
+.mac-window.is-dragging,
+.mac-window.is-resizing {
+  transition: none;
 }
 
 @keyframes mac-window-open {

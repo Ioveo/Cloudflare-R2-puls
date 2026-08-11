@@ -21,6 +21,11 @@ const currentTab = ref("all"); // 'all' | 'recents' | 'favorites'
 const gridThumbSize = ref(130); // 80px to 240px
 const selectedKeys = ref(new Set());
 const wallpaperSavedTip = ref(false);
+const showInfoPanel = ref(false);
+const favorites = ref(JSON.parse(localStorage.getItem("mac-photos-favs") || "[]"));
+
+// Single Photo Dimensions & Ratio Detection
+const photoDimensions = ref({ width: 0, height: 0, ratio: 16 / 9, ratioText: "自适应" });
 
 // Single Photo Viewer Transform States
 const activeIndex = ref(props.index || 0);
@@ -33,6 +38,7 @@ const panStart = ref({ x: 0, y: 0, initX: 0, initY: 0 });
 watch(() => props.index, (val) => {
   activeIndex.value = val;
   resetTransform();
+  detectCurrentImageDimensions();
 });
 
 watch(() => props.visible, (val) => {
@@ -43,15 +49,8 @@ watch(() => props.visible, (val) => {
       viewMode.value = "grid";
     }
     resetTransform();
+    detectCurrentImageDimensions();
   }
-});
-
-const displayPhotos = computed(() => {
-  if (currentTab.value === "favorites") {
-    const favs = JSON.parse(localStorage.getItem("mac-photos-favs") || "[]");
-    return props.items.filter((item) => favs.includes(item.file?.key || item.name));
-  }
-  return props.items;
 });
 
 const currentItem = computed(() => {
@@ -60,6 +59,71 @@ const currentItem = computed(() => {
   }
   return props.file ? { name: fileName(props.file.key), url: rawPath(props.file.key), file: props.file } : null;
 });
+
+const displayPhotos = computed(() => {
+  if (currentTab.value === "favorites") {
+    return props.items.filter((item) => favorites.value.includes(item.file?.key || item.name));
+  }
+  return props.items;
+});
+
+const isCurrentFavorite = computed(() => {
+  if (!currentItem.value) return false;
+  const key = currentItem.value.file?.key || currentItem.value.name;
+  return favorites.value.includes(key);
+});
+
+// Dynamic Adaptive Aspect Ratio Window Sizing (9:16 竖屏, 16:9 宽屏, 1:1 正方形, 4:3)
+const windowBounds = computed(() => {
+  if (viewMode.value === "grid") {
+    return { width: 960, height: 620 };
+  }
+  const ratio = photoDimensions.value.ratio || 1.6;
+  const maxW = typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1150) : 1000;
+  const maxH = typeof window !== "undefined" ? Math.min(window.innerHeight - 110, 800) : 720;
+  const chromeH = props.items.length > 1 ? 100 : 44;
+
+  if (ratio < 0.75) {
+    // 9:16 or Tall Portrait (竖屏照片)
+    const targetH = Math.min(maxH, 750);
+    const contentH = targetH - chromeH;
+    const targetW = Math.max(460, Math.min(maxW, Math.round(contentH * ratio) + 32));
+    return { width: targetW, height: targetH };
+  } else if (ratio > 1.45) {
+    // 16:9 or Ultra-wide Landscape (宽屏照片)
+    const targetW = Math.min(maxW, 980);
+    const contentW = targetW - 32;
+    const targetH = Math.max(480, Math.min(maxH, Math.round(contentW / ratio) + chromeH));
+    return { width: targetW, height: targetH };
+  } else {
+    // 1:1 Square, 4:3, 3:2, or 3:4 Normal Proportions
+    const targetH = Math.min(maxH, 700);
+    const contentH = targetH - chromeH;
+    const targetW = Math.max(540, Math.min(maxW, Math.round(contentH * ratio) + 32));
+    return { width: targetW, height: targetH };
+  }
+});
+
+function detectCurrentImageDimensions() {
+  if (!currentItem.value?.url) return;
+  const img = new Image();
+  img.onload = () => {
+    const nw = img.naturalWidth || 1920;
+    const nh = img.naturalHeight || 1080;
+    const ratio = nw / nh;
+    let text = "自适应";
+    if (Math.abs(ratio - 9 / 16) < 0.1) text = "9:16 竖屏";
+    else if (Math.abs(ratio - 16 / 9) < 0.1) text = "16:9 宽屏";
+    else if (Math.abs(ratio - 1) < 0.08) text = "1:1 正方形";
+    else if (Math.abs(ratio - 4 / 3) < 0.1) text = "4:3 横屏";
+    else if (Math.abs(ratio - 3 / 4) < 0.1) text = "3:4 竖屏";
+    else if (ratio < 0.8) text = `${nw}×${nh} (竖屏)`;
+    else text = `${nw}×${nh} (横屏)`;
+
+    photoDimensions.value = { width: nw, height: nh, ratio, ratioText: text };
+  };
+  img.src = currentItem.value.url;
+}
 
 const photoTitle = computed(() => {
   if (viewMode.value === "canvas") {
@@ -78,12 +142,32 @@ function rawPath(key) {
   return props.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(props.storageId)}`;
 }
 
+function formatSize(bytes) {
+  if (!bytes) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function toggleFavorite() {
+  if (!currentItem.value) return;
+  const key = currentItem.value.file?.key || currentItem.value.name;
+  if (favorites.value.includes(key)) {
+    favorites.value = favorites.value.filter((k) => k !== key);
+  } else {
+    favorites.value.push(key);
+  }
+  localStorage.setItem("mac-photos-favs", JSON.stringify(favorites.value));
+}
+
 // Single Photo View Navigation & Physics
 function openSinglePhoto(idx) {
   activeIndex.value = idx;
   emit("change", idx);
   viewMode.value = "canvas";
   resetTransform();
+  detectCurrentImageDimensions();
 }
 
 function returnToGrid() {
@@ -120,6 +204,7 @@ function prevPhoto() {
     activeIndex.value = (activeIndex.value - 1 + props.items.length) % props.items.length;
     emit("change", activeIndex.value);
     resetTransform();
+    detectCurrentImageDimensions();
   }
 }
 
@@ -128,6 +213,7 @@ function nextPhoto() {
     activeIndex.value = (activeIndex.value + 1) % props.items.length;
     emit("change", activeIndex.value);
     resetTransform();
+    detectCurrentImageDimensions();
   }
 }
 
@@ -248,11 +334,18 @@ function handleKeydown(e) {
       resetTransform();
     } else if (e.key === "Escape") {
       returnToGrid();
+    } else if (e.key.toLowerCase() === "i") {
+      e.preventDefault();
+      showInfoPanel.value = !showInfoPanel.value;
     }
   }
 }
 
-onMounted(() => window.addEventListener("keydown", handleKeydown));
+onMounted(() => {
+  window.addEventListener("keydown", handleKeydown);
+  detectCurrentImageDimensions();
+});
+
 onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
   window.removeEventListener("mousemove", onMouseMove);
@@ -266,8 +359,8 @@ onUnmounted(() => {
     :title="photoTitle"
     icon="ph-image-square-fill"
     :visible="visible"
-    :width="960"
-    :height="620"
+    :width="windowBounds.width"
+    :height="windowBounds.height"
     :initial-x="110"
     :initial-y="50"
     :z-index="zIndex"
@@ -321,8 +414,20 @@ onUnmounted(() => {
         <template v-else>
           <span v-if="items.length > 1" class="photo-badge">{{ activeIndex + 1 }} / {{ items.length }}</span>
           <span class="photo-badge zoom-pill">{{ Math.round(zoomScale * 100) }}%</span>
+          <span class="photo-badge ratio-pill">{{ photoDimensions.ratioText }}</span>
 
           <div class="tools-divider"></div>
+
+          <!-- Favorite Heart Button -->
+          <button
+            class="mac-tool-btn fav-btn"
+            :class="{ active: isCurrentFavorite }"
+            type="button"
+            :title="isCurrentFavorite ? '取消个人收藏' : '添加到个人收藏'"
+            @click="toggleFavorite"
+          >
+            <i class="ph" :class="isCurrentFavorite ? 'ph-heart-fill' : 'ph-heart'"></i>
+          </button>
 
           <!-- Rotate Left / Right -->
           <button class="mac-tool-btn" type="button" title="向左旋转 90°" @click="rotateLeft">
@@ -348,6 +453,17 @@ onUnmounted(() => {
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/>
             </svg>
+          </button>
+
+          <!-- ℹ️ Info Exif Inspector Popover Toggle -->
+          <button
+            class="mac-tool-btn"
+            :class="{ active: showInfoPanel }"
+            type="button"
+            title="显示照片信息 (I)"
+            @click="showInfoPanel = !showInfoPanel"
+          >
+            <i class="ph ph-info"></i>
           </button>
 
           <!-- Set as Wallpaper Special Action -->
@@ -393,6 +509,7 @@ onUnmounted(() => {
         <button class="p-side-btn" :class="{ active: currentTab === 'favorites' }" @click="currentTab = 'favorites'">
           <i class="ph ph-heart-fill"></i>
           <span>个人收藏</span>
+          <span class="p-side-count">{{ favorites.length }}</span>
         </button>
       </aside>
 
@@ -459,8 +576,40 @@ onUnmounted(() => {
                 :src="currentItem.url"
                 :alt="currentItem.name"
                 class="main-photo-img"
+                :class="{ 'is-portrait': photoDimensions.ratio < 0.85 }"
                 draggable="false"
+                @load="detectCurrentImageDimensions"
               />
+            </div>
+
+            <!-- ℹ️ Apple macOS Photos Floating Info Card -->
+            <div v-if="showInfoPanel && currentItem" class="photo-info-popover">
+              <div class="info-header">
+                <strong>照片详细信息</strong>
+                <button class="close-info-btn" type="button" @click="showInfoPanel = false">×</button>
+              </div>
+              <div class="info-rows">
+                <div class="info-row">
+                  <span class="info-label">文件名</span>
+                  <span class="info-val" :title="currentItem.name">{{ currentItem.name }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">图像尺寸</span>
+                  <span class="info-val font-mono">{{ photoDimensions.width }} × {{ photoDimensions.height }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">屏幕画幅</span>
+                  <span class="info-val highlight-blue">{{ photoDimensions.ratioText }}</span>
+                </div>
+                <div v-if="currentItem.file?.size" class="info-row">
+                  <span class="info-label">文件大小</span>
+                  <span class="info-val">{{ formatSize(currentItem.file.size) }}</span>
+                </div>
+                <div v-if="currentItem.file?.uploaded" class="info-row">
+                  <span class="info-label">存储时间</span>
+                  <span class="info-val">{{ new Date(currentItem.file.uploaded).toLocaleString() }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -688,8 +837,8 @@ onUnmounted(() => {
 .canvas-viewport.cursor-grabbing { cursor: grabbing; }
 
 .photo-stage-wrapper {
-  max-width: 90%;
-  max-height: 85%;
+  max-width: 95%;
+  max-height: 90%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -698,11 +847,15 @@ onUnmounted(() => {
 
 .main-photo-img {
   max-width: 100%;
-  max-height: 72vh;
+  max-height: 74vh;
   object-fit: contain;
   border-radius: 6px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   pointer-events: none;
+}
+
+.main-photo-img.is-portrait {
+  max-height: 78vh;
 }
 
 /* Nav Arrows */
@@ -733,6 +886,91 @@ onUnmounted(() => {
 
 .arrow-left { left: 16px; }
 .arrow-right { right: 16px; }
+
+/* ℹ️ Info Popover */
+.photo-info-popover {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 260px;
+  background: rgba(25, 26, 33, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(28px);
+  padding: 12px 14px;
+  z-index: 25;
+  animation: info-pop 0.18s ease-out both;
+}
+
+[data-theme="light"] .photo-info-popover {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
+@keyframes info-pop {
+  from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+[data-theme="light"] .info-header {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.close-info-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.close-info-btn:hover {
+  opacity: 1;
+}
+
+.info-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.info-label {
+  color: #8e8e93;
+  flex-shrink: 0;
+}
+
+.info-val {
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.highlight-blue {
+  color: #0a84ff;
+  font-weight: 600;
+}
 
 /* Filmstrip Bottom Bar */
 .photos-filmstrip-bar {
@@ -830,6 +1068,12 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
+.mac-tool-btn.fav-btn.active {
+  color: #ff375f;
+  background: rgba(255, 55, 95, 0.18);
+  border-color: rgba(255, 55, 95, 0.35);
+}
+
 .mac-tool-btn.text-btn {
   width: auto;
   padding: 0 8px;
@@ -898,6 +1142,13 @@ onUnmounted(() => {
   font-size: 11px;
   color: #8e8e93;
   font-weight: 600;
+}
+
+.ratio-pill {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #0a84ff;
 }
 
 .tools-divider {
