@@ -116,12 +116,16 @@ function onMouseUp() {
   window.removeEventListener("mouseup", onMouseUp);
 }
 
+const wallpaperSavedTip = ref(false);
+
 function setAsDesktopWallpaper() {
   if (!currentItem.value) return;
   const url = currentItem.value.url;
   localStorage.setItem("mac-custom-wallpaper", url);
   window.dispatchEvent(new CustomEvent("wallpaper-changed", { detail: url }));
   emit("set-wallpaper", url);
+  wallpaperSavedTip.value = true;
+  setTimeout(() => { wallpaperSavedTip.value = false; }, 3000);
 }
 
 function handleKeydown(e) {
@@ -214,11 +218,17 @@ onUnmounted(() => {
         </button>
 
         <!-- Set as Wallpaper Special Action -->
-        <button class="mac-action-pill" type="button" title="将此照片设置为桌面壁纸" @click="setAsDesktopWallpaper">
+        <button
+          class="mac-action-pill"
+          :class="{ 'is-saved': wallpaperSavedTip }"
+          type="button"
+          :title="wallpaperSavedTip ? '已成功设置为桌面壁纸' : '将此照片设置为桌面壁纸'"
+          @click="setAsDesktopWallpaper"
+        >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
           </svg>
-          <span>设为壁纸</span>
+          <span>{{ wallpaperSavedTip ? '✓ 已设为壁纸' : '设为壁纸' }}</span>
         </button>
 
         <!-- Download Button -->

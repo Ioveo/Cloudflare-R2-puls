@@ -72,10 +72,11 @@ const customWallpaper = ref(localStorage.getItem("mac-custom-wallpaper") || "");
 const wallpaperStyle = computed(() => {
   if (customWallpaper.value) {
     return {
-      backgroundImage: `url(${customWallpaper.value})`,
+      backgroundImage: `url("${customWallpaper.value}")`,
       backgroundSize: "cover",
-      backgroundPosition: "center",
+      backgroundPosition: "center center",
       backgroundRepeat: "no-repeat",
+      backgroundColor: "#111216",
     };
   }
   const wp = wallpapers.find((w) => w.id === currentWallpaper.value) || wallpapers[0];
@@ -95,7 +96,7 @@ function resetWallpaper() {
 }
 
 function setAsWallpaper(fileOrUrl) {
-  const url = typeof fileOrUrl === "string" ? fileOrUrl : imageUrl(fileOrUrl);
+  const url = typeof fileOrUrl === "string" ? fileOrUrl : (fileOrUrl.url || imageUrl(fileOrUrl));
   customWallpaper.value = url;
   localStorage.setItem("mac-custom-wallpaper", url);
 }
@@ -103,8 +104,20 @@ function setAsWallpaper(fileOrUrl) {
 function handleDesktopKeydown(e) {
   if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
   if (e.code === "Space" || e.key === " ") {
+    e.preventDefault();
+    if (photosModal.value.visible) {
+      photosModal.value.visible = false;
+      return;
+    }
+    if (videoModal.value.visible) {
+      videoModal.value.visible = false;
+      return;
+    }
+    if (musicModal.value.visible) {
+      musicModal.value.visible = false;
+      return;
+    }
     if (selectedFileKey.value) {
-      e.preventDefault();
       const selFile = props.files.find((f) => f.key === selectedFileKey.value);
       if (selFile) {
         handleOpenFile(selFile);

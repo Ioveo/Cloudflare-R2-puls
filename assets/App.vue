@@ -413,9 +413,8 @@
   <UploadProgress v-if="uploadProgress !== null" :progress="uploadProgress" :file-name="uploadFileName" :queue-count="uploadQueue.length" :speed-text="speedText" />
   <UploadPopup v-model="showUploadPopup" @upload="onUploadClicked" @createFolder="createFolder" />
   <ContextMenu :visible="showContextMenu" :x="contextPosition.x" :y="contextPosition.y" :title="contextTitle" :actions="contextActions" @close="closeContext" @select="runContextAction" />
-  <PromptDialog v-model="dialog.visible" :mode="dialog.mode" :title="dialog.title" :message="dialog.message" :initial-value="dialog.initialValue" :confirm-text="dialog.confirmText" :error="dialog.error" @submit="onDialogSubmit" />
-  <LightboxModal :visible="lightbox.visible" :items="imageItems" :index="lightbox.index" @close="lightbox.visible = false" @change="lightbox.index = $event" />
-  <MediaPlayerModal :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
+  <LightboxModal v-if="uiMode !== 'macos'" :visible="lightbox.visible" :items="imageItems" :index="lightbox.index" @close="lightbox.visible = false" @change="lightbox.index = $event" />
+  <MediaPlayerModal v-if="uiMode !== 'macos'" :visible="mediaPlayer.visible" :items="mediaItems" :index="mediaPlayer.index" @close="mediaPlayer.visible = false" @change="mediaPlayer.index = $event" />
   <ArchiveModal :visible="archiveModal.visible" :file="archiveModal.file" @close="archiveModal.visible = false" />
   <HotkeysModal :visible="showHotkeysModal" @close="showHotkeysModal = false" />
   <ShareModal :visible="shareModal.visible" :file="shareModal.file" :raw-url="shareModal.rawUrl" @close="shareModal.visible = false" />
@@ -1074,6 +1073,9 @@ export default {
       }
     },
     onGlobalKeydown(e) {
+      if (this.uiMode === "macos") {
+        return; // In macOS mode, MacDesktop handles all shortcuts, windows, and previews
+      }
       const activeTag = document.activeElement?.tagName?.toLowerCase();
       if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
       
