@@ -107,6 +107,16 @@ onMounted(() => {
 });
 
 // Window Management States
+const windowZ = ref({
+  finder: 10,
+  settings: 11,
+  photos: 12,
+  video: 13,
+  music: 14,
+  calculator: 15,
+  notes: 16,
+});
+
 const windows = ref({
   finder: { visible: true, minimized: false, zIndex: 10 },
   settings: { visible: false, minimized: false, zIndex: 11 },
@@ -120,12 +130,13 @@ const notesModal = ref({ visible: false });
 const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
-const topZIndex = ref(20);
+const topZIndex = ref(30);
 
 function bringToFront(appId) {
   activeAppId.value = appId;
+  topZIndex.value += 1;
+  windowZ.value[appId] = topZIndex.value;
   if (windows.value[appId]) {
-    topZIndex.value += 1;
     windows.value[appId].zIndex = topZIndex.value;
     windows.value[appId].minimized = false;
     windows.value[appId].visible = true;
@@ -151,12 +162,15 @@ function launchApp(appId) {
   } else if (appId === "settings") {
     bringToFront("settings");
   } else if (appId === "calculator") {
+    bringToFront("calculator");
     calculatorModal.value.visible = true;
   } else if (appId === "notes") {
+    bringToFront("notes");
     notesModal.value.visible = true;
   } else if (appId === "photos") {
     const imgFiles = props.files.filter(isImage);
     if (imgFiles.length > 0) {
+      bringToFront("photos");
       photosModal.value = {
         visible: true,
         file: imgFiles[0],
@@ -168,11 +182,33 @@ function launchApp(appId) {
       bringToFront("finder");
     }
   } else if (appId === "cinema") {
-    emit("update:filterCategory", "video");
-    bringToFront("finder");
+    const vFiles = props.files.filter(isVideo);
+    if (vFiles.length > 0) {
+      bringToFront("video");
+      videoModal.value = {
+        visible: true,
+        file: vFiles[0],
+        items: vFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+        index: 0,
+      };
+    } else {
+      emit("update:filterCategory", "video");
+      bringToFront("finder");
+    }
   } else if (appId === "music") {
-    emit("update:filterCategory", "audio");
-    bringToFront("finder");
+    const aFiles = props.files.filter(isAudio);
+    if (aFiles.length > 0) {
+      bringToFront("music");
+      musicModal.value = {
+        visible: true,
+        file: aFiles[0],
+        items: aFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+        index: 0,
+      };
+    } else {
+      emit("update:filterCategory", "audio");
+      bringToFront("finder");
+    }
   } else if (appId === "archive") {
     emit("update:filterCategory", "archive");
     bringToFront("finder");
@@ -368,11 +404,12 @@ function getArchiveExt(file) {
   return "ZIP";
 }
 
-// Open File Action (Directly Dispatches to macOS Dedicated Windows)
+// Open File Action (Directly Dispatches to macOS Dedicated Windows and brings them to the very front)
 function handleOpenFile(file) {
   if (isImage(file)) {
     const imgFiles = props.files.filter(isImage);
     const idx = imgFiles.findIndex((f) => f.key === file.key);
+    bringToFront("photos");
     photosModal.value = {
       visible: true,
       file,
@@ -384,6 +421,7 @@ function handleOpenFile(file) {
   if (isVideo(file)) {
     const vFiles = props.files.filter(isVideo);
     const idx = vFiles.findIndex((f) => f.key === file.key);
+    bringToFront("video");
     videoModal.value = {
       visible: true,
       file,
@@ -395,6 +433,7 @@ function handleOpenFile(file) {
   if (isAudio(file)) {
     const aFiles = props.files.filter(isAudio);
     const idx = aFiles.findIndex((f) => f.key === file.key);
+    bringToFront("music");
     musicModal.value = {
       visible: true,
       file,
@@ -716,6 +755,9 @@ function onDropFiles(e) {
       :items="videoModal.items"
       :index="videoModal.index"
       :storage-id="storageId"
+      :z-index="windowZ.video"
+      :is-active="activeAppId === 'video'"
+      @focus="bringToFront('video')"
       @close="videoModal.visible = false"
       @change="videoModal.index = $event"
     />
@@ -727,6 +769,9 @@ function onDropFiles(e) {
       :items="musicModal.items"
       :index="musicModal.index"
       :storage-id="storageId"
+      :z-index="windowZ.music"
+      :is-active="activeAppId === 'music'"
+      @focus="bringToFront('music')"
       @close="musicModal.visible = false"
       @change="musicModal.index = $event"
     />
@@ -738,6 +783,9 @@ function onDropFiles(e) {
       :items="photosModal.items"
       :index="photosModal.index"
       :storage-id="storageId"
+      :z-index="windowZ.photos"
+      :is-active="activeAppId === 'photos'"
+      @focus="bringToFront('photos')"
       @close="photosModal.visible = false"
       @change="photosModal.index = $event"
       @set-wallpaper="setAsWallpaper"
@@ -746,12 +794,18 @@ function onDropFiles(e) {
     <!-- 🔢 Window 5: macOS Calculator Modal -->
     <MacCalculatorModal
       :visible="calculatorModal.visible"
+      :z-index="windowZ.calculator"
+      :is-active="activeAppId === 'calculator'"
+      @focus="bringToFront('calculator')"
       @close="calculatorModal.visible = false"
     />
 
     <!-- 📝 Window 6: macOS Notes Modal -->
     <MacNotesModal
       :visible="notesModal.visible"
+      :z-index="windowZ.notes"
+      :is-active="activeAppId === 'notes'"
+      @focus="bringToFront('notes')"
       @close="notesModal.visible = false"
     />
 

@@ -8,9 +8,11 @@ const props = defineProps({
   items: { type: Array, default: () => [] },
   index: { type: Number, default: 0 },
   storageId: { type: String, default: "default" },
+  zIndex: { type: Number, default: 40 },
+  isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change"]);
+const emit = defineEmits(["close", "change", "focus"]);
 
 const videoRef = ref(null);
 const isPlaying = ref(false);
@@ -214,8 +216,9 @@ onUnmounted(() => {
     :height="540"
     :initial-x="140"
     :initial-y="60"
-    :z-index="40"
-    :is-active="true"
+    :z-index="zIndex"
+    :is-active="isActive"
+    @focus="emit('focus')"
     @close="emit('close')"
   >
     <template #titlebar-right>

@@ -8,9 +8,11 @@ const props = defineProps({
   items: { type: Array, default: () => [] },
   index: { type: Number, default: 0 },
   storageId: { type: String, default: "default" },
+  zIndex: { type: Number, default: 38 },
+  isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change", "set-wallpaper"]);
+const emit = defineEmits(["close", "change", "set-wallpaper", "focus"]);
 
 const zoomScale = ref(1);
 const rotation = ref(0);
@@ -171,8 +173,9 @@ onUnmounted(() => {
     :height="600"
     :initial-x="130"
     :initial-y="60"
-    :z-index="38"
-    :is-active="true"
+    :z-index="zIndex"
+    :is-active="isActive"
+    @focus="emit('focus')"
     @close="emit('close')"
   >
     <!-- macOS Native Toolbar -->

@@ -4,9 +4,11 @@ import MacWindow from "./MacWindow.vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  zIndex: { type: Number, default: 41 },
+  isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "focus"]);
 
 const notes = ref(JSON.parse(localStorage.getItem("mac-user-notes") || "[]"));
 const activeIndex = ref(0);
@@ -64,8 +66,9 @@ function onBodyInput(e) {
     :height="440"
     :initial-x="180"
     :initial-y="100"
-    :z-index="41"
-    :is-active="true"
+    :z-index="zIndex"
+    :is-active="isActive"
+    @focus="emit('focus')"
     @close="emit('close')"
   >
     <template #titlebar-right>

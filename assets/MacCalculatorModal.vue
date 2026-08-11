@@ -4,9 +4,11 @@ import MacWindow from "./MacWindow.vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  zIndex: { type: Number, default: 42 },
+  isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "focus"]);
 
 const display = ref("0");
 const equation = ref("");
@@ -96,8 +98,9 @@ function calculate() {
     :height="400"
     :initial-x="220"
     :initial-y="120"
-    :z-index="42"
-    :is-active="true"
+    :z-index="zIndex"
+    :is-active="isActive"
+    @focus="emit('focus')"
     @close="emit('close')"
   >
     <div class="calc-body">

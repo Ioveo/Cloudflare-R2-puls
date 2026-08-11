@@ -8,9 +8,11 @@ const props = defineProps({
   items: { type: Array, default: () => [] },
   index: { type: Number, default: 0 },
   storageId: { type: String, default: "default" },
+  zIndex: { type: Number, default: 42 },
+  isActive: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["close", "change"]);
+const emit = defineEmits(["close", "change", "focus"]);
 
 const audioRef = ref(null);
 const isPlaying = ref(false);
@@ -161,8 +163,9 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
     :height="480"
     :initial-x="180"
     :initial-y="90"
-    :z-index="42"
-    :is-active="true"
+    :z-index="zIndex"
+    :is-active="isActive"
+    @focus="emit('focus')"
     @close="emit('close')"
   >
     <template #titlebar-right>
