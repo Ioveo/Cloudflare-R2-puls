@@ -39,6 +39,7 @@
     @update:filter-category="selectCategory"
     @update:search="search = $event"
     @context="openContext($event.item, $event.event)"
+    @drop-files="handleMacDropFiles"
     @action="handleMacAction"
   />
 
@@ -1033,19 +1034,22 @@ export default {
       }
       this.showUploadPopup = true;
     },
-    uploadFiles(files) {
+    uploadFiles(files, customCwd = null) {
       if (!files || !files.length) return;
       if (!this.authCredentials) {
-        this.promptLogin(() => this.uploadFiles(files));
+        this.promptLogin(() => this.uploadFiles(files, customCwd));
         return;
       }
-      let targetCwd = this.cwd;
+      let targetCwd = customCwd !== null ? customCwd : this.cwd;
       if (targetCwd && !targetCwd.endsWith("/")) targetCwd += "/";
       this.uploadQueue.push(...Array.from(files).map((file) => ({ basedir: targetCwd, file })));
       if (!this.isUploading && this.uploadQueue.length) {
         this.isUploading = true;
         this.processUploadQueue();
       }
+    },
+    handleMacDropFiles({ files, cwd }) {
+      this.uploadFiles(files, cwd);
     },
     toggleTheme() {
       this.theme = this.theme === "dark" ? "light" : "dark";

@@ -52,6 +52,7 @@ const emit = defineEmits([
   "login",
   "logout",
   "refresh",
+  "drop-files",
   "update:viewMode",
   "update:filterCategory",
   "update:search",
@@ -450,6 +451,28 @@ function toggleFullscreen() {
     document.exitFullscreen().catch(() => {});
   }
 }
+
+// Drag and Drop File Upload Directly onto Desktop or Finder
+const isDraggingFiles = ref(false);
+
+function onDragEnterDesktop(e) {
+  if (e.dataTransfer?.types?.includes("Files")) {
+    isDraggingFiles.value = true;
+  }
+}
+
+function onDragLeaveDesktop(e) {
+  if (e.relatedTarget === null || e.clientX === 0 || e.clientY === 0) {
+    isDraggingFiles.value = false;
+  }
+}
+
+function onDropFiles(e) {
+  isDraggingFiles.value = false;
+  const files = Array.from(e.dataTransfer?.files || []);
+  if (!files.length) return;
+  emit("drop-files", { files, cwd: props.cwd });
+}
 </script>
 
 <template>
@@ -458,7 +481,21 @@ function toggleFullscreen() {
     :style="wallpaperStyle"
     @contextmenu="onDesktopContextMenu"
     @mousedown="onDesktopMouseDown"
+    @dragenter.prevent="onDragEnterDesktop"
+    @dragover.prevent="onDragEnterDesktop"
+    @dragleave="onDragLeaveDesktop"
+    @drop.prevent="onDropFiles"
   >
+    <!-- macOS AirDrop Style Upload Dropzone Overlay -->
+    <div v-if="isDraggingFiles" class="mac-dropzone-overlay">
+      <div class="dropzone-card">
+        <div class="dropzone-icon">
+          <i class="ph ph-cloud-arrow-up-fill"></i>
+        </div>
+        <h2>松开鼠标开始极速上传</h2>
+        <p>文件将直传至当前路径：<strong class="font-mono">{{ cwd ? `/${cwd}` : '根目录' }}</strong></p>
+      </div>
+    </div>
     <!-- 1. macOS Top Menu Bar -->
     <MacTopBar
       :active-app-name="activeAppId === 'finder' ? '访达' : (activeAppId === 'settings' ? '系统设置' : '天才猫桌面')"
@@ -1203,5 +1240,69 @@ function toggleFullscreen() {
 
 .finder-action-icon-btn.highlight:hover {
   background: #0071e3;
+}
+
+/* AirDrop Style Fullscreen Dropzone */
+.mac-dropzone-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(10, 132, 255, 0.25);
+  backdrop-filter: blur(20px);
+  border: 4px dashed #0a84ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: dropzone-fade 0.2s ease-out;
+}
+
+.dropzone-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 48px;
+  border-radius: 24px;
+  background: rgba(20, 21, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  text-align: center;
+}
+
+.dropzone-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #0a84ff;
+  display: grid;
+  place-items: center;
+  font-size: 38px;
+  color: #ffffff;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 25px rgba(10, 132, 255, 0.5);
+  animation: pulse-icon 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-icon {
+  from { transform: scale(0.95); }
+  to { transform: scale(1.08); }
+}
+
+@keyframes dropzone-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dropzone-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.dropzone-card p {
+  font-size: 13px;
+  color: #a1a1a6;
+  margin: 0;
 }
 </style>

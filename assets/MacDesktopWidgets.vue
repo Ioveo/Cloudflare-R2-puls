@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 
 const props = defineProps({
   activeWidgets: { type: Array, default: () => ["weather", "clock", "notes"] },
@@ -9,6 +9,79 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["remove-widget", "open-app"]);
+
+// Layout state persisted in localStorage: { [id]: { x, y, size: 's'|'m'|'l', scale: 1 } }
+const defaultLayout = {
+  weather: { x: 28, y: 56, size: "m", scale: 1 },
+  clock: { x: 28, y: 220, size: "m", scale: 1 },
+  notes: { x: 28, y: 360, size: "m", scale: 1 },
+  calculator: { x: 270, y: 56, size: "m", scale: 1 },
+  storage: { x: 270, y: 320, size: "m", scale: 1 },
+};
+
+const savedLayout = JSON.parse(localStorage.getItem("mac-desktop-widgets-layout") || "null");
+const widgetLayouts = ref(savedLayout ? { ...defaultLayout, ...savedLayout } : defaultLayout);
+
+function saveLayout() {
+  localStorage.setItem("mac-desktop-widgets-layout", JSON.stringify(widgetLayouts.value));
+}
+
+// Dragging Logic
+const draggingId = ref(null);
+let dragOffset = { x: 0, y: 0 };
+
+function startDrag(e, widgetId) {
+  if (e.target.closest("button") || e.target.closest("textarea") || e.target.closest("input") || e.target.closest(".resize-grip")) return;
+  draggingId.value = widgetId;
+  const curLayout = widgetLayouts.value[widgetId] || { x: 28, y: 56, size: "m", scale: 1 };
+  dragOffset = {
+    x: e.clientX - curLayout.x,
+    y: e.clientY - curLayout.y,
+  };
+
+  window.addEventListener("mousemove", onDragging);
+  window.addEventListener("mouseup", stopDrag);
+}
+
+function onDragging(e) {
+  if (!draggingId.value) return;
+  const nextX = Math.max(10, Math.min(window.innerWidth - 120, e.clientX - dragOffset.x));
+  const nextY = Math.max(38, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y));
+  
+  if (!widgetLayouts.value[draggingId.value]) {
+    widgetLayouts.value[draggingId.value] = { x: nextX, y: nextY, size: "m", scale: 1 };
+  } else {
+    widgetLayouts.value[draggingId.value].x = nextX;
+    widgetLayouts.value[draggingId.value].y = nextY;
+  }
+}
+
+function stopDrag() {
+  if (draggingId.value) {
+    draggingId.value = null;
+    saveLayout();
+  }
+  window.removeEventListener("mousemove", onDragging);
+  window.removeEventListener("mouseup", stopDrag);
+}
+
+// Scale / Size Switcher (S / M / L)
+function cycleSize(widgetId) {
+  const cur = widgetLayouts.value[widgetId] || { x: 28, y: 56, size: "m", scale: 1 };
+  const sizes = ["s", "m", "l"];
+  const nextIdx = (sizes.indexOf(cur.size || "m") + 1) % sizes.length;
+  cur.size = sizes[nextIdx];
+  widgetLayouts.value[widgetId] = { ...cur };
+  saveLayout();
+}
+
+function getWidgetStyle(widgetId) {
+  const layout = widgetLayouts.value[widgetId] || defaultLayout[widgetId] || { x: 28, y: 56, size: "m", scale: 1 };
+  return {
+    transform: `translate3d(${layout.x}px, ${layout.y}px, 0)`,
+    zIndex: draggingId.value === widgetId ? 35 : 6,
+  };
+}
 
 // 1. Clock Widget Logic
 const hourDeg = ref(0);
@@ -105,17 +178,32 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(clockTimer);
+  window.removeEventListener("mousemove", onDragging);
+  window.removeEventListener("mouseup", stopDrag);
 });
 </script>
 
 <template>
-  <div class="desktop-widgets-column">
+  <div class="desktop-widgets-layer">
     <!-- 🌤️ Widget 1: Weather (天气) -->
-    <div v-if="activeWidgets.includes('weather')" class="mac-widget-card weather-widget" @dblclick="emit('open-app', 'weather')">
-      <button class="widget-remove-btn" title="从桌面移除小组件" @click.stop="emit('remove-widget', 'weather')">×</button>
+    <div
+      v-if="activeWidgets.includes('weather')"
+      class="mac-widget-card weather-widget"
+      :class="[`size-${widgetLayouts.weather?.size || 'm'}`, { 'is-dragging': draggingId === 'weather' }]"
+      :style="getWidgetStyle('weather')"
+      @mousedown="startDrag($event, 'weather')"
+      @dblclick="emit('open-app', 'weather')"
+    >
+      <div class="widget-corner-tools">
+        <button class="widget-tool-btn size-pill" title="缩放尺寸 (S / M / L)" @click.stop="cycleSize('weather')">
+          {{ (widgetLayouts.weather?.size || 'm').toUpperCase() }}
+        </button>
+        <button class="widget-tool-btn remove-btn" title="移除小组件" @click.stop="emit('remove-widget', 'weather')">×</button>
+      </div>
+
       <div class="weather-top">
         <div>
-          <span class="weather-city">广州 / 智能气象</span>
+          <span class="weather-city">智能气象 · 广州</span>
           <h2 class="weather-deg">28°</h2>
         </div>
         <div class="weather-icon-bubble">
@@ -123,19 +211,29 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="weather-bottom">
-        <span class="weather-condition">晴朗 · 空气优</span>
+        <span class="weather-condition">晴朗 · 优</span>
         <span class="weather-range">最高 32° 最低 25° · 湿度 68%</span>
       </div>
     </div>
 
     <!-- 🕒 Widget 2: Apple Analog Clock (模拟时钟) -->
-    <div v-if="activeWidgets.includes('clock')" class="mac-widget-card clock-widget" @dblclick="emit('open-app', 'clock')">
-      <button class="widget-remove-btn" title="从桌面移除小组件" @click.stop="emit('remove-widget', 'clock')">×</button>
-      <div class="clock-dial">
-        <!-- 12 Markers -->
-        <span v-for="n in 12" :key="n" class="dial-mark" :style="{ transform: `rotate(${n * 30}deg)` }"></span>
+    <div
+      v-if="activeWidgets.includes('clock')"
+      class="mac-widget-card clock-widget"
+      :class="[`size-${widgetLayouts.clock?.size || 'm'}`, { 'is-dragging': draggingId === 'clock' }]"
+      :style="getWidgetStyle('clock')"
+      @mousedown="startDrag($event, 'clock')"
+      @dblclick="emit('open-app', 'clock')"
+    >
+      <div class="widget-corner-tools">
+        <button class="widget-tool-btn size-pill" title="缩放尺寸 (S / M / L)" @click.stop="cycleSize('clock')">
+          {{ (widgetLayouts.clock?.size || 'm').toUpperCase() }}
+        </button>
+        <button class="widget-tool-btn remove-btn" title="移除小组件" @click.stop="emit('remove-widget', 'clock')">×</button>
+      </div>
 
-        <!-- Hour, Minute, Second Hands -->
+      <div class="clock-dial">
+        <span v-for="n in 12" :key="n" class="dial-mark" :style="{ transform: `rotate(${n * 30}deg)` }"></span>
         <div class="hand hand-hour" :style="{ transform: `rotate(${hourDeg}deg)` }"></div>
         <div class="hand hand-min" :style="{ transform: `rotate(${minDeg}deg)` }"></div>
         <div class="hand hand-sec" :style="{ transform: `rotate(${secDeg}deg)` }"></div>
@@ -149,8 +247,21 @@ onUnmounted(() => {
     </div>
 
     <!-- 📝 Widget 3: Sticky Notes (桌面灵感便签) -->
-    <div v-if="activeWidgets.includes('notes')" class="mac-widget-card notes-widget" @dblclick="emit('open-app', 'notes')">
-      <button class="widget-remove-btn" title="从桌面移除小组件" @click.stop="emit('remove-widget', 'notes')">×</button>
+    <div
+      v-if="activeWidgets.includes('notes')"
+      class="mac-widget-card notes-widget"
+      :class="[`size-${widgetLayouts.notes?.size || 'm'}`, { 'is-dragging': draggingId === 'notes' }]"
+      :style="getWidgetStyle('notes')"
+      @mousedown="startDrag($event, 'notes')"
+      @dblclick="emit('open-app', 'notes')"
+    >
+      <div class="widget-corner-tools">
+        <button class="widget-tool-btn size-pill" title="缩放尺寸 (S / M / L)" @click.stop="cycleSize('notes')">
+          {{ (widgetLayouts.notes?.size || 'm').toUpperCase() }}
+        </button>
+        <button class="widget-tool-btn remove-btn" title="移除小组件" @click.stop="emit('remove-widget', 'notes')">×</button>
+      </div>
+
       <div class="widget-header">
         <div class="widget-title">
           <i class="ph ph-note-pencil-fill"></i>
@@ -169,8 +280,21 @@ onUnmounted(() => {
     </div>
 
     <!-- 🧮 Widget 4: Mini Calculator (桌面计算器) -->
-    <div v-if="activeWidgets.includes('calculator')" class="mac-widget-card calc-widget" @dblclick="emit('open-app', 'calculator')">
-      <button class="widget-remove-btn" title="从桌面移除小组件" @click.stop="emit('remove-widget', 'calculator')">×</button>
+    <div
+      v-if="activeWidgets.includes('calculator')"
+      class="mac-widget-card calc-widget"
+      :class="[`size-${widgetLayouts.calculator?.size || 'm'}`, { 'is-dragging': draggingId === 'calculator' }]"
+      :style="getWidgetStyle('calculator')"
+      @mousedown="startDrag($event, 'calculator')"
+      @dblclick="emit('open-app', 'calculator')"
+    >
+      <div class="widget-corner-tools">
+        <button class="widget-tool-btn size-pill" title="缩放尺寸 (S / M / L)" @click.stop="cycleSize('calculator')">
+          {{ (widgetLayouts.calculator?.size || 'm').toUpperCase() }}
+        </button>
+        <button class="widget-tool-btn remove-btn" title="移除小组件" @click.stop="emit('remove-widget', 'calculator')">×</button>
+      </div>
+
       <div class="widget-header">
         <div class="widget-title">
           <i class="ph ph-calculator-fill"></i>
@@ -205,29 +329,42 @@ onUnmounted(() => {
     </div>
 
     <!-- 📊 Widget 5: Storage Monitor (R2 存储监控) -->
-    <div v-if="activeWidgets.includes('storage')" class="mac-widget-card storage-widget" @dblclick="emit('open-app', 'settings')">
-      <button class="widget-remove-btn" title="从桌面移除小组件" @click.stop="emit('remove-widget', 'storage')">×</button>
+    <div
+      v-if="activeWidgets.includes('storage')"
+      class="mac-widget-card storage-widget"
+      :class="[`size-${widgetLayouts.storage?.size || 'm'}`, { 'is-dragging': draggingId === 'storage' }]"
+      :style="getWidgetStyle('storage')"
+      @mousedown="startDrag($event, 'storage')"
+      @dblclick="emit('open-app', 'settings')"
+    >
+      <div class="widget-corner-tools">
+        <button class="widget-tool-btn size-pill" title="缩放尺寸 (S / M / L)" @click.stop="cycleSize('storage')">
+          {{ (widgetLayouts.storage?.size || 'm').toUpperCase() }}
+        </button>
+        <button class="widget-tool-btn remove-btn" title="移除小组件" @click.stop="emit('remove-widget', 'storage')">×</button>
+      </div>
+
       <div class="widget-header">
         <div class="widget-title">
           <i class="ph ph-hard-drives-fill"></i>
-          <span>Cloudflare R2 存储</span>
+          <span>R2 存储监控</span>
         </div>
       </div>
       <div class="storage-widget-body">
         <div class="storage-gauge">
           <div class="gauge-ring">
             <strong>{{ formatBytes(totalBytes) }}</strong>
-            <span>已用容量</span>
+            <span>已用空间</span>
           </div>
         </div>
         <div class="storage-meta">
           <div class="meta-row">
-            <span>对象总数</span>
+            <span>对象数</span>
             <strong>{{ totalFiles }} 项</strong>
           </div>
           <div class="meta-row">
-            <span>存储状态</span>
-            <span class="status-active-badge">● 极速直连</span>
+            <span>状态</span>
+            <span class="status-active-badge">● 直连就绪</span>
           </div>
         </div>
       </div>
@@ -236,39 +373,75 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.desktop-widgets-column {
+.desktop-widgets-layer {
   position: absolute;
-  top: 48px;
-  left: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  inset: 0;
+  pointer-events: none;
   z-index: 6;
-  pointer-events: auto;
-  user-select: none;
 }
 
 .mac-widget-card {
-  position: relative;
-  width: 220px;
-  border-radius: 18px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 20px;
   padding: 14px;
   background: rgba(25, 26, 34, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(35px) saturate(190%);
   color: #f2f2f7;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-  overflow: hidden;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.08s ease-out, box-shadow 0.15s ease;
+  will-change: transform;
 }
 
-.mac-widget-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+.mac-widget-card:active {
+  cursor: grabbing;
 }
 
-.mac-widget-card:hover .widget-remove-btn {
-  opacity: 1;
+.mac-widget-card.is-dragging {
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 0 2px rgba(10, 132, 255, 0.5);
+  transform: scale(1.02);
+}
+
+/* S / M / L Size Variants */
+.size-s {
+  width: 160px;
+  padding: 10px;
+}
+
+.size-m {
+  width: 220px;
+  padding: 14px;
+}
+
+.size-l {
+  width: 320px;
+  padding: 18px;
+}
+
+.size-l .sticky-textarea {
+  height: 140px;
+}
+
+.size-s .weather-deg {
+  font-size: 26px;
+}
+
+.size-s .weather-icon-bubble {
+  font-size: 24px;
+}
+
+.size-s .clock-digital {
+  font-size: 13px;
+}
+
+.size-s .clock-dial {
+  width: 52px;
+  height: 52px;
 }
 
 [data-theme="light"] .mac-widget-card {
@@ -278,28 +451,45 @@ onUnmounted(() => {
   box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), inset 0 1px 0 #ffffff;
 }
 
-.widget-remove-btn {
+/* Corner Tools */
+.widget-corner-tools {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 18px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 15;
+}
+
+.mac-widget-card:hover .widget-corner-tools {
+  opacity: 1;
+}
+
+.widget-tool-btn {
   height: 18px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
   color: #ffffff;
-  border: none;
-  font-size: 13px;
-  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 11px;
+  font-weight: 700;
   display: grid;
   place-items: center;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
-  z-index: 10;
+  padding: 0 5px;
+  transition: background 0.12s ease;
 }
 
-.widget-remove-btn:hover {
+.widget-tool-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.widget-tool-btn.remove-btn:hover {
   background: #ff453a;
+  border-color: #ff453a;
 }
 
 .widget-header {
@@ -325,7 +515,7 @@ onUnmounted(() => {
 
 /* Weather Widget */
 .weather-widget {
-  background: linear-gradient(145deg, rgba(30, 80, 160, 0.7), rgba(15, 35, 75, 0.7));
+  background: linear-gradient(145deg, rgba(30, 80, 160, 0.75), rgba(15, 35, 75, 0.75));
   border-color: rgba(255, 255, 255, 0.25);
   color: #ffffff;
 }
