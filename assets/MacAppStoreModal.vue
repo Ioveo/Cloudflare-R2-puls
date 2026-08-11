@@ -1727,10 +1727,11 @@ defineExpose({
 .form-group label {
   display: block;
   margin-bottom: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #475569;
 }
+[data-theme="dark"] .form-group label,
 :root.dark .form-group label,
 @media (prefers-color-scheme: dark) {
   .form-group label { color: #94a3b8; }
@@ -1740,14 +1741,22 @@ defineExpose({
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
+  background: #f2f3f8;
+  color: #1d1d1f !important;
+  font-size: 12.5px;
+  font-weight: 500;
   outline: none;
   box-sizing: border-box;
+  font-family: inherit;
+  transition: all 0.15s ease;
 }
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea,
 :root.dark .form-group input,
 :root.dark .form-group select,
 :root.dark .form-group textarea,
@@ -1755,16 +1764,16 @@ defineExpose({
   .form-group input,
   .form-group select,
   .form-group textarea {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(0, 0, 0, 0.3);
-    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.45);
+    color: #ffffff !important;
   }
 }
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: #007aff;
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.25);
 }
 
 .editor-btn-row {

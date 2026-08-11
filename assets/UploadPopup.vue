@@ -279,9 +279,11 @@ function handleCreateFolder() {
   width: min(680px, calc(100% - 32px));
 }
 
+[data-theme="dark"] .popup-card,
+:root.dark .popup-card,
 @media (prefers-color-scheme: dark) {
   .popup-card {
-    background: rgba(26, 27, 34, 0.94);
+    background: rgba(26, 27, 34, 0.96);
     border-color: rgba(255, 255, 255, 0.14);
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     color: #f2f2f7;
@@ -470,10 +472,11 @@ function handleCreateFolder() {
 .field-item label {
   display: block;
   margin-bottom: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #475569;
 }
+[data-theme="dark"] .field-item label,
 :root.dark .field-item label,
 @media (prefers-color-scheme: dark) {
   .field-item label { color: #94a3b8; }
@@ -483,14 +486,27 @@ function handleCreateFolder() {
 .field-item select,
 .field-item textarea {
   width: 100%;
-  padding: 7px 10px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
+  background: #f2f3f8;
+  color: #1d1d1f !important;
+  font-size: 12.5px;
+  font-weight: 500;
   outline: none;
   box-sizing: border-box;
+  font-family: inherit;
+  transition: all 0.15s ease;
 }
+
+.field-item input::placeholder,
+.field-item textarea::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .field-item input,
+[data-theme="dark"] .field-item select,
+[data-theme="dark"] .field-item textarea,
 :root.dark .field-item input,
 :root.dark .field-item select,
 :root.dark .field-item textarea,
@@ -498,16 +514,21 @@ function handleCreateFolder() {
   .field-item input,
   .field-item select,
   .field-item textarea {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(0, 0, 0, 0.3);
-    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.45);
+    color: #ffffff !important;
+  }
+  .field-item input::placeholder,
+  .field-item textarea::placeholder {
+    color: rgba(255, 255, 255, 0.35);
   }
 }
+
 .field-item input:focus,
 .field-item select:focus,
 .field-item textarea:focus {
   border-color: #007aff;
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.25);
 }
 
 .form-actions {
