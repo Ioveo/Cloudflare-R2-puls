@@ -12,6 +12,8 @@ import MacMusicPlayerModal from "./MacMusicPlayerModal.vue";
 import MacPhotosModal from "./MacPhotosModal.vue";
 import MacCalculatorModal from "./MacCalculatorModal.vue";
 import MacNotesModal from "./MacNotesModal.vue";
+import MacDesktopWidgets from "./MacDesktopWidgets.vue";
+import MacWidgetPickerModal from "./MacWidgetPickerModal.vue";
 import ContextMenu from "./ContextMenu.vue";
 
 const props = defineProps({
@@ -212,8 +214,32 @@ function onDesktopContextMenu(e) {
   showDesktopContext.value = true;
 }
 
+// Desktop Widgets Management (Auto-saved to localStorage)
+const defaultWidgets = ["weather", "clock", "notes"];
+const desktopWidgets = ref(JSON.parse(localStorage.getItem("mac-desktop-widgets") || JSON.stringify(defaultWidgets)));
+const showWidgetPicker = ref(false);
+
+function toggleDesktopWidget(id) {
+  const idx = desktopWidgets.value.indexOf(id);
+  if (idx > -1) {
+    desktopWidgets.value.splice(idx, 1);
+  } else {
+    desktopWidgets.value.push(id);
+  }
+  localStorage.setItem("mac-desktop-widgets", JSON.stringify(desktopWidgets.value));
+}
+
+function removeDesktopWidget(id) {
+  const idx = desktopWidgets.value.indexOf(id);
+  if (idx > -1) {
+    desktopWidgets.value.splice(idx, 1);
+    localStorage.setItem("mac-desktop-widgets", JSON.stringify(desktopWidgets.value));
+  }
+}
+
 const desktopContextActions = computed(() => {
   const list = [
+    { id: "edit-widgets", label: "添加 / 编辑桌面小组件...", icon: "ph-squares-four" },
     { id: "new-folder", label: "新建文件夹", icon: "ph-folder-plus" },
     { id: "upload", label: "上传文件...", icon: "ph-upload-simple" },
   ];
@@ -231,6 +257,7 @@ const desktopContextActions = computed(() => {
 
 function handleDesktopContextSelect(id) {
   showDesktopContext.value = false;
+  if (id === "edit-widgets") showWidgetPicker.value = true;
   if (id === "new-folder") emit("create-folder");
   if (id === "upload") emit("upload");
   if (id === "refresh") emit("refresh");
@@ -467,6 +494,15 @@ function toggleFullscreen() {
         <span class="icon-label">影视放映厅</span>
       </div>
     </div>
+
+    <!-- 2.1 Floating macOS Desktop Widgets (Auto-persisted to LocalStorage) -->
+    <MacDesktopWidgets
+      :active-widgets="desktopWidgets"
+      :total-bytes="totalStorageBytes"
+      :total-files="files.length + folders.length"
+      @remove-widget="removeDesktopWidget"
+      @open-app="launchApp"
+    />
 
     <!-- 3. Rubberband Selection Rectangle -->
     <div v-if="rubberband.active" class="rubberband-box" :style="rubberbandBox"></div>
@@ -753,6 +789,14 @@ function toggleFullscreen() {
       :actions="desktopContextActions"
       @close="showDesktopContext = false"
       @select="handleDesktopContextSelect"
+    />
+
+    <!-- 7.1 Desktop Widget Gallery Modal -->
+    <MacWidgetPickerModal
+      :visible="showWidgetPicker"
+      :active-widgets="desktopWidgets"
+      @close="showWidgetPicker = false"
+      @toggle-widget="toggleDesktopWidget"
     />
 
     <!-- 8. macOS Dock Bar -->

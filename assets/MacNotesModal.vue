@@ -69,10 +69,15 @@ function onBodyInput(e) {
     @close="emit('close')"
   >
     <template #titlebar-right>
-      <button class="notes-new-btn" type="button" title="新建备忘录" @click="createNote">
-        <i class="ph ph-note-pencil-bold"></i>
-        <span>新建</span>
-      </button>
+      <div class="notes-titlebar-tools">
+        <span class="notes-auto-save-pill">
+          <i class="dot-live"></i> 已实时本地存储
+        </span>
+        <button class="notes-new-btn" type="button" title="新建备忘录 (⌘N)" @click="createNote">
+          <i class="ph ph-note-pencil-bold"></i>
+          <span>新建便签</span>
+        </button>
+      </div>
     </template>
 
     <div class="notes-layout">
@@ -217,17 +222,44 @@ function onBodyInput(e) {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+.notes-titlebar-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notes-auto-save-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #34c759;
+  background: rgba(52, 199, 89, 0.12);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.dot-live {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #34c759;
+  box-shadow: 0 0 6px #34c759;
+}
+
 .notes-new-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 6px;
   background: #ffcc00;
   color: #1c1c1e;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   border: none;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 204, 0, 0.4);
 }
 </style>

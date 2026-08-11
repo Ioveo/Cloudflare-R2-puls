@@ -22,8 +22,8 @@ const apps = [
   { id: "archive", name: "归档解压 (Archive)", iconName: "archive" },
   { id: "doc", name: "预览与文档 (Preview)", iconName: "preview" },
   { id: "settings", name: "系统偏好设置 (Settings)", iconName: "settings" },
-  { id: "calculator", name: "计算器 (Calculator)", iconName: "settings" },
-  { id: "notes", name: "备忘录 (Notes)", iconName: "preview" },
+  { id: "calculator", name: "计算器 (Calculator)", iconName: "calculator" },
+  { id: "notes", name: "备忘录 (Notes)", iconName: "notes" },
   { id: "upload", name: "极速上传 (Upload)", iconName: "upload" },
   { id: "trash", name: "废纸篓 (Trash)", iconName: "trash" },
 ];

@@ -202,6 +202,63 @@ const iconSize = computed(() => (typeof props.size === "number" ? `${props.size}
       <path d="M 24 66 Q 24 58 32 58 Q 34 50 44 48 Q 50 40 60 44 Q 70 42 74 52 Q 78 56 76 66 Z" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" />
     </svg>
 
+    <!-- 10.1 🧮 macOS Calculator App Icon -->
+    <svg v-else-if="name === 'calculator'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="calc-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3a3a3c" />
+          <stop offset="100%" stop-color="#1c1c1e" />
+        </linearGradient>
+        <linearGradient id="calc-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ff9f0a" />
+          <stop offset="100%" stop-color="#f57c00" />
+        </linearGradient>
+      </defs>
+      <rect x="6" y="6" width="88" height="88" rx="20" fill="url(#calc-bg)" />
+      <!-- Grid 4 quadrants -->
+      <rect x="14" y="14" width="32" height="32" rx="10" fill="#505050" />
+      <text x="30" y="36" font-size="20" font-weight="600" fill="#ffffff" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif">+</text>
+
+      <rect x="54" y="14" width="32" height="32" rx="10" fill="url(#calc-orange)" />
+      <text x="70" y="34" font-size="22" font-weight="600" fill="#ffffff" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif">−</text>
+
+      <rect x="14" y="54" width="32" height="32" rx="10" fill="#505050" />
+      <text x="30" y="75" font-size="20" font-weight="600" fill="#ffffff" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif">×</text>
+
+      <rect x="54" y="54" width="32" height="32" rx="10" fill="url(#calc-orange)" />
+      <text x="70" y="75" font-size="22" font-weight="600" fill="#ffffff" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif">=</text>
+    </svg>
+
+    <!-- 10.2 📝 macOS Notes App Icon -->
+    <svg v-else-if="name === 'notes'" viewBox="0 0 100 100" class="mac-svg-icon">
+      <defs>
+        <linearGradient id="nts-top" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#ffd60a" />
+          <stop offset="100%" stop-color="#ffcc00" />
+        </linearGradient>
+        <filter id="nts-sh">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.25" />
+        </filter>
+      </defs>
+      <!-- Notepad Body -->
+      <rect x="10" y="10" width="80" height="80" rx="14" fill="#ffffff" filter="url(#nts-sh)" />
+      <!-- Yellow Header Band -->
+      <path d="M 10 24 C 10 16 16 10 24 10 L 76 10 C 84 10 90 16 90 24 L 90 32 L 10 32 Z" fill="url(#nts-top)" />
+      <!-- Leather Stitching / Dot Hints -->
+      <circle cx="20" cy="21" r="1.5" fill="#ca8a04" />
+      <circle cx="35" cy="21" r="1.5" fill="#ca8a04" />
+      <circle cx="50" cy="21" r="1.5" fill="#ca8a04" />
+      <circle cx="65" cy="21" r="1.5" fill="#ca8a04" />
+      <circle cx="80" cy="21" r="1.5" fill="#ca8a04" />
+      <!-- Ruled Horizontal Paper Lines -->
+      <line x1="20" y1="44" x2="80" y2="44" stroke="#e5e5ea" stroke-width="2" />
+      <line x1="20" y1="56" x2="80" y2="56" stroke="#e5e5ea" stroke-width="2" />
+      <line x1="20" y1="68" x2="80" y2="68" stroke="#e5e5ea" stroke-width="2" />
+      <line x1="20" y1="80" x2="60" y2="80" stroke="#e5e5ea" stroke-width="2" />
+      <!-- Left Red Margin Line -->
+      <line x1="28" y1="32" x2="28" y2="90" stroke="#ff453a" stroke-width="1.5" opacity="0.6" />
+    </svg>
+
     <!-- 11. 📁 macOS 3D Blue Folder File Icon -->
     <svg v-else-if="name === 'folder'" viewBox="0 0 100 100" class="mac-svg-icon">
       <defs>
