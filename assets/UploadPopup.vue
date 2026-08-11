@@ -1,38 +1,89 @@
 <script setup>
+import { ref } from "vue";
+
 defineProps({ modelValue: Boolean });
 const emit = defineEmits(["update:modelValue", "upload", "createFolder"]);
+
+const camera = ref(null);
+const media = ref(null);
+const files = ref(null);
+
+function close() {
+  emit("update:modelValue", false);
+}
+
+function handleFileInput(inputRef) {
+  close();
+  inputRef?.click();
+}
+
+function onFileChange(e) {
+  if (!e.target.files?.length) return;
+  emit("upload", e.target);
+}
+
+function handleCreateFolder() {
+  close();
+  emit("createFolder");
+}
 </script>
 
 <template>
-  <div class="popup">
+  <div class="popup-wrapper">
     <Transition name="fade">
-      <button v-if="modelValue" class="popup-modal" type="button" aria-label="关闭上传面板" @click="emit('update:modelValue', false)"></button>
+      <div v-if="modelValue" class="popup-backdrop" @click="close"></div>
     </Transition>
+
     <Transition name="slide-up">
-      <section v-if="modelValue" class="popup-content" aria-label="新建或上传">
-        <div class="popup-header">
-          <strong>新建或上传</strong>
-          <button type="button" title="关闭" @click="emit('update:modelValue', false)">×</button>
-        </div>
-        <div class="button-grid">
-          <button type="button" @click="$refs.camera.click()">
-            <span class="action-icon"><i class="ph ph-camera"></i></span>
-            <span>拍照上传</span>
-            <input ref="camera" type="file" accept="image/*" capture="camera" hidden @change="emit('upload', $event.target)" />
+      <section v-if="modelValue" class="popup-card" aria-label="新建或上传文件">
+        <!-- Header -->
+        <header class="popup-header">
+          <div class="header-left">
+            <span class="header-sparkle"><i class="ph ph-sparkle-fill"></i></span>
+            <strong>新建或上传</strong>
+          </div>
+          <button class="popup-close-btn" type="button" title="关闭" @click="close">×</button>
+        </header>
+
+        <!-- Dynamic 4-Action Grid -->
+        <div class="actions-grid">
+          <!-- 1. Camera -->
+          <button class="action-card card-camera" type="button" @click="handleFileInput(camera)">
+            <div class="action-icon-bubble icon-camera">
+              <i class="ph ph-camera-bold"></i>
+            </div>
+            <span class="action-title">拍照上传</span>
+            <span class="action-desc">相机直传</span>
+            <input ref="camera" type="file" accept="image/*" capture="camera" hidden @change="onFileChange" />
           </button>
-          <button type="button" @click="$refs.media.click()">
-            <span class="action-icon"><i class="ph ph-images"></i></span>
-            <span>图片与视频</span>
-            <input ref="media" type="file" accept="image/*,video/*" multiple hidden @change="emit('upload', $event.target)" />
+
+          <!-- 2. Media -->
+          <button class="action-card card-media" type="button" @click="handleFileInput(media)">
+            <div class="action-icon-bubble icon-media">
+              <i class="ph ph-images-bold"></i>
+            </div>
+            <span class="action-title">图片与视频</span>
+            <span class="action-desc">批量导入</span>
+            <input ref="media" type="file" accept="image/*,video/*" multiple hidden @change="onFileChange" />
           </button>
-          <button type="button" @click="$refs.files.click()">
-            <span class="action-icon"><i class="ph ph-file-arrow-up"></i></span>
-            <span>选择文件</span>
-            <input ref="files" type="file" multiple hidden @change="emit('upload', $event.target)" />
+
+          <!-- 3. General Files -->
+          <button class="action-card card-files" type="button" @click="handleFileInput(files)">
+            <div class="action-icon-bubble icon-files">
+              <i class="ph ph-cloud-arrow-up-bold"></i>
+            </div>
+            <span class="action-title">选择文件</span>
+            <span class="action-desc">文档 / 任意格式</span>
+            <input ref="files" type="file" multiple hidden @change="onFileChange" />
           </button>
-          <button type="button" @click="emit('createFolder')">
-            <span class="action-icon"><i class="ph ph-folder-plus"></i></span>
-            <span>新建文件夹</span>
+
+          <!-- 4. New Folder -->
+          <button class="action-card card-folder" type="button" @click="handleCreateFolder">
+            <div class="action-icon-bubble icon-folder">
+              <i class="ph ph-folder-plus-bold"></i>
+            </div>
+            <span class="action-title">新建文件夹</span>
+            <span class="action-desc">分类管理</span>
           </button>
         </div>
       </section>
@@ -41,29 +92,198 @@ const emit = defineEmits(["update:modelValue", "upload", "createFolder"]);
 </template>
 
 <style scoped>
-.popup-modal { position:fixed; inset:0; z-index:90; width:100%; height:100%; background:rgba(29,29,31,.35); backdrop-filter:blur(12px); }
-.popup-content { position:fixed; right:50%; bottom:28px; z-index:91; width:min(510px,calc(100% - 32px)); overflow:hidden; color:#1d1d1f; border:1px solid rgba(255,255,255,.9); border-radius:16px; background:rgba(255,255,255,.88); box-shadow:0 22px 55px rgba(29,29,31,.24),inset 0 1px #fff; backdrop-filter:blur(24px) saturate(150%); transform:translateX(50%); }
-.popup-header { display:flex; align-items:center; justify-content:space-between; padding:17px 18px 12px; }
-.popup-header strong { font-size:15px; }
-.popup-header button { width:28px; height:28px; color:#6e6e73; border-radius:8px; background:transparent; font-size:21px; transition:color .18s,background .18s; cursor:pointer; }
-.popup-header button:hover { color:#0071e3; background:rgba(10,132,255,.1); }
-.button-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; padding:6px 12px 15px; }
-.button-grid button { display:grid; gap:8px; place-items:center; min-height:108px; padding:10px 6px; color:#515156; border:1px solid transparent; border-radius:11px; background:transparent; font-size:11px; transition:color .18s,background .18s,border-color .18s,transform .18s; cursor:pointer; }
-.button-grid button:hover { color:#0071e3; border-color:rgba(10,132,255,.15); background:rgba(10,132,255,.08); transform:translateY(-2px); }
-.action-icon { display:grid; width:37px; height:37px; place-items:center; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:11px; background:#0a84ff; box-shadow:0 6px 14px rgba(10,132,255,.18),inset 0 1px rgba(255,255,255,.3); font-size:20px; line-height:1; }
-
-@media (prefers-color-scheme: dark) {
-  .popup-modal { background:rgba(0,0,0,.6); }
-  .popup-content { color:#f2f2f7; border-color:rgba(255,255,255,.15); background:rgba(30,30,36,.92); box-shadow:0 22px 55px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.12); }
-  .popup-header button { color:#98989d; }
-  .popup-header button:hover { color:#409cff; background:rgba(10,132,255,.2); }
-  .button-grid button { color:#a1a1a6; }
-  .button-grid button:hover { color:#409cff; border-color:rgba(10,132,255,.3); background:rgba(10,132,255,.15); }
+.popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 12, 18, 0.45);
+  backdrop-filter: blur(16px) saturate(140%);
+  animation: fade-in 0.2s ease-out;
 }
 
-@media(max-width:520px) {
-  .popup-content { bottom:16px; }
-  .button-grid { grid-template-columns:repeat(2,1fr); }
-  .button-grid button { min-height:82px; }
+.popup-card {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 91;
+  width: min(560px, calc(100% - 32px));
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28), inset 0 1px 0 #ffffff;
+  backdrop-filter: blur(40px) saturate(200%);
+  overflow: hidden;
+  color: #1d1d1f;
+  animation: popup-bounce 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-color-scheme: dark) {
+  .popup-card {
+    background: rgba(26, 27, 34, 0.92);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: #f2f2f7;
+  }
+}
+
+/* Header */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid rgba(60, 60, 67, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .popup-header { border-bottom-color: rgba(255, 255, 255, 0.08); }
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-sparkle {
+  color: #0a84ff;
+  font-size: 15px;
+}
+
+.popup-header strong {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.popup-close-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(118, 118, 128, 0.12);
+  color: #8e8e93;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.popup-close-btn:hover {
+  background: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
+}
+
+/* 4-Action Grid */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px 20px 22px;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 8px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: rgba(0, 0, 0, 0.025);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  .action-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.action-card:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+.card-camera:hover { border-color: rgba(255, 65, 108, 0.4); background: rgba(255, 65, 108, 0.08); }
+.card-media:hover { border-color: rgba(138, 43, 226, 0.4); background: rgba(138, 43, 226, 0.08); }
+.card-files:hover { border-color: rgba(10, 132, 255, 0.4); background: rgba(10, 132, 255, 0.08); }
+.card-folder:hover { border-color: rgba(255, 159, 10, 0.4); background: rgba(255, 159, 10, 0.08); }
+
+/* Distinct Bubbles */
+.action-icon-bubble {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  color: #ffffff;
+  font-size: 24px;
+  margin-bottom: 10px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.action-card:hover .action-icon-bubble {
+  transform: scale(1.12);
+}
+
+/* 1. Camera Gradient */
+.icon-camera {
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  box-shadow: 0 8px 20px rgba(255, 65, 108, 0.35);
+}
+
+/* 2. Media Gradient */
+.icon-media {
+  background: linear-gradient(135deg, #8a2be2, #e040fb);
+  box-shadow: 0 8px 20px rgba(138, 43, 226, 0.35);
+}
+
+/* 3. Files Gradient */
+.icon-files {
+  background: linear-gradient(135deg, #0a84ff, #00d2ff);
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.35);
+}
+
+/* 4. Folder Gradient */
+.icon-folder {
+  background: linear-gradient(135deg, #ff9f0a, #ffd60a);
+  box-shadow: 0 8px 20px rgba(255, 159, 10, 0.35);
+}
+
+.action-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: inherit;
+  margin-bottom: 2px;
+}
+
+.action-desc {
+  font-size: 11px;
+  color: #8e8e93;
+}
+
+@keyframes popup-bounce {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 25px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@media (max-width: 540px) {
+  .popup-card { bottom: 16px; width: calc(100% - 24px); }
+  .actions-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px 14px 16px; }
+  .action-card { padding: 12px 6px; }
+  .action-icon-bubble { width: 42px; height: 42px; font-size: 20px; }
 }
 </style>

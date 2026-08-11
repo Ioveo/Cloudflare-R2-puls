@@ -53,8 +53,8 @@ function submit() {
 </template>
 
 <style scoped>
-.prompt-mask { position:fixed; inset:0; z-index:80; display:grid; place-items:center; padding:20px; background:rgba(29,29,31,.28); backdrop-filter:blur(18px) saturate(125%); }
-.prompt-dialog { width:min(390px,100%); padding:24px; color:#1d1d1f; border:1px solid rgba(255,255,255,.92); border-radius:22px; background:rgba(255,255,255,.82); box-shadow:0 28px 70px rgba(29,29,31,.2),inset 0 1px #fff; backdrop-filter:blur(28px) saturate(155%); animation:prompt-in .22s cubic-bezier(.2,.8,.2,1) both; }
+.prompt-mask { position:fixed; inset:0; z-index:200; display:grid; place-items:center; padding:20px; background:rgba(10,12,18,.65); backdrop-filter:blur(24px) saturate(160%); animation:fade-in .18s ease-out; }
+.prompt-dialog { width:min(400px,100%); padding:26px; color:#1d1d1f; border:1px solid rgba(255,255,255,.92); border-radius:24px; background:rgba(255,255,255,.88); box-shadow:0 35px 90px rgba(0,0,0,.35),inset 0 1px #fff; backdrop-filter:blur(36px) saturate(180%); animation:prompt-in .22s cubic-bezier(.16,1,.3,1) both; }
 .prompt-icon { display:grid; width:42px; height:42px; place-items:center; margin-bottom:14px; color:#fff; border-radius:13px; background:#0a84ff; box-shadow:0 8px 18px rgba(10,132,255,.24),inset 0 1px rgba(255,255,255,.45); font-size:21px; }
 .prompt-dialog h2 { margin:0; font-size:19px; letter-spacing:0; }
 .prompt-dialog p { margin:8px 0 18px; color:#6e6e73; font-size:13px; line-height:1.5; }

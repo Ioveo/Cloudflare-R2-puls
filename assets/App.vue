@@ -176,11 +176,33 @@
       <section v-if="loading" class="file-grid loading-grid" :class="viewMode"><div v-for="item in 8" :key="item" class="file-skeleton"></div></section>
 
       <!-- Empty state -->
-      <section v-else-if="!filteredFiles.length && !filteredFolders.length" class="empty-state">
-        <div class="empty-icon"><i class="ph ph-folder-open"></i></div>
-        <h2>{{ search ? '没有匹配的资源' : '当前分类暂无文件' }}</h2>
-        <p>{{ search ? '尝试更换关键词重试。' : '拖放文件至此区域，或点击右下角上传。' }}</p>
-        <button v-if="!search" class="primary-button" type="button" @click="openUploadWithAuth"><i class="ph ph-upload-simple"></i> 上传文件</button>
+      <section v-else-if="!filteredFiles.length && !filteredFolders.length" class="empty-state-wrap">
+        <!-- Subfolder Parent Nav Card -->
+        <div v-if="cwd && filterCategory === 'all'" class="empty-parent-nav">
+          <article class="file-card parent-card" tabindex="0" @click="goToFolder(parentPath)" @keydown.enter="goToFolder(parentPath)">
+            <div class="file-symbol folder-symbol"><i class="ph ph-arrow-bend-up-left"></i></div>
+            <div class="file-main"><strong>上一级目录</strong><span>返回父文件夹</span></div>
+          </article>
+        </div>
+
+        <!-- VisionOS Empty Showcase Card -->
+        <div class="empty-showcase-card">
+          <div class="empty-glow-bubble">
+            <i class="ph" :class="filterCategory === 'image' ? 'ph-image-broken' : (filterCategory === 'video' ? 'ph-film-slash' : (filterCategory === 'audio' ? 'ph-music-notes-simple' : (search ? 'ph-magnifying-glass' : 'ph-folder-dashed')))"></i>
+          </div>
+          <h3>{{ search ? '没有匹配的资源' : (cwd ? '当前文件夹为空' : '当前分类暂无文件') }}</h3>
+          <p>{{ search ? '尝试更换搜索关键词或清除筛选条件。' : '直接将本地文件拖放至此窗口，或点击下方按钮开始上传。' }}</p>
+          <div class="empty-action-group">
+            <button v-if="!search" class="empty-cta-btn primary" type="button" @click="openUploadWithAuth">
+              <i class="ph ph-cloud-arrow-up-bold"></i>
+              <span>立即上传文件</span>
+            </button>
+            <button v-if="cwd && !search" class="empty-cta-btn secondary" type="button" @click="createFolder">
+              <i class="ph ph-folder-plus-bold"></i>
+              <span>新建子文件夹</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       <!-- File Grid (Supports Masonry Waterfall, Video Cinema Gallery, and Music Vinyl Studio Layouts) -->
