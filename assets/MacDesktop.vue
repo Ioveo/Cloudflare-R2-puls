@@ -1,12 +1,14 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import MacWindow from "./MacWindow.vue";
 import MacTopBar from "./MacTopBar.vue";
 import MacDock from "./MacDock.vue";
 import MacControlCenter from "./MacControlCenter.vue";
 import MacSpotlight from "./MacSpotlight.vue";
 import MacSettingsModal from "./MacSettingsModal.vue";
-import MimeIcon from "./MimeIcon.vue";
+import MacIcons from "./MacIcons.vue";
+import MacVideoPlayerModal from "./MacVideoPlayerModal.vue";
+import MacMusicPlayerModal from "./MacMusicPlayerModal.vue";
 import ContextMenu from "./ContextMenu.vue";
 
 const props = defineProps({
@@ -50,7 +52,7 @@ const emit = defineEmits([
   "update:search",
 ]);
 
-// Wallpaper System
+// 4K macOS Dynamic Wallpapers
 const wallpapers = [
   { id: "sequoia", name: "Sequoia 杉树晨光", gradient: "radial-gradient(circle at 50% 30%, #1e3c72, #2a5298, #0f2027)" },
   { id: "sonoma", name: "Sonoma 极光流彩", gradient: "linear-gradient(135deg, #13072e 0%, #3f0d75 50%, #09203f 100%)" },
@@ -75,6 +77,10 @@ const windows = ref({
   finder: { visible: true, minimized: false, zIndex: 10 },
   settings: { visible: false, minimized: false, zIndex: 11 },
 });
+
+const videoModal = ref({ visible: false, file: null, items: [], index: 0 });
+const musicModal = ref({ visible: false, file: null, items: [], index: 0 });
+const selectedFileKey = ref("");
 
 const activeAppId = ref("finder");
 const topZIndex = ref(20);
@@ -103,6 +109,7 @@ function minimizeWindow(appId) {
 
 function launchApp(appId) {
   if (appId === "finder") {
+    emit("update:filterCategory", "all");
     bringToFront("finder");
   } else if (appId === "settings") {
     bringToFront("settings");
@@ -132,6 +139,8 @@ const openApps = computed(() => {
   const list = [];
   if (windows.value.finder.visible && !windows.value.finder.minimized) list.push("finder");
   if (windows.value.settings.visible && !windows.value.settings.minimized) list.push("settings");
+  if (videoModal.value.visible) list.push("cinema");
+  if (musicModal.value.visible) list.push("music");
   return list;
 });
 
@@ -184,11 +193,11 @@ const parentPath = computed(() => {
 });
 
 function fileName(key) {
-  return key.split("/").filter(Boolean).pop() || key;
+  return key ? key.split("/").filter(Boolean).pop() || key : "";
 }
 
 function folderName(folder) {
-  return folder.split("/").filter(Boolean).pop() || "文件夹";
+  return folder ? folder.split("/").filter(Boolean).pop() || "文件夹" : "";
 }
 
 function pathUntil(index) {
@@ -220,6 +229,12 @@ function imageUrl(file) {
   return props.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(props.storageId)}`;
 }
 
+function rawPath(key) {
+  if (!key) return "";
+  const path = `/raw/${key}`;
+  return props.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(props.storageId)}`;
+}
+
 function isImage(file) {
   if (!file) return false;
   const type = (file.httpMetadata?.contentType || "").toLowerCase();
@@ -238,6 +253,60 @@ function isAudio(file) {
   return type.startsWith("audio/") || /\.(mp3|wav|ogg|flac|m4a|aac|opus)$/i.test(file.key || "");
 }
 
+function isArchive(file) {
+  const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
+  return /\.(zip|rar|7z|tar|gz|bz2|xz|iso|dmg|pkg|sql\.gz)$/i.test(key);
+}
+
+function getFileExt(file) {
+  const name = typeof file === "string" ? file : file?.key || "";
+  const parts = name.split("/").pop().split(".");
+  if (parts.length > 2 && (parts.at(-1) === "gz" || parts.at(-1) === "br")) {
+    return `${parts.at(-2)}.${parts.at(-1)}`.slice(0, 7);
+  }
+  return (parts.pop() || "").slice(0, 5);
+}
+
+function getArchiveExt(file) {
+  const key = (typeof file === "string" ? file : file?.key || "").toLowerCase();
+  if (key.endsWith(".sql.gz")) return "SQL.GZ";
+  if (key.endsWith(".tar.gz")) return "TAR.GZ";
+  if (key.endsWith(".gz")) return "GZ";
+  if (key.endsWith(".zip")) return "ZIP";
+  if (key.endsWith(".7z")) return "7Z";
+  if (key.endsWith(".rar")) return "RAR";
+  if (key.endsWith(".tar")) return "TAR";
+  if (key.endsWith(".dmg")) return "DMG";
+  return "ZIP";
+}
+
+// Open File Action (Directly Dispatches to macOS Dedicated Windows)
+function handleOpenFile(file) {
+  if (isVideo(file)) {
+    const vFiles = props.files.filter(isVideo);
+    const idx = vFiles.findIndex((f) => f.key === file.key);
+    videoModal.value = {
+      visible: true,
+      file,
+      items: vFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      index: Math.max(0, idx),
+    };
+    return;
+  }
+  if (isAudio(file)) {
+    const aFiles = props.files.filter(isAudio);
+    const idx = aFiles.findIndex((f) => f.key === file.key);
+    musicModal.value = {
+      visible: true,
+      file,
+      items: aFiles.map((f) => ({ name: fileName(f.key), url: rawPath(f.key), file: f })),
+      index: Math.max(0, idx),
+    };
+    return;
+  }
+  emit("open-file", file);
+}
+
 // Rubberband Selection Box on Desktop
 const rubberband = ref({ active: false, startX: 0, startY: 0, currentX: 0, currentY: 0 });
 
@@ -252,6 +321,7 @@ const rubberbandBox = computed(() => {
 
 function onDesktopMouseDown(e) {
   if (e.target.closest(".mac-window") || e.target.closest(".dock-container") || e.target.closest(".mac-menubar") || e.target.closest(".desktop-icon-item")) return;
+  selectedFileKey.value = "";
   rubberband.value = {
     active: true,
     startX: e.clientX,
@@ -310,37 +380,43 @@ function toggleFullscreen() {
     <div class="desktop-icons-area">
       <!-- R2 Root Folder -->
       <div class="desktop-icon-item" @dblclick="emit('navigate', ''); bringToFront('finder')">
-        <div class="icon-glyph finder-glyph"><i class="ph ph-folder-simple-star-fill"></i></div>
+        <MacIcons name="finder" :size="56" />
         <span class="icon-label">天才猫 R2 根目录</span>
       </div>
 
       <!-- Photos Gallery -->
       <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'image'); bringToFront('finder')">
-        <div class="icon-glyph photo-glyph"><i class="ph ph-image-square-fill"></i></div>
+        <MacIcons name="photos" :size="56" />
         <span class="icon-label">我的照片图库</span>
       </div>
 
       <!-- Cinema -->
       <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'video'); bringToFront('finder')">
-        <div class="icon-glyph video-glyph"><i class="ph ph-film-strip-fill"></i></div>
+        <MacIcons name="cinema" :size="56" />
         <span class="icon-label">影视放映厅</span>
       </div>
 
       <!-- Music Vinyl -->
       <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'audio'); bringToFront('finder')">
-        <div class="icon-glyph music-glyph"><i class="ph ph-music-notes-fill"></i></div>
+        <MacIcons name="music" :size="56" />
         <span class="icon-label">黑胶唱片台</span>
+      </div>
+
+      <!-- Archive Utility -->
+      <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'archive'); bringToFront('finder')">
+        <MacIcons name="archive" :size="56" />
+        <span class="icon-label">压缩归档</span>
       </div>
 
       <!-- Code & Markdown IDE -->
       <div class="desktop-icon-item" @dblclick="emit('update:filterCategory', 'document'); bringToFront('finder')">
-        <div class="icon-glyph doc-glyph"><i class="ph ph-file-text-fill"></i></div>
+        <MacIcons name="preview" :size="56" />
         <span class="icon-label">办公与文档</span>
       </div>
 
       <!-- System Settings -->
       <div class="desktop-icon-item" @dblclick="bringToFront('settings')">
-        <div class="icon-glyph settings-glyph"><i class="ph ph-gear-six-fill"></i></div>
+        <MacIcons name="settings" :size="56" />
         <span class="icon-label">系统偏好设置</span>
       </div>
     </div>
@@ -370,16 +446,16 @@ function toggleFullscreen() {
         <!-- Quick View Controls in Finder Titlebar -->
         <div class="finder-titlebar-tools">
           <button class="tool-btn" :class="{ active: viewMode === 'grid' }" type="button" title="图标视图" @click="emit('update:viewMode', 'grid')">
-            <i class="ph ph-squares-four"></i>
+            <i class="ph ph-squares-four-bold"></i>
           </button>
           <button class="tool-btn" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="emit('update:viewMode', 'list')">
-            <i class="ph ph-list-bullets"></i>
+            <i class="ph ph-list-bullets-bold"></i>
           </button>
           <button class="tool-btn" type="button" title="新建文件夹" @click="emit('create-folder')">
-            <i class="ph ph-folder-plus"></i>
+            <i class="ph ph-folder-plus-bold"></i>
           </button>
           <button class="tool-btn" type="button" title="上传文件" @click="emit('upload')">
-            <i class="ph ph-upload-simple"></i>
+            <i class="ph ph-upload-simple-bold"></i>
           </button>
         </div>
       </template>
@@ -440,7 +516,9 @@ function toggleFullscreen() {
           <div class="finder-content-area" :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]">
             <!-- Parent Folder Card -->
             <article v-if="cwd && filterCategory === 'all'" class="finder-file-item folder-item parent-folder" @dblclick="emit('navigate', parentPath)">
-              <div class="item-icon"><i class="ph ph-arrow-bend-up-left-bold"></i></div>
+              <div class="item-icon">
+                <MacIcons name="folder" :size="viewMode === 'grid' ? 56 : 22" />
+              </div>
               <span class="item-title">上一级目录</span>
             </article>
 
@@ -449,10 +527,14 @@ function toggleFullscreen() {
               v-for="folder in folders"
               :key="folder"
               class="finder-file-item folder-item"
+              :class="{ 'is-selected': selectedFileKey === folder }"
+              @click="selectedFileKey = folder"
               @dblclick="emit('navigate', folder)"
               @contextmenu.stop.prevent="$emit('context', { item: folder, event: $event })"
             >
-              <div class="item-icon"><i class="ph ph-folder-simple-star-fill"></i></div>
+              <div class="item-icon">
+                <MacIcons name="folder" :size="viewMode === 'grid' ? 56 : 22" />
+              </div>
               <span class="item-title" :title="folderName(folder)">{{ folderName(folder) }}</span>
             </article>
 
@@ -461,16 +543,36 @@ function toggleFullscreen() {
               v-for="file in files"
               :key="file.key"
               class="finder-file-item"
-              :class="[isImage(file) ? 'is-img' : (isVideo(file) ? 'is-vid' : 'is-doc')]"
-              @dblclick="emit('open-file', file)"
+              :class="[{ 'is-selected': selectedFileKey === file.key }]"
+              @click="selectedFileKey = file.key"
+              @dblclick="handleOpenFile(file)"
               @contextmenu.stop.prevent="$emit('context', { item: file, event: $event })"
             >
+              <!-- 1. Real Image Thumbnail -->
               <div v-if="isImage(file)" class="item-thumbnail">
                 <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
               </div>
-              <div v-else class="item-icon">
-                <i class="ph" :class="isVideo(file) ? 'ph-film-strip-fill' : (isAudio(file) ? 'ph-music-notes-fill' : 'ph-file-text-fill')"></i>
+
+              <!-- 2. Archive File Icon (.sql.gz, .zip, .tar, etc.) -->
+              <div v-else-if="isArchive(file)" class="item-icon">
+                <MacIcons name="zip" :size="viewMode === 'grid' ? 52 : 22" :extension="getArchiveExt(file)" />
               </div>
+
+              <!-- 3. Video File Icon -->
+              <div v-else-if="isVideo(file)" class="item-icon">
+                <MacIcons name="video" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+              </div>
+
+              <!-- 4. Audio File Icon -->
+              <div v-else-if="isAudio(file)" class="item-icon">
+                <MacIcons name="audio" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+              </div>
+
+              <!-- 5. Document / Code / SQL / Other File Icon -->
+              <div v-else class="item-icon">
+                <MacIcons name="doc" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+              </div>
+
               <span class="item-title" :title="fileName(file.key)">{{ fileName(file.key) }}</span>
               <span v-if="viewMode === 'list'" class="item-size">{{ formatSize(file.size) }}</span>
               <span v-if="viewMode === 'list'" class="item-date">{{ formatDate(file.uploaded) }}</span>
@@ -480,7 +582,29 @@ function toggleFullscreen() {
       </div>
     </MacWindow>
 
-    <!-- ⚙️ Window 2: macOS System Settings -->
+    <!-- 🎬 Window 2: macOS QuickTime Video Studio Modal -->
+    <MacVideoPlayerModal
+      :visible="videoModal.visible"
+      :file="videoModal.file"
+      :items="videoModal.items"
+      :index="videoModal.index"
+      :storage-id="storageId"
+      @close="videoModal.visible = false"
+      @change="videoModal.index = $event"
+    />
+
+    <!-- 🎵 Window 3: macOS Apple Music Vinyl Turntable Modal -->
+    <MacMusicPlayerModal
+      :visible="musicModal.visible"
+      :file="musicModal.file"
+      :items="musicModal.items"
+      :index="musicModal.index"
+      :storage-id="storageId"
+      @close="musicModal.visible = false"
+      @change="musicModal.index = $event"
+    />
+
+    <!-- ⚙️ Window 4: macOS System Settings -->
     <MacWindow
       title="系统偏好设置 (System Settings)"
       icon="ph-gear-six-fill"
@@ -535,7 +659,7 @@ function toggleFullscreen() {
       :files="files"
       :folders="folders"
       @close="showSpotlight = false"
-      @select-file="emit('open-file', $event)"
+      @select-file="handleOpenFile($event)"
       @select-folder="emit('navigate', $event); bringToFront('finder')"
       @launch-app="launchApp"
     />
@@ -579,8 +703,8 @@ function toggleFullscreen() {
   top: 44px;
   left: 20px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, 92px);
-  grid-auto-rows: 100px;
+  grid-template-columns: repeat(auto-fill, 96px);
+  grid-auto-rows: 106px;
   gap: 14px;
   z-index: 5;
 }
@@ -590,7 +714,7 @@ function toggleFullscreen() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 88px;
+  width: 92px;
   padding: 8px 4px;
   border-radius: 12px;
   cursor: pointer;
@@ -600,40 +724,22 @@ function toggleFullscreen() {
 }
 
 .desktop-icon-item:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(14px);
 }
-
-.icon-glyph {
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  color: #ffffff;
-  font-size: 28px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  margin-bottom: 6px;
-}
-
-.finder-glyph { background: linear-gradient(135deg, #0a84ff, #00c6ff); }
-.photo-glyph { background: linear-gradient(135deg, #ff2d55, #ff9500); }
-.video-glyph { background: linear-gradient(135deg, #5856d6, #af52de); }
-.music-glyph { background: linear-gradient(135deg, #ff3b30, #ff2d55); }
-.doc-glyph { background: linear-gradient(135deg, #007aff, #5856d6); }
-.settings-glyph { background: linear-gradient(135deg, #8e8e93, #636366); }
 
 .icon-label {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 2px 10px rgba(0, 0, 0, 0.85);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.25;
+  margin-top: 6px;
 }
 
 /* Rubberband Box */
@@ -654,7 +760,7 @@ function toggleFullscreen() {
 
 .finder-sidebar {
   width: 200px;
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.18);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 8px;
   display: flex;
@@ -688,16 +794,16 @@ function toggleFullscreen() {
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: all 0.14s ease;
   text-align: left;
 }
 
@@ -711,7 +817,7 @@ function toggleFullscreen() {
 }
 
 .sidebar-row i {
-  font-size: 15px;
+  font-size: 16px;
   color: #0a84ff;
 }
 
@@ -732,9 +838,9 @@ function toggleFullscreen() {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 11.5px;
+  font-size: 12px;
   color: #8e8e93;
 }
 
@@ -749,10 +855,10 @@ function toggleFullscreen() {
   border: none;
   background: transparent;
   color: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
 }
 
@@ -774,11 +880,11 @@ function toggleFullscreen() {
 .finder-content-area {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 20px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  grid-auto-rows: 108px;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  grid-auto-rows: 112px;
+  gap: 14px;
 }
 
 .finder-content-area.list {
@@ -805,42 +911,38 @@ function toggleFullscreen() {
   border-color: rgba(10, 132, 255, 0.3);
 }
 
+.finder-file-item.is-selected {
+  background: rgba(10, 132, 255, 0.85);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+}
+
 .finder-content-area.list .finder-file-item {
   flex-direction: row;
-  height: 32px;
+  height: 34px;
   padding: 0 12px;
   gap: 12px;
   text-align: left;
 }
 
 .item-icon {
-  font-size: 38px;
-  color: #0a84ff;
-  margin-bottom: 4px;
   display: grid;
   place-items: center;
-}
-
-.folder-item .item-icon {
-  color: #ff9f0a;
-}
-
-.parent-folder .item-icon {
-  color: #0a84ff;
+  margin-bottom: 4px;
 }
 
 .finder-content-area.list .item-icon {
-  font-size: 18px;
   margin-bottom: 0;
 }
 
 .item-thumbnail {
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 4px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .item-thumbnail img {
@@ -850,8 +952,8 @@ function toggleFullscreen() {
 }
 
 .finder-content-area.list .item-thumbnail {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin-bottom: 0;
 }
 
@@ -876,6 +978,11 @@ function toggleFullscreen() {
   font-size: 11px;
   color: #8e8e93;
   font-family: monospace;
+}
+
+.finder-file-item.is-selected .item-size,
+.finder-file-item.is-selected .item-date {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Finder Tools */

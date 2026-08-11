@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import MacIcons from "./MacIcons.vue";
 
 const props = defineProps({
   openApps: { type: Array, default: () => ["finder"] }, // List of currently active app IDs
@@ -12,16 +13,16 @@ const mouseX = ref(null);
 const bouncingApp = ref(null);
 
 const apps = [
-  { id: "finder", name: "访达 (Finder)", icon: "ph-folder-simple-star-fill", color: "linear-gradient(135deg, #0a84ff, #00c6ff)" },
-  { id: "photos", name: "照片图库 (Photos)", icon: "ph-image-square-fill", color: "linear-gradient(135deg, #ff2d55, #ff9500)" },
-  { id: "cinema", name: "影院 (Cinema)", icon: "ph-film-strip-fill", color: "linear-gradient(135deg, #5856d6, #af52de)" },
-  { id: "music", name: "音乐 (Music)", icon: "ph-music-notes-fill", color: "linear-gradient(135deg, #ff3b30, #ff2d55)" },
-  { id: "editor", name: "代码工坊 (Xcode / TextEdit)", icon: "ph-code-fill", color: "linear-gradient(135deg, #30d158, #0a84ff)" },
-  { id: "archive", name: "归档解压 (Archive)", icon: "ph-package-fill", color: "linear-gradient(135deg, #ff9500, #ffd60a)" },
-  { id: "doc", name: "文档预览 (Preview)", icon: "ph-file-text-fill", color: "linear-gradient(135deg, #007aff, #5856d6)" },
-  { id: "settings", name: "系统设置 (Settings)", icon: "ph-gear-six-fill", color: "linear-gradient(135deg, #8e8e93, #636366)" },
-  { id: "upload", name: "新建与上传 (Upload)", icon: "ph-cloud-arrow-up-fill", color: "linear-gradient(135deg, #bf5af2, #5e5ce6)" },
-  { id: "trash", name: "废纸篓 / 存储 (Trash)", icon: "ph-trash-fill", color: "linear-gradient(135deg, #636366, #48484a)" },
+  { id: "finder", name: "访达 (Finder)", iconName: "finder" },
+  { id: "photos", name: "照片 (Photos)", iconName: "photos" },
+  { id: "cinema", name: "影院 (QuickTime)", iconName: "cinema" },
+  { id: "music", name: "音乐 (Music)", iconName: "music" },
+  { id: "editor", name: "代码工坊 (Xcode)", iconName: "xcode" },
+  { id: "archive", name: "归档解压 (Archive)", iconName: "archive" },
+  { id: "doc", name: "预览与文档 (Preview)", iconName: "preview" },
+  { id: "settings", name: "系统设置 (Settings)", iconName: "settings" },
+  { id: "upload", name: "极速上传 (Upload)", iconName: "upload" },
+  { id: "trash", name: "废纸篓 / 存储 (Trash)", iconName: "trash" },
 ];
 
 function onMouseMove(e) {
@@ -42,7 +43,7 @@ function getIconScale(index) {
   
   // Magnification radius of 140px
   if (dist > 140) return 1;
-  const scale = 1 + (0.42 * (1 - dist / 140));
+  const scale = 1 + (0.45 * (1 - dist / 140));
   return scale;
 }
 
@@ -68,9 +69,9 @@ function launchApp(app) {
         <!-- Tooltip -->
         <span class="dock-tooltip">{{ app.name }}</span>
 
-        <!-- App Icon -->
-        <div class="dock-icon-tile" :style="{ background: app.color }">
-          <i class="ph" :class="app.icon"></i>
+        <!-- Authentic macOS Vector Icon -->
+        <div class="dock-icon-tile">
+          <MacIcons :name="app.iconName" :size="52" />
         </div>
 
         <!-- Active Dot Indicator -->
