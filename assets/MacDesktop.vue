@@ -15,6 +15,7 @@ import MacNotesModal from "./MacNotesModal.vue";
 import MacDesktopWidgets from "./MacDesktopWidgets.vue";
 import MacWidgetPickerModal from "./MacWidgetPickerModal.vue";
 import MacAppStoreModal from "./MacAppStoreModal.vue";
+import MacMobileAssistiveTouch from "./MacMobileAssistiveTouch.vue";
 import ContextMenu from "./ContextMenu.vue";
 
 const props = defineProps({
@@ -201,10 +202,15 @@ onMounted(() => {
     if (e.detail) customWallpaper.value = e.detail;
   });
   window.addEventListener("keydown", handleDesktopKeydown);
+  window.addEventListener("resize", checkIsMobile);
+  document.addEventListener("fullscreenchange", () => {
+    isFullscreen.value = !!document.fullscreenElement;
+  });
 });
 
 onUnmounted(() => {
   window.removeEventListener("keydown", handleDesktopKeydown);
+  window.removeEventListener("resize", checkIsMobile);
 });
 
 // Window Management States
@@ -790,6 +796,185 @@ function onDropFiles(e) {
   if (!files.length) return;
   emit("drop-files", { files, cwd: props.cwd });
 }
+
+// 📱 Mobile Remote Desktop Interaction & Gesture System
+const isMobile = ref(window.innerWidth <= 768);
+const panMode = ref(false);
+const canvasScale = ref(1.0);
+const canvasTranslateX = ref(0);
+const canvasTranslateY = ref(0);
+const isFullscreen = ref(false);
+
+function checkIsMobile() {
+  isMobile.value = window.innerWidth <= 768;
+}
+
+let desktopTouchTimer = null;
+let desktopTouchStart = { x: 0, y: 0 };
+let pinchStartDist = 0;
+let pinchStartScale = 1.0;
+let panStart = { x: 0, y: 0, curX: 0, curY: 0 };
+
+function onDesktopTouchStart(e) {
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    desktopTouchStart = { x: t.clientX, y: t.clientY };
+
+    if (panMode.value) {
+      panStart = {
+        x: t.clientX,
+        y: t.clientY,
+        curX: canvasTranslateX.value,
+        curY: canvasTranslateY.value,
+      };
+      return;
+    }
+
+    // Long-press detection on desktop background (450ms) for Right-Click
+    if (!e.target.closest(".mac-window") && !e.target.closest(".dock-container") && !e.target.closest(".mac-menubar") && !e.target.closest(".mobile-assistive-container")) {
+      clearTimeout(desktopTouchTimer);
+      desktopTouchTimer = setTimeout(() => {
+        if (navigator.vibrate) navigator.vibrate(40);
+        contextPos.value = { x: desktopTouchStart.x, y: desktopTouchStart.y };
+        showDesktopContext.value = true;
+      }, 450);
+    }
+  } else if (e.touches.length === 2) {
+    clearTimeout(desktopTouchTimer);
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    pinchStartScale = canvasScale.value;
+    panStart = {
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2,
+      curX: canvasTranslateX.value,
+      curY: canvasTranslateY.value,
+    };
+  }
+}
+
+function onDesktopTouchMove(e) {
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    const dx = t.clientX - desktopTouchStart.x;
+    const dy = t.clientY - desktopTouchStart.y;
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      clearTimeout(desktopTouchTimer);
+    }
+
+    if (panMode.value) {
+      if (e.cancelable) e.preventDefault();
+      canvasTranslateX.value = panStart.curX + dx;
+      canvasTranslateY.value = panStart.curY + dy;
+    }
+  } else if (e.touches.length === 2) {
+    if (e.cancelable) e.preventDefault();
+    clearTimeout(desktopTouchTimer);
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    
+    // Pinch to Zoom
+    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    if (pinchStartDist > 0) {
+      const scaleFactor = dist / pinchStartDist;
+      canvasScale.value = Math.max(0.6, Math.min(2.4, pinchStartScale * scaleFactor));
+    }
+
+    // Two-finger Pan (拉屏幕)
+    const midX = (t1.clientX + t2.clientX) / 2;
+    const midY = (t1.clientY + t2.clientY) / 2;
+    canvasTranslateX.value = panStart.curX + (midX - panStart.x);
+    canvasTranslateY.value = panStart.curY + (midY - panStart.y);
+  }
+}
+
+function onDesktopTouchEnd(e) {
+  clearTimeout(desktopTouchTimer);
+  if (e.touches.length === 0) {
+    pinchStartDist = 0;
+  }
+}
+
+// Finder Item Touch Handlers: Double-Tap to Open & Long-Press for Right-Click
+let itemTouchTimer = null;
+let itemTouchStartPos = { x: 0, y: 0 };
+let lastTapTime = 0;
+let lastTapItem = null;
+
+function onTouchStartItem(item, e) {
+  if (!e.touches || !e.touches.length) return;
+  const t = e.touches[0];
+  itemTouchStartPos = { x: t.clientX, y: t.clientY };
+  
+  clearTimeout(itemTouchTimer);
+  itemTouchTimer = setTimeout(() => {
+    if (navigator.vibrate) navigator.vibrate(45);
+    emit('context', { item, event: { clientX: t.clientX, clientY: t.clientY, preventDefault: () => {} } });
+  }, 450);
+}
+
+function onTouchMoveItem(e) {
+  if (!e.touches || !e.touches.length) return;
+  const t = e.touches[0];
+  if (Math.hypot(t.clientX - itemTouchStartPos.x, t.clientY - itemTouchStartPos.y) > 10) {
+    clearTimeout(itemTouchTimer);
+  }
+}
+
+function onTouchEndItem(item, isFolder = false) {
+  clearTimeout(itemTouchTimer);
+  const now = Date.now();
+  if (now - lastTapTime < 340 && lastTapItem === item) {
+    // Double tap on mobile!
+    if (isFolder) {
+      emit('navigate', item);
+    } else {
+      handleOpenFile(item);
+    }
+    lastTapTime = 0;
+    lastTapItem = null;
+  } else {
+    lastTapTime = now;
+    lastTapItem = item;
+    selectedFileKey.value = isFolder ? item : item?.key;
+  }
+}
+
+function resetCanvasView() {
+  canvasScale.value = 1.0;
+  canvasTranslateX.value = 0;
+  canvasTranslateY.value = 0;
+  panMode.value = false;
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+function togglePanMode() {
+  panMode.value = !panMode.value;
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+function triggerMobileRightClick() {
+  contextPos.value = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  showDesktopContext.value = true;
+}
+
+function showDesktop() {
+  activeAppId.value = "";
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+const desktopCanvasStyle = computed(() => {
+  if (canvasScale.value === 1.0 && canvasTranslateX.value === 0 && canvasTranslateY.value === 0) {
+    return {};
+  }
+  return {
+    transform: `translate3d(${canvasTranslateX.value}px, ${canvasTranslateY.value}px, 0) scale(${canvasScale.value})`,
+    transformOrigin: "center center",
+    transition: panMode.value ? "none" : "transform 0.15s ease-out",
+  };
+});
+
 defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, openAppStoreEditor, openAppStoreLinks });
 </script>
 
@@ -962,259 +1147,407 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
             <button class="path-btn" @click="emit('update:filterCategory', 'all'); emit('navigate', '')">
               <i class="ph ph-house"></i> 根目录
             </button>
-            <template v-if="filterCategory !== 'all'">
-              <span class="path-divider">/</span>
-              <span class="path-category-pill">
-                <i class="ph" :class="filterCategory === 'image' ? 'ph-image-fill' : filterCategory === 'video' ? 'ph-film-strip-fill' : filterCategory === 'audio' ? 'ph-music-notes-fill' : filterCategory === 'document' ? 'ph-file-text-fill' : 'ph-package-fill'"></i>
-                <span>{{ filterCategory === 'image' ? '照片图库' : filterCategory === 'video' ? '高清影视' : filterCategory === 'audio' ? '无损音乐' : filterCategory === 'document' ? '办公文档' : '压缩归档' }}</span>
-              </span>
-            </template>
-            <template v-else-if="cwd">
-              <template v-for="(part, idx) in pathParts" :key="part + idx">
-                <span class="path-divider">/</span>
-                <button class="path-btn" @click="emit('navigate', pathUntil(idx))">{{ part }}</button>
-              </template>
-            </template>
-            <span class="finder-status-count">{{ files.length + folders.length }} 个项目</span>
-          </div>
+    <!-- 2. Desktop Primary Canvas Viewport (Supports Pinch Zoom, Pan & Drag Screen) -->
+    <div
+      class="desktop-canvas-viewport"
+      :style="desktopCanvasStyle"
+      @touchstart="onDesktopTouchStart"
+      @touchmove="onDesktopTouchMove"
+      @touchend="onDesktopTouchEnd"
+    >
+      <!-- 2.1 Desktop Primary Volumes (macOS Top-Right Align) -->
+      <div class="desktop-icons-area">
+        <!-- R2 Main Disk Volume -->
+        <div class="desktop-icon-item" @dblclick="emit('navigate', ''); bringToFront('finder')" @touchstart="onTouchStartItem('', $event)" @touchmove="onTouchMoveItem" @touchend="onTouchEndItem('', true)">
+          <MacIcons name="finder" :size="56" />
+          <span class="icon-label">天才猫 R2 根目录</span>
+        </div>
 
-          <!-- Files Grid / List Container (Right click on blank space triggers Finder folder upload/create actions) -->
-          <div
-            class="finder-content-area"
-            :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]"
-            @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })"
-          >
-            <!-- Empty Root Setup Banner -->
-            <div v-if="!cwd && filterCategory === 'all' && folders.length === 0 && files.length === 0" class="mac-empty-setup-card">
-              <div class="setup-icon"><i class="ph ph-sparkle-fill"></i></div>
-              <h3>欢迎使用天才猫 macOS 空间</h3>
-              <p>一键创建 macOS 标准个人目录（照片、视频、音乐、文档、下载），让管理和分类井井有条：</p>
-              <button class="setup-btn" type="button" @click="emit('init-system-folders')">
-                <i class="ph ph-folder-simple-plus"></i>
-                <span>一键初始化系统目录</span>
+        <!-- Photos Album -->
+        <div class="desktop-icon-item" @dblclick="launchApp('photos')" @touchstart="onTouchStartItem('photos', $event)" @touchmove="onTouchMoveItem" @touchend="launchApp('photos')">
+          <MacIcons name="photos" :size="56" />
+          <span class="icon-label">我的照片图库</span>
+        </div>
+
+        <!-- Video Cinema -->
+        <div class="desktop-icon-item" @dblclick="launchApp('cinema')" @touchstart="onTouchStartItem('cinema', $event)" @touchmove="onTouchMoveItem" @touchend="launchApp('cinema')">
+          <MacIcons name="cinema" :size="56" />
+          <span class="icon-label">影视放映厅</span>
+        </div>
+      </div>
+
+      <!-- 2.2 Floating macOS Desktop Widgets (Auto-persisted to LocalStorage) -->
+      <MacDesktopWidgets
+        :active-widgets="desktopWidgets"
+        :total-bytes="totalStorageBytes"
+        :total-files="files.length + folders.length"
+        @remove-widget="removeDesktopWidget"
+        @open-app="launchApp"
+      />
+
+      <!-- 3. Rubberband Selection Rectangle -->
+      <div v-if="rubberband.active" class="rubberband-box" :style="rubberbandBox"></div>
+
+      <!-- 4. Multi-Window Management -->
+
+      <!-- 📁 Window 1: macOS 3-Column Finder (访达) -->
+      <MacWindow
+        title="访达 (Finder)"
+        icon="ph-folder-simple-star-fill"
+        :visible="windows.finder.visible"
+        :minimized="windows.finder.minimized"
+        :z-index="windows.finder.zIndex"
+        :is-active="activeAppId === 'finder'"
+        :width="920"
+        :height="580"
+        @focus="bringToFront('finder')"
+        @close="closeWindow('finder')"
+        @minimize="minimizeWindow('finder')"
+      >
+        <template #titlebar-right>
+          <!-- Segmented View & Action Buttons in Finder Titlebar -->
+          <div class="finder-titlebar-tools">
+            <div class="finder-segmented-group">
+              <button class="seg-btn" :class="{ active: viewMode === 'grid' }" type="button" title="图标视图" @click="emit('update:viewMode', 'grid')">
+                <i class="ph ph-squares-four"></i>
+              </button>
+              <button class="seg-btn" :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="emit('update:viewMode', 'list')">
+                <i class="ph ph-list-bullets"></i>
               </button>
             </div>
 
-            <!-- Parent Folder Card -->
-            <article v-if="cwd && filterCategory === 'all'" class="finder-file-item folder-item parent-folder" @dblclick="emit('navigate', parentPath)">
-              <div class="item-icon">
-                <MacIcons name="folder" :size="viewMode === 'grid' ? 56 : 22" />
-              </div>
-              <span class="item-title">上一级目录</span>
-            </article>
-
-            <!-- Folder Items -->
-            <article
-              v-for="folder in folders"
-              :key="folder"
-              class="finder-file-item folder-item"
-              :class="{ 'is-selected': selectedFileKey === folder }"
-              @click="selectedFileKey = folder"
-              @dblclick="emit('navigate', folder)"
-              @contextmenu.stop.prevent="$emit('context', { item: folder, event: $event })"
-            >
-              <div class="item-icon">
-                <MacIcons :name="getFolderIcon(folder)" :size="viewMode === 'grid' ? 56 : 22" />
-              </div>
-              <span class="item-title" :title="folderName(folder)">{{ folderName(folder) }}</span>
-            </article>
-
-            <!-- File Items -->
-            <article
-              v-for="file in files"
-              :key="file.key"
-              class="finder-file-item"
-              :class="[{ 'is-selected': selectedFileKey === file.key }]"
-              @click="selectedFileKey = file.key"
-              @dblclick="handleOpenFile(file)"
-              @contextmenu.stop.prevent="$emit('context', { item: file, event: $event })"
-            >
-              <!-- 1. Real Image Thumbnail -->
-              <div v-if="isImage(file)" class="item-thumbnail">
-                <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
-              </div>
-
-              <!-- 2. Software Package Icon (.dmg, .pkg, .exe, .apk, .ipa) -->
-              <div v-else-if="isSoftware(file)" class="item-icon">
-                <MacIcons name="apps" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
-              </div>
-
-              <!-- 2.1 Archive File Icon (.sql.gz, .zip, .tar, etc.) -->
-              <div v-else-if="isArchive(file)" class="item-icon">
-                <MacIcons name="zip" :size="viewMode === 'grid' ? 52 : 22" :extension="getArchiveExt(file)" />
-              </div>
-
-              <!-- 3. Video File Icon -->
-              <div v-else-if="isVideo(file)" class="item-icon">
-                <MacIcons name="video" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
-              </div>
-
-              <!-- 4. Audio File Icon -->
-              <div v-else-if="isAudio(file)" class="item-icon">
-                <MacIcons name="audio" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
-              </div>
-
-              <!-- 5. Document / Code / SQL / Other File Icon -->
-              <div v-else class="item-icon">
-                <MacIcons name="doc" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
-              </div>
-
-              <span class="item-title" :title="file.key">{{ displayFileName(file.key, viewMode === 'grid') }}</span>
-              <span v-if="isSoftware(file)" class="item-platform-badge">{{ getSoftwarePlatformPill(file) }}</span>
-              <span v-if="viewMode === 'list'" class="item-size">{{ formatSize(file.size) }}</span>
-              <span v-if="viewMode === 'list'" class="item-date">{{ formatDate(file.uploaded) }}</span>
-            </article>
+            <button class="finder-action-icon-btn" type="button" title="新建文件夹" @click="emit('create-folder')">
+              <i class="ph ph-folder-plus"></i>
+            </button>
+            <button class="finder-action-icon-btn highlight" type="button" :title="filterCategory !== 'all' ? `极速上传到 ${filterCategory === 'image' ? '照片' : filterCategory === 'video' ? '视频' : filterCategory === 'audio' ? '音乐' : filterCategory === 'document' ? '文档' : '下载'} 文件夹` : '极速上传'" @click="handleFinderUpload">
+              <i class="ph ph-cloud-arrow-up"></i>
+            </button>
           </div>
+        </template>
 
-          <!-- 🧭 Finder macOS Bottom Path & Item Counter Bar -->
-          <footer class="finder-path-statusbar">
-            <div class="path-breadcrumbs">
-              <span class="crumb-item" @click="emit('navigate', '')">
-                <i class="ph ph-hard-drive"></i>
-                <span>天才猫 R2</span>
-              </span>
-              <template v-for="(part, idx) in pathParts" :key="idx">
-                <span class="crumb-sep">›</span>
-                <span class="crumb-item" @click="emit('navigate', pathUntil(idx))">
-                  <i class="ph ph-folder"></i>
-                  <span>{{ part }}</span>
+        <!-- 3-Column Finder Layout -->
+        <div class="finder-window-inner">
+          <!-- Finder Sidebar -->
+          <aside class="finder-sidebar">
+            <div class="sidebar-section">
+              <span class="section-title">收藏夹</span>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'all' && !cwd }" @click="emit('update:filterCategory', 'all'); emit('navigate', '')">
+                <i class="ph ph-house-fill"></i>
+                <span>全部文件</span>
+              </button>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'software' }" @click="emit('update:filterCategory', 'software')">
+                <i class="ph ph-app-store-logo-fill" style="color: #007aff;"></i>
+                <span>软件应用</span>
+                <span v-if="categoryCounts.software" class="sidebar-badge">{{ categoryCounts.software }}</span>
+              </button>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'image' }" @click="emit('update:filterCategory', 'image')">
+                <i class="ph ph-image-fill" style="color: #ff2d55;"></i>
+                <span>照片图库</span>
+                <span v-if="categoryCounts.image" class="sidebar-badge">{{ categoryCounts.image }}</span>
+              </button>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'video' }" @click="emit('update:filterCategory', 'video')">
+                <i class="ph ph-film-strip-fill" style="color: #af52de;"></i>
+                <span>高清影视</span>
+                <span v-if="categoryCounts.video" class="sidebar-badge">{{ categoryCounts.video }}</span>
+              </button>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'audio' }" @click="emit('update:filterCategory', 'audio')">
+                <i class="ph ph-music-notes-fill" style="color: #34c759;"></i>
+                <span>无损音乐</span>
+                <span v-if="categoryCounts.audio" class="sidebar-badge">{{ categoryCounts.audio }}</span>
+              </button>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'document' }" @click="emit('update:filterCategory', 'document')">
+                <i class="ph ph-file-text-fill" style="color: #007aff;"></i>
+                <span>办公文档</span>
+                <span v-if="categoryCounts.document" class="sidebar-badge">{{ categoryCounts.document }}</span>
+              </button>
+              <button class="sidebar-row" :class="{ active: filterCategory === 'archive' }" @click="emit('update:filterCategory', 'archive')">
+                <i class="ph ph-package-fill" style="color: #ff9500;"></i>
+                <span>压缩归档</span>
+                <span v-if="categoryCounts.archive" class="sidebar-badge">{{ categoryCounts.archive }}</span>
+              </button>
+            </div>
+
+            <div class="sidebar-section">
+              <span class="section-title">位置 (Locations)</span>
+              <button
+                v-for="s in storageOptions"
+                :key="s.id"
+                class="sidebar-row"
+                :class="{ active: storageId === s.id }"
+                @click="emit('switch-storage', s.id)"
+              >
+                <i class="ph ph-hard-drive-fill"></i> {{ s.label }}
+              </button>
+            </div>
+          </aside>
+
+          <!-- Finder Main Files Pane -->
+          <main class="finder-main-pane" @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })">
+            <!-- Finder Path Bar -->
+            <div class="finder-pathbar">
+              <button class="path-btn" @click="emit('update:filterCategory', 'all'); emit('navigate', '')">
+                <i class="ph ph-house"></i> 根目录
+              </button>
+              <template v-if="filterCategory !== 'all'">
+                <span class="path-divider">/</span>
+                <span class="path-category-pill">
+                  <i class="ph" :class="filterCategory === 'image' ? 'ph-image-fill' : filterCategory === 'video' ? 'ph-film-strip-fill' : filterCategory === 'audio' ? 'ph-music-notes-fill' : filterCategory === 'document' ? 'ph-file-text-fill' : 'ph-package-fill'"></i>
+                  <span>{{ filterCategory === 'image' ? '照片图库' : filterCategory === 'video' ? '高清影视' : filterCategory === 'audio' ? '无损音乐' : filterCategory === 'document' ? '办公文档' : '压缩归档' }}</span>
                 </span>
               </template>
+              <template v-else-if="cwd">
+                <template v-for="(part, idx) in pathParts" :key="part + idx">
+                  <span class="path-divider">/</span>
+                  <button class="path-btn" @click="emit('navigate', pathUntil(idx))">{{ part }}</button>
+                </template>
+              </template>
+              <span class="finder-status-count">{{ files.length + folders.length }} 个项目</span>
             </div>
-            <div class="statusbar-info">
-              <span v-if="selectedFileKey">已选中 1 项</span>
-              <span v-else>共 {{ files.length + folders.length }} 个项目</span>
+
+            <!-- Files Grid / List Container (Right click on blank space triggers Finder folder upload/create actions) -->
+            <div
+              class="finder-content-area"
+              :class="[viewMode, { 'waterfall-mode': filterCategory === 'image' && viewMode === 'grid' }]"
+              @contextmenu.stop.prevent="$emit('context', { item: null, event: $event })"
+            >
+              <!-- Empty Root Setup Banner -->
+              <div v-if="!cwd && filterCategory === 'all' && folders.length === 0 && files.length === 0" class="mac-empty-setup-card">
+                <div class="setup-icon"><i class="ph ph-sparkle-fill"></i></div>
+                <h3>欢迎使用天才猫 macOS 空间</h3>
+                <p>一键创建 macOS 标准个人目录（照片、视频、音乐、文档、下载），让管理和分类井井有条：</p>
+                <button class="setup-btn" type="button" @click="emit('init-system-folders')">
+                  <i class="ph ph-folder-simple-plus"></i>
+                  <span>一键初始化系统目录</span>
+                </button>
+              </div>
+
+              <!-- Parent Folder Card -->
+              <article v-if="cwd && filterCategory === 'all'" class="finder-file-item folder-item parent-folder" @dblclick="emit('navigate', parentPath)" @touchstart="onTouchStartItem(parentPath, $event)" @touchmove="onTouchMoveItem" @touchend="onTouchEndItem(parentPath, true)">
+                <div class="item-icon">
+                  <MacIcons name="folder" :size="viewMode === 'grid' ? 56 : 22" />
+                </div>
+                <span class="item-title">上一级目录</span>
+              </article>
+
+              <!-- Folder Items -->
+              <article
+                v-for="folder in folders"
+                :key="folder"
+                class="finder-file-item folder-item"
+                :class="{ 'is-selected': selectedFileKey === folder }"
+                @click="selectedFileKey = folder"
+                @dblclick="emit('navigate', folder)"
+                @touchstart="onTouchStartItem(folder, $event)"
+                @touchmove="onTouchMoveItem"
+                @touchend="onTouchEndItem(folder, true)"
+                @contextmenu.stop.prevent="$emit('context', { item: folder, event: $event })"
+              >
+                <div class="item-icon">
+                  <MacIcons :name="getFolderIcon(folder)" :size="viewMode === 'grid' ? 56 : 22" />
+                </div>
+                <span class="item-title" :title="folderName(folder)">{{ folderName(folder) }}</span>
+              </article>
+
+              <!-- File Items -->
+              <article
+                v-for="file in files"
+                :key="file.key"
+                class="finder-file-item"
+                :class="[{ 'is-selected': selectedFileKey === file.key }]"
+                @click="selectedFileKey = file.key"
+                @dblclick="handleOpenFile(file)"
+                @touchstart="onTouchStartItem(file, $event)"
+                @touchmove="onTouchMoveItem"
+                @touchend="onTouchEndItem(file, false)"
+                @contextmenu.stop.prevent="$emit('context', { item: file, event: $event })"
+              >
+                <!-- 1. Real Image Thumbnail -->
+                <div v-if="isImage(file)" class="item-thumbnail">
+                  <img :src="imageUrl(file)" loading="lazy" :alt="fileName(file.key)" />
+                </div>
+
+                <!-- 2. Software Package Icon (.dmg, .pkg, .exe, .apk, .ipa) -->
+                <div v-else-if="isSoftware(file)" class="item-icon">
+                  <MacIcons name="apps" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+                </div>
+
+                <!-- 2.1 Archive File Icon (.sql.gz, .zip, .tar, etc.) -->
+                <div v-else-if="isArchive(file)" class="item-icon">
+                  <MacIcons name="zip" :size="viewMode === 'grid' ? 52 : 22" :extension="getArchiveExt(file)" />
+                </div>
+
+                <!-- 3. Video File Icon -->
+                <div v-else-if="isVideo(file)" class="item-icon">
+                  <MacIcons name="video" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+                </div>
+
+                <!-- 4. Audio File Icon -->
+                <div v-else-if="isAudio(file)" class="item-icon">
+                  <MacIcons name="audio" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+                </div>
+
+                <!-- 5. Document / Code / SQL / Other File Icon -->
+                <div v-else class="item-icon">
+                  <MacIcons name="doc" :size="viewMode === 'grid' ? 52 : 22" :extension="getFileExt(file)" />
+                </div>
+
+                <span class="item-title" :title="file.key">{{ displayFileName(file.key, viewMode === 'grid') }}</span>
+                <span v-if="isSoftware(file)" class="item-platform-badge">{{ getSoftwarePlatformPill(file) }}</span>
+                <span v-if="viewMode === 'list'" class="item-size">{{ formatSize(file.size) }}</span>
+                <span v-if="viewMode === 'list'" class="item-date">{{ formatDate(file.uploaded) }}</span>
+              </article>
             </div>
-          </footer>
-        </main>
-      </div>
-    </MacWindow>
 
-    <!-- 🎬 Window 2: macOS QuickTime Video Studio Modal -->
-    <MacVideoPlayerModal
-      :visible="videoModal.visible"
-      :minimized="videoModal.minimized"
-      :file="videoModal.file"
-      :items="videoModal.items"
-      :index="videoModal.index"
-      :storage-id="storageId"
-      :z-index="windowZ.video"
-      :is-active="activeAppId === 'video'"
-      @focus="bringToFront('video')"
-      @close="videoModal.visible = false"
-      @minimize="videoModal.minimized = true"
-      @change="videoModal.index = $event"
-      @upload="emit('upload', '视频/')"
-    />
+            <!-- 🧭 Finder macOS Bottom Path & Item Counter Bar -->
+            <footer class="finder-path-statusbar">
+              <div class="path-breadcrumbs">
+                <span class="crumb-item" @click="emit('navigate', '')">
+                  <i class="ph ph-hard-drive"></i>
+                  <span>天才猫 R2</span>
+                </span>
+                <template v-for="(part, idx) in pathParts" :key="idx">
+                  <span class="crumb-sep">›</span>
+                  <span class="crumb-item" @click="emit('navigate', pathUntil(idx))">
+                    <i class="ph ph-folder"></i>
+                    <span>{{ part }}</span>
+                  </span>
+                </template>
+              </div>
+              <div class="statusbar-info">
+                <span v-if="selectedFileKey">已选中 1 项</span>
+                <span v-else>共 {{ files.length + folders.length }} 个项目</span>
+              </div>
+            </footer>
+          </main>
+        </div>
+      </MacWindow>
 
-    <!-- 🎵 Window 3: macOS Apple Music Vinyl Turntable Modal -->
-    <MacMusicPlayerModal
-      :visible="musicModal.visible"
-      :minimized="musicModal.minimized"
-      :file="musicModal.file"
-      :items="musicModal.items"
-      :index="musicModal.index"
-      :storage-id="storageId"
-      :z-index="windowZ.music"
-      :is-active="activeAppId === 'music'"
-      @focus="bringToFront('music')"
-      @close="musicModal.visible = false"
-      @minimize="musicModal.minimized = true"
-      @change="musicModal.index = $event"
-      @upload="emit('upload', '音乐/')"
-    />
-
-    <!-- 🖼️ Window 4: macOS Photos Pro Viewer Modal -->
-    <MacPhotosModal
-      :visible="photosModal.visible"
-      :minimized="photosModal.minimized"
-      :file="photosModal.file"
-      :items="photosModal.items"
-      :index="photosModal.index"
-      :storage-id="storageId"
-      :z-index="windowZ.photos"
-      :is-active="activeAppId === 'photos'"
-      @focus="bringToFront('photos')"
-      @close="photosModal.visible = false"
-      @minimize="photosModal.minimized = true"
-      @change="photosModal.index = $event"
-      @set-wallpaper="setAsWallpaper"
-      @upload="emit('upload', '照片/')"
-    />
-
-    <!-- 🔢 Window 5: macOS Calculator Modal -->
-    <MacCalculatorModal
-      :visible="calculatorModal.visible"
-      :minimized="calculatorModal.minimized"
-      :z-index="windowZ.calculator"
-      :is-active="activeAppId === 'calculator'"
-      @focus="bringToFront('calculator')"
-      @close="calculatorModal.visible = false"
-      @minimize="calculatorModal.minimized = true"
-    />
-
-    <!-- 📝 Window 6: macOS Notes Modal -->
-    <MacNotesModal
-      :visible="notesModal.visible"
-      :minimized="notesModal.minimized"
-      :z-index="windowZ.notes"
-      :is-active="activeAppId === 'notes'"
-      @focus="bringToFront('notes')"
-      @close="notesModal.visible = false"
-      @minimize="notesModal.minimized = true"
-    />
-
-    <!-- 🛍️ Window 7: macOS App Store & Software Hub Modal -->
-    <MacAppStoreModal
-      ref="appStoreRef"
-      :visible="appStoreModal.visible"
-      :minimized="appStoreModal.minimized"
-      :files="files"
-      :all-files="allFiles"
-      :metadata="appsMetadata"
-      :storage-id="storageId"
-      :z-index="windowZ.appstore"
-      :is-active="activeAppId === 'appstore'"
-      :auth-credentials="authCredentials"
-      @focus="bringToFront('appstore')"
-      @close="appStoreModal.visible = false"
-      @minimize="appStoreModal.minimized = true"
-      @save-metadata="emit('save-apps-metadata', $event)"
-      @upload="emit('upload', '软件/')"
-      @refresh="emit('refresh')"
-    />
-
-    <!-- ⚙️ Window 4: macOS System Settings -->
-    <MacWindow
-      title="系统偏好设置 (System Settings)"
-      icon="ph-gear-six-fill"
-      :visible="windows.settings.visible"
-      :minimized="windows.settings.minimized"
-      :z-index="windows.settings.zIndex"
-      :is-active="activeAppId === 'settings'"
-      :width="760"
-      :height="500"
-      :initial-x="180"
-      :initial-y="90"
-      @focus="bringToFront('settings')"
-      @close="closeWindow('settings')"
-      @minimize="minimizeWindow('settings')"
-    >
-      <MacSettingsModal
-        :visible="windows.settings.visible"
-        :theme="theme"
+      <!-- 🎬 Window 2: macOS QuickTime Video Studio Modal -->
+      <MacVideoPlayerModal
+        :visible="videoModal.visible"
+        :minimized="videoModal.minimized"
+        :file="videoModal.file"
+        :items="videoModal.items"
+        :index="videoModal.index"
         :storage-id="storageId"
-        :storage-options="storageOptions"
-        :current-wallpaper="currentWallpaper"
-        :wallpapers="wallpapers"
-        :auth-credentials="authCredentials"
-        @toggle-theme="emit('toggle-theme')"
-        @switch-storage="emit('switch-storage', $event)"
-        @change-wallpaper="changeWallpaper"
-        @login="emit('login', $event)"
-        @logout="emit('logout')"
+        :z-index="windowZ.video"
+        :is-active="activeAppId === 'video'"
+        @focus="bringToFront('video')"
+        @close="videoModal.visible = false"
+        @minimize="videoModal.minimized = true"
+        @change="videoModal.index = $event"
+        @upload="emit('upload', '视频/')"
       />
-    </MacWindow>
+
+      <!-- 🎵 Window 3: macOS Apple Music Vinyl Turntable Modal -->
+      <MacMusicPlayerModal
+        :visible="musicModal.visible"
+        :minimized="musicModal.minimized"
+        :file="musicModal.file"
+        :items="musicModal.items"
+        :index="musicModal.index"
+        :storage-id="storageId"
+        :z-index="windowZ.music"
+        :is-active="activeAppId === 'music'"
+        @focus="bringToFront('music')"
+        @close="musicModal.visible = false"
+        @minimize="musicModal.minimized = true"
+        @change="musicModal.index = $event"
+        @upload="emit('upload', '音乐/')"
+      />
+
+      <!-- 🖼️ Window 4: macOS Photos Pro Viewer Modal -->
+      <MacPhotosModal
+        :visible="photosModal.visible"
+        :minimized="photosModal.minimized"
+        :file="photosModal.file"
+        :items="photosModal.items"
+        :index="photosModal.index"
+        :storage-id="storageId"
+        :z-index="windowZ.photos"
+        :is-active="activeAppId === 'photos'"
+        @focus="bringToFront('photos')"
+        @close="photosModal.visible = false"
+        @minimize="photosModal.minimized = true"
+        @change="photosModal.index = $event"
+        @set-wallpaper="setAsWallpaper"
+        @upload="emit('upload', '照片/')"
+      />
+
+      <!-- 🔢 Window 5: macOS Calculator Modal -->
+      <MacCalculatorModal
+        :visible="calculatorModal.visible"
+        :minimized="calculatorModal.minimized"
+        :z-index="windowZ.calculator"
+        :is-active="activeAppId === 'calculator'"
+        @focus="bringToFront('calculator')"
+        @close="calculatorModal.visible = false"
+        @minimize="calculatorModal.minimized = true"
+      />
+
+      <!-- 📝 Window 6: macOS Notes Modal -->
+      <MacNotesModal
+        :visible="notesModal.visible"
+        :minimized="notesModal.minimized"
+        :z-index="windowZ.notes"
+        :is-active="activeAppId === 'notes'"
+        @focus="bringToFront('notes')"
+        @close="notesModal.visible = false"
+        @minimize="notesModal.minimized = true"
+      />
+
+      <!-- 🛍️ Window 7: macOS App Store & Software Hub Modal -->
+      <MacAppStoreModal
+        ref="appStoreRef"
+        :visible="appStoreModal.visible"
+        :minimized="appStoreModal.minimized"
+        :files="files"
+        :all-files="allFiles"
+        :metadata="appsMetadata"
+        :storage-id="storageId"
+        :z-index="windowZ.appstore"
+        :is-active="activeAppId === 'appstore'"
+        :auth-credentials="authCredentials"
+        @focus="bringToFront('appstore')"
+        @close="appStoreModal.visible = false"
+        @minimize="appStoreModal.minimized = true"
+        @save-metadata="emit('save-apps-metadata', $event)"
+        @upload="emit('upload', '软件/')"
+        @refresh="emit('refresh')"
+      />
+
+      <!-- ⚙️ Window 4: macOS System Settings -->
+      <MacWindow
+        title="系统偏好设置 (System Settings)"
+        icon="ph-gear-six-fill"
+        :visible="windows.settings.visible"
+        :minimized="windows.settings.minimized"
+        :z-index="windows.settings.zIndex"
+        :is-active="activeAppId === 'settings'"
+        :width="760"
+        :height="500"
+        :initial-x="180"
+        :initial-y="90"
+        @focus="bringToFront('settings')"
+        @close="closeWindow('settings')"
+        @minimize="minimizeWindow('settings')"
+      >
+        <MacSettingsModal
+          :visible="windows.settings.visible"
+          :theme="theme"
+          :storage-id="storageId"
+          :storage-options="storageOptions"
+          :current-wallpaper="currentWallpaper"
+          :wallpapers="wallpapers"
+          :auth-credentials="authCredentials"
+          @toggle-theme="emit('toggle-theme')"
+          @switch-storage="emit('switch-storage', $event)"
+          @change-wallpaper="changeWallpaper"
+          @login="emit('login', $event)"
+          @logout="emit('logout')"
+        />
+      </MacWindow>
+    </div>
 
     <!-- 5. macOS Control Center Dropdown -->
     <MacControlCenter
@@ -1271,6 +1604,22 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
       :active-app-id="activeAppId"
       @launch="launchApp"
     />
+
+    <!-- 9. Mobile Remote Desktop AssistiveTouch Floating Controller -->
+    <MacMobileAssistiveTouch
+      v-if="isMobile"
+      :pan-mode="panMode"
+      :scale="canvasScale"
+      :is-fullscreen="isFullscreen"
+      @toggle-pan="togglePanMode"
+      @reset-view="resetCanvasView"
+      @open-finder="bringToFront('finder')"
+      @open-spotlight="showSpotlight = true"
+      @open-control-center="showControlCenter = !showControlCenter"
+      @show-desktop="showDesktop"
+      @trigger-right-click="triggerMobileRightClick"
+      @toggle-fullscreen="toggleFullscreen"
+    />
   </div>
 </template>
 
@@ -1285,6 +1634,15 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
   background-size: cover;
   background-position: center;
   transition: background 0.4s ease;
+}
+
+.desktop-canvas-viewport {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  touch-action: pan-x pan-y pinch-zoom;
+  overflow: visible;
 }
 
 /* Desktop Icons Grid (macOS Top-Right Volume Column) */

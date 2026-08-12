@@ -82,7 +82,7 @@ function getEventXY(e) {
 function handleMouseDownHeader(e) {
   if (e.target.closest(".traffic-lights") || e.target.closest("button") || e.target.closest("input")) return;
   emit("focus");
-  if (isMaximized.value || isMobile.value) return;
+  if (isMaximized.value) return;
 
   isDragging.value = true;
   const { x, y } = getEventXY(e);
