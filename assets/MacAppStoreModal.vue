@@ -26,6 +26,70 @@ const editingApp = ref(null); // For metadata editor modal
 const linkModalApp = ref(null); // For "获取下载链接" multi-link picker modal
 const copySuccessTip = ref("");
 
+// Release & Hot Update State
+const releaseForm = ref({
+  app: "dy",
+  version: "1.0.1",
+  minSupportedVersion: "1.0.0",
+  patchUrl: "/apps/dy/patch_v1.0.1.zip",
+  patchMd5: "",
+  patchSize: 229629,
+  fullSetupUrl: "/apps/dy/天才猫直播助手-Setup-v1.0.1.exe",
+  forceUpdate: false,
+  changelog: "1. 悬浮时钟增加双击鼠标右键快速退出功能；\n2. 首选项全景自适应排版优化；\n3. 启动防重复多开与原生机器码预编译支持。",
+});
+const currentLiveVersion = ref(null);
+const isPublishing = ref(false);
+const publishStatusMsg = ref("");
+
+async function fetchLiveVersion(app = "dy") {
+  try {
+    const res = await fetch(`/api/update?app=${app}&_t=${Date.now()}`);
+    if (res.ok) {
+      currentLiveVersion.value = await res.json();
+    } else {
+      currentLiveVersion.value = null;
+    }
+  } catch (e) {
+    currentLiveVersion.value = null;
+  }
+}
+
+watch(currentTab, (newTab) => {
+  if (newTab === "releases") {
+    fetchLiveVersion(releaseForm.value.app);
+  }
+});
+
+async function submitPublish() {
+  if (!releaseForm.value.version) {
+    alert("请输入版本号！");
+    return;
+  }
+  isPublishing.value = true;
+  publishStatusMsg.value = "正在发布至 Cloudflare R2 并刷新 CDN...";
+  try {
+    const res = await fetch("/api/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(releaseForm.value),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      publishStatusMsg.value = "🎉 发布成功！所有在线客户端已可感知最新版本。";
+      copySuccessTip.value = "版本发布成功并已实时同步至 CDN！";
+      setTimeout(() => (copySuccessTip.value = ""), 3000);
+      await fetchLiveVersion(releaseForm.value.app);
+    } else {
+      publishStatusMsg.value = "❌ 发布失败: " + (data.error || "未知错误");
+    }
+  } catch (e) {
+    publishStatusMsg.value = "❌ 网络错误: " + e.message;
+  } finally {
+    isPublishing.value = false;
+  }
+}
+
 // Category definitions with rich, tactile multi-stop gradient color tokens & SF glyphs
 const categories = [
   {
@@ -35,6 +99,14 @@ const categories = [
     icon: "ph-compass-rose-fill",
     gradient: "linear-gradient(135deg, #007aff 0%, #38bdf8 100%)",
     shadow: "0 4px 12px rgba(0, 122, 255, 0.42)",
+  },
+  {
+    id: "releases",
+    name: "🚀 热更发版",
+    subtitle: "Releases",
+    icon: "ph-rocket-launch-fill",
+    gradient: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+    shadow: "0 4px 12px rgba(14, 165, 233, 0.42)",
   },
   {
     id: "design",
@@ -620,7 +692,82 @@ defineExpose({
         </section>
 
         <!-- 📦 2. Section Header -->
-        <div class="store-grid-header">
+        <!-- 🚀 2.5 Software Releases & Hot Update Console (When currentTab === 'releases') -->
+        <section v-if="currentTab === 'releases'" class="store-releases-view">
+          <div class="releases-header-card">
+            <div class="releases-header-icon">
+              <i class="ph ph-rocket-launch-fill"></i>
+            </div>
+            <div class="releases-header-info">
+              <h3>软件版本与热更新管理控制台</h3>
+              <p>一键发布增量补丁（0.22MB）与全量安装包，秒级同步至 Cloudflare R2 全球 CDN 节点，客户端启动无感热更。</p>
+            </div>
+            <div class="live-version-badge" v-if="currentLiveVersion">
+              <span class="live-dot-pulse"></span>
+              <span>当前线上版本：<strong>v{{ currentLiveVersion.version }}</strong></span>
+            </div>
+          </div>
+
+          <div class="releases-form-card">
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label>软件标识 (App Slug)</label>
+                <select v-model="releaseForm.app" @change="fetchLiveVersion(releaseForm.app)">
+                  <option value="dy">天才猫直播助手 (dy)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>发布版本号 (Version)</label>
+                <input v-model="releaseForm.version" type="text" placeholder="例如 1.0.1" />
+              </div>
+            </div>
+
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label>增量补丁包路径 (Patch URL)</label>
+                <input v-model="releaseForm.patchUrl" type="text" placeholder="例如 /apps/dy/patch_v1.0.1.zip" />
+              </div>
+              <div class="form-group">
+                <label>全量安装包路径 (Full Setup URL)</label>
+                <input v-model="releaseForm.fullSetupUrl" type="text" placeholder="例如 /apps/dy/天才猫直播助手-Setup-v1.0.1.exe" />
+              </div>
+            </div>
+
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label>补丁 MD5 校验码 (可选)</label>
+                <input v-model="releaseForm.patchMd5" type="text" placeholder="留空则不校验 MD5" />
+              </div>
+              <div class="form-group">
+                <label>补丁大小 (字节数 Bytes)</label>
+                <input v-model="releaseForm.patchSize" type="number" placeholder="229629" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>更新说明 (Changelog，展示给用户)</label>
+              <textarea v-model="releaseForm.changelog" rows="4" placeholder="1. 修复已知问题；&#10;2. 新增便捷功能。"></textarea>
+            </div>
+
+            <div class="form-row-checkbox">
+              <label class="checkbox-label">
+                <input v-model="releaseForm.forceUpdate" type="checkbox" />
+                <span>设为紧急强制更新 (客户端下次启动前必须更新)</span>
+              </label>
+            </div>
+
+            <div class="releases-action-bar">
+              <div class="status-tip-text" v-if="publishStatusMsg">{{ publishStatusMsg }}</div>
+              <button class="btn-publish-submit" type="button" :disabled="isPublishing" @click="submitPublish">
+                <i class="ph ph-paper-plane-tilt-fill"></i>
+                <span>{{ isPublishing ? '正在发布...' : '🚀 立即发布并推送更新' }}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Category Header Bar -->
+        <div v-else-if="currentTab !== 'discover'" class="store-grid-header">
           <div class="grid-title-row">
             <div class="grid-title-left">
               <h3>{{ categories.find(c => c.id === currentTab)?.name || '软件应用库' }}</h3>
@@ -631,7 +778,7 @@ defineExpose({
         </div>
 
         <!-- 🎨 3. Refined Apple-Style Empty State Showcase -->
-        <div v-if="filteredApps.length === 0" class="store-empty-showcase">
+        <div v-if="currentTab !== 'releases' && filteredApps.length === 0" class="store-empty-showcase">
           <div class="empty-glow-orbit"></div>
           <div class="empty-app-icon-wrap">
             <div
@@ -2469,6 +2616,132 @@ defineExpose({
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, 10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Releases & Hot Update Console */
+.store-releases-view {
+  padding: 10px 4px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.releases-header-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(99, 102, 241, 0.12) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.28);
+}
+.releases-header-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+  flex-shrink: 0;
+}
+.releases-header-info {
+  flex: 1;
+}
+.releases-header-info h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.releases-header-info p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--store-text-sub, #64748b);
+  line-height: 1.45;
+}
+.live-version-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-size: 12px;
+  color: #10b981;
+  white-space: nowrap;
+}
+.live-dot-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.releases-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 16px;
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.7));
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  backdrop-filter: blur(20px);
+}
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.form-row-checkbox {
+  margin: 2px 0 6px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.releases-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.status-tip-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0ea5e9;
+}
+.btn-publish-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #007aff 0%, #38bdf8 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.35);
+  transition: all 0.15s ease;
+}
+.btn-publish-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.45);
+}
+.btn-publish-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .fade-slide-enter-active,
