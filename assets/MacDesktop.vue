@@ -2356,7 +2356,7 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
     font-size: 28px;
   }
 }
-</style>
+
 
 
 
@@ -2393,3 +2393,4 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
   0%, 100% { box-shadow: 0 0 10px rgba(14, 165, 233, 0.3); }
   50% { box-shadow: 0 0 18px rgba(14, 165, 233, 0.7); }
 }
+</style>
