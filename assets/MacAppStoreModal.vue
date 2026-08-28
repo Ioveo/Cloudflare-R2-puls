@@ -870,42 +870,42 @@ onMounted(() => {
   }
 });
 
+function buildOrFindItem(fileOrKey) {
+  if (!fileOrKey) return null;
+  const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
+  let item = softwareItems.value.find(a => 
+    a.key === key || 
+    (a.file && a.file.key === key) ||
+    (key && a.key && (a.key.endsWith(key) || key.endsWith(a.key)))
+  );
+  if (!item && key) {
+    const fileObj = (typeof fileOrKey === "object" && fileOrKey) ? fileOrKey : { key };
+    const custom = getAppMetadata(props.metadata, key);
+    const def = parseDefaultMeta(fileObj);
+    item = {
+      file: fileObj,
+      key: fileObj.key,
+      size: fileObj.size || 0,
+      uploaded: fileObj.uploaded || "",
+      title: custom.title || def.title,
+      version: custom.version || def.version,
+      category: custom.category || def.category,
+      platform: custom.platform || def.platform,
+      summary: custom.summary || def.summary,
+      features: custom.features && custom.features.length ? custom.features : def.features,
+      installGuide: custom.installGuide || def.installGuide,
+      appName: def.appName,
+      icon: custom.icon || "",
+      screenshots: custom.screenshots || [],
+      custom: !!(custom && custom.title),
+    };
+  }
+  return item;
+}
+
 defineExpose({
   openDetailByKey(fileOrKey) {
-    if (!fileOrKey) return;
-    const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
-    
-    // 1. 在已加载的软件列表中查找
-    let item = softwareItems.value.find(a => 
-      a.key === key || 
-      (a.file && a.file.key === key) ||
-      (key && a.key && (a.key.endsWith(key) || key.endsWith(a.key)))
-    );
-    
-    // 2. 若列表尚未准备好或未匹配，实时动态构建
-    if (!item && key) {
-      const fileObj = (typeof fileOrKey === "object" && fileOrKey) ? fileOrKey : { key };
-      const custom = getAppMetadata(props.metadata, key);
-      const def = parseDefaultMeta(fileObj);
-      item = {
-        file: fileObj,
-        key: fileObj.key,
-        size: fileObj.size || 0,
-        uploaded: fileObj.uploaded || "",
-        title: custom.title || def.title,
-        version: custom.version || def.version,
-        category: custom.category || def.category,
-        platform: custom.platform || def.platform,
-        summary: custom.summary || def.summary,
-        features: custom.features && custom.features.length ? custom.features : def.features,
-        installGuide: custom.installGuide || def.installGuide,
-        appName: def.appName,
-        icon: custom.icon || "",
-        screenshots: custom.screenshots || [],
-        custom: !!(custom && custom.title),
-      };
-    }
-    
+    const item = buildOrFindItem(fileOrKey);
     if (item) {
       selectedApp.value = item;
     }
@@ -913,12 +913,12 @@ defineExpose({
   openDetail(app) {
     if (app) selectedApp.value = app;
   },
-  openEditorByKey(key) {
-    const item = softwareItems.value.find(a => a.key === key);
+  openEditorByKey(fileOrKey) {
+    const item = buildOrFindItem(fileOrKey);
     if (item) openEditor(item);
   },
-  openLinksByKey(key) {
-    const item = softwareItems.value.find(a => a.key === key);
+  openLinksByKey(fileOrKey) {
+    const item = buildOrFindItem(fileOrKey);
     if (item) openGetLinks(item);
   },
   softwareItems,
@@ -966,6 +966,906 @@ defineExpose({
         </button>
       </div>
     </template>
+
+    <!-- App Store 2-Column High-End Layout -->
+    <div class="appstore-layout">
+      <!-- Left Glass Sidebar -->
+      <aside class="store-sidebar">
+        <!-- Brand Header inside Sidebar -->
+        <div class="sidebar-brand-header">
+          <div class="brand-icon-box">
+            <MacIcons name="appstore" :size="32" />
+          </div>
+          <div class="brand-text-col">
+            <span class="brand-title">App Store</span>
+            <span class="brand-sub">软件工坊 · 极速分发</span>
+          </div>
+        </div>
+
+        <div class="sidebar-sec-title">探索与分类</div>
+
+        <!-- Category Nav -->
+        <nav class="store-nav">
+          <button
+            v-for="cat in categories"
+            :key="cat.id"
+            class="store-nav-item"
+            :class="{ active: currentTab === cat.id }"
+            type="button"
+            @click="currentTab = cat.id"
+          >
+            <!-- Tactile Multi-stop Gradient SF Icon Badge -->
+            <div
+              class="nav-cat-icon"
+              :style="{ background: cat.gradient, boxShadow: cat.shadow }"
+            >
+              <i class="ph" :class="cat.icon"></i>
+            </div>
+            <div class="nav-text-col">
+              <span class="nav-cat-name">{{ cat.name }}</span>
+            </div>
+            <span v-if="cat.id !== 'discover'" class="nav-cat-badge">
+              {{ cat.id === 'all' ? softwareItems.length : softwareItems.filter(a => (a.category || '').toLowerCase() === cat.id.toLowerCase()).length }}
+            </span>
+          </button>
+        </nav>
+
+        <!-- Storage Status Pill -->
+        <div class="store-sidebar-footer">
+          <div class="footer-chip">
+            <span class="live-dot"></span>
+            <span>Cloudflare R2 直连加速</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Main Content Area -->
+      <main class="store-content-pane">
+        <!-- 🌟 1. Discover Hero Banner (When currentTab === 'discover' & no search) -->
+        <section v-if="currentTab === 'discover' && !searchQuery" class="store-hero-banner">
+          <div class="hero-backdrop-glow"></div>
+          <div class="hero-content">
+            <div class="hero-tag">🌟 精选主推 · FEATURED APP</div>
+            <h2 class="hero-title">{{ heroApp.title }}</h2>
+            <p class="hero-summary">{{ heroApp.summary }}</p>
+            <div class="hero-meta-row">
+              <span class="meta-pill platform-pill"><i class="ph ph-laptop-fill"></i> {{ heroApp.platform }}</span>
+              <span class="meta-pill version-pill"><i class="ph ph-tag-fill"></i> {{ heroApp.version }}</span>
+              <span v-if="heroApp.size" class="meta-pill size-pill"><i class="ph ph-hard-drive-fill"></i> {{ formatSize(heroApp.size) }}</span>
+            </div>
+            <div class="hero-actions">
+              <button v-if="heroApp.file" class="hero-get-btn" type="button" @click="openGetLinks(heroApp)">
+                <i class="ph ph-link-simple-bold"></i>
+                <span>获取下载链接</span>
+              </button>
+              <button v-if="heroApp.file" class="hero-detail-btn" type="button" @click="openDetail(heroApp)">
+                <i class="ph ph-info-bold"></i>
+                <span>功能与安装指南</span>
+              </button>
+              <button v-if="!heroApp.file" class="hero-get-btn" type="button" @click="emit('upload', '软件/')">
+                <i class="ph ph-upload-simple-bold"></i>
+                <span>发布第一款软件</span>
+              </button>
+            </div>
+          </div>
+          <div class="hero-badge-icon">
+            <MacIcons name="appstore" :size="108" />
+          </div>
+        </section>
+
+        <!-- 📦 2. Section Header -->
+        <!-- 🚀 2.5 Software Releases & Hot Update Console (When currentTab === 'releases') -->
+        <section v-if="currentTab === 'releases'" class="store-releases-view">
+          <div class="releases-header-card">
+            <div class="releases-header-icon">
+              <i class="ph ph-rocket-launch-fill"></i>
+            </div>
+            <div class="releases-header-info">
+              <h3>软件版本与热更新管理控制台</h3>
+              <p>一键发布增量补丁（0.22MB）与全量安装包，秒级同步至 Cloudflare R2 全球 CDN 节点，客户端启动无感热更。</p>
+            </div>
+            <div class="live-version-badge" v-if="currentLiveVersion && currentLiveVersion.version">
+              <span class="live-dot-pulse"></span>
+              <span>当前线上版本：<strong>v{{ currentLiveVersion.version }}</strong></span>
+            </div>
+            <div class="live-version-badge live-version-empty" v-else>
+              <span class="live-dot-pulse bg-amber-500"></span>
+              <span>暂未发布线上版本</span>
+            </div>
+          </div>
+
+          <!-- 应用快捷切换选择栏 -->
+          <div class="app-presets-row">
+            <button 
+              v-for="(p, k) in appPresets" 
+              :key="k" 
+              type="button"
+              class="app-preset-btn"
+              :class="{ active: releaseForm.app === k }"
+              @click="switchReleaseApp(k)"
+            >
+              <span class="preset-icon">{{ k === 'live' ? '⚡' : k === 'datacenter' ? '📊' : '💎' }}</span>
+              <span class="preset-name">{{ p.name }}</span>
+              <span class="preset-slug">({{ k }})</span>
+            </button>
+          </div>
+
+          <div class="releases-form-card">
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label>软件标识 (App Slug)</label>
+                <select v-model="releaseForm.app" @change="switchReleaseApp(releaseForm.app)">
+                  <option value="live">⚡ 天才猫极速直播助手 (live - Go 极速版)</option>
+                  <option value="dy">💎 天才猫直播助手 (dy - C# 旗舰版)</option>
+                  <option value="datacenter">📊 天才猫数据中心 (datacenter - Go 2.0)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <div class="label-with-actions">
+                  <label>发布版本号 (Version)</label>
+                  <div class="version-bump-group">
+                    <button type="button" class="btn-bump-pill" @click="bumpVersion('patch')" title="补丁自增 +0.0.1">+0.0.1 (Patch)</button>
+                    <button type="button" class="btn-bump-pill" @click="bumpVersion('minor')" title="特性自增 +0.1.0">+0.1.0 (Minor)</button>
+                    <button type="button" class="btn-bump-pill" @click="bumpVersion('major')" title="大版本 +1.0.0">+1.0.0 (Major)</button>
+                  </div>
+                </div>
+                <div class="input-with-prefix">
+                  <span class="input-prefix">v</span>
+                  <input v-model="releaseForm.version" type="text" placeholder="例如 2.0.1" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row-2col">
+              <div class="form-group">
+                <div class="label-with-actions">
+                  <label>增量补丁 / 单文件更新包路径 (Patch URL)</label>
+                  <div class="action-btn-group">
+                    <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('patchUrl')">
+                      <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
+                    </button>
+                    <button type="button" class="btn-local-upload" @click="triggerLocalUpload('patchUrl')">
+                      <i class="ph ph-upload-simple-bold"></i> 📤 本地上传
+                    </button>
+                  </div>
+                  <input type="file" ref="localPatchInput" accept=".exe,.zip,.dmg,.7z,.rar,.tar.gz" style="display: none" @change="onLocalFileUpload($event, 'patchUrl')" />
+                </div>
+                <input v-model="releaseForm.patchUrl" type="text" placeholder="例如 /apps/live/TianCaiMao.LiveAssistant.exe" />
+              </div>
+
+              <div class="form-group">
+                <div class="label-with-actions">
+                  <label>全量安装包路径 (Full Setup URL)</label>
+                  <div class="action-btn-group">
+                    <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('fullSetupUrl')">
+                      <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
+                    </button>
+                    <button type="button" class="btn-local-upload" @click="triggerLocalUpload('fullSetupUrl')">
+                      <i class="ph ph-upload-simple-bold"></i> 📤 本地上传
+                    </button>
+                  </div>
+                  <input type="file" ref="localSetupInput" accept=".exe,.zip,.dmg,.7z,.rar,.tar.gz" style="display: none" @change="onLocalFileUpload($event, 'fullSetupUrl')" />
+                </div>
+                <input v-model="releaseForm.fullSetupUrl" type="text" placeholder="例如 /apps/live/天才猫极速直播助手-Setup-v2.0.0.exe" />
+              </div>
+            </div>
+
+            <div class="form-row-3col">
+              <div class="form-group">
+                <label>最低兼容支持版本 (Min Supported)</label>
+                <input v-model="releaseForm.minSupportedVersion" type="text" placeholder="低于此版本将强制全量更新" />
+              </div>
+              <div class="form-group">
+                <label>补丁 MD5 校验码 (可选)</label>
+                <input v-model="releaseForm.patchMd5" type="text" placeholder="留空则不校验 MD5" />
+              </div>
+              <div class="form-group">
+                <label>补丁文件大小 (字节数 Bytes: {{ (releaseForm.patchSize / 1024 / 1024).toFixed(2) }} MB)</label>
+                <input v-model.number="releaseForm.patchSize" type="number" placeholder="11985408" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>更新说明 (Changelog，将直接展示给客户端用户)</label>
+              <textarea v-model="releaseForm.changelog" rows="4" placeholder="1. 升级原生 CDP 极速直控引擎；&#10;2. 优化开价与库存调度算法；&#10;3. 修复已知问题。"></textarea>
+            </div>
+
+            <div class="form-row-checkbox">
+              <label class="checkbox-label">
+                <input v-model="releaseForm.forceUpdate" type="checkbox" />
+                <span>⚠️ 设为紧急强制更新 (客户端检测到后必须完成更新方可使用)</span>
+              </label>
+            </div>
+
+            <div class="releases-action-bar">
+              <div class="status-tip-text" v-if="publishStatusMsg">{{ publishStatusMsg }}</div>
+              <button class="btn-publish-submit" type="button" :disabled="isPublishing" @click="submitPublish">
+                <i class="ph ph-paper-plane-tilt-fill"></i>
+                <span>{{ isPublishing ? '正在同步 CDN...' : '🚀 立即发布并推送更新' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 历史发版时间线与一键回滚 -->
+          <div class="releases-history-section" v-if="releaseHistory && releaseHistory.length > 0">
+            <div class="history-section-title">
+              <i class="ph ph-clock-counter-clockwise-fill"></i>
+              <span>历史发版审计与快速回滚 ({{ releaseHistory.length }} 个版本)</span>
+            </div>
+
+            <div class="history-cards-grid">
+              <div 
+                v-for="(item, hIdx) in releaseHistory" 
+                :key="hIdx" 
+                class="history-ver-card"
+                :class="{ 'is-current-active': currentLiveVersion && currentLiveVersion.version === item.version }"
+              >
+                <div class="history-ver-top">
+                  <div class="history-ver-badge">
+                    <span class="ver-tag">v{{ item.version }}</span>
+                    <span v-if="currentLiveVersion && currentLiveVersion.version === item.version" class="active-now-tag">当前线上</span>
+                    <span v-if="item.forceUpdate" class="force-tag">强制更新</span>
+                  </div>
+                  <span class="history-date">{{ item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '历史版本' }}</span>
+                </div>
+
+                <div class="history-ver-meta">
+                  <span>大小: {{ item.patchSize ? (item.patchSize / 1024 / 1024).toFixed(2) + ' MB' : '未记录' }}</span>
+                  <span class="history-meta-path truncate" :title="item.patchUrl">{{ item.patchUrl }}</span>
+                </div>
+
+                <p class="history-changelog">{{ item.changelog || '无更新说明' }}</p>
+
+                <div class="history-ver-actions">
+                  <button type="button" class="btn-load-history" @click="loadHistoryItem(item)">
+                    <i class="ph ph-arrow-counter-clockwise-bold"></i> 载入此版本配置
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Category Header Bar -->
+        <div v-else-if="currentTab !== 'discover'" class="store-grid-header">
+          <div class="grid-title-row">
+            <div class="grid-title-left">
+              <h3>{{ categories.find(c => c.id === currentTab)?.name || '软件应用库' }}</h3>
+              <span class="grid-subtitle">{{ categories.find(c => c.id === currentTab)?.subtitle || 'Applications' }}</span>
+            </div>
+            <span class="grid-count">共 {{ filteredApps.length }} 款软件</span>
+          </div>
+        </div>
+
+        <!-- 🎨 3. Refined Apple-Style Empty State Showcase -->
+        <div v-if="currentTab !== 'releases' && filteredApps.length === 0" class="store-empty-showcase">
+          <div class="empty-glow-orbit"></div>
+          <div class="empty-app-icon-wrap">
+            <div
+              class="empty-icon-bubble"
+              :style="{
+                background: categories.find(c => c.id === currentTab)?.gradient || 'linear-gradient(135deg, #007aff 0%, #38bdf8 100%)',
+                boxShadow: categories.find(c => c.id === currentTab)?.shadow || '0 8px 24px rgba(0, 122, 255, 0.45)'
+              }"
+            >
+              <i class="ph" :class="categories.find(c => c.id === currentTab)?.icon || 'ph-package-fill'"></i>
+            </div>
+          </div>
+          <h4 class="empty-title">暂无「{{ categories.find(c => c.id === currentTab)?.name }}」软件包</h4>
+          <p class="empty-desc">
+            点击下方「<strong>立即上传发布</strong>」上传 <code>.dmg</code>、<code>.exe</code>、<code>.apk</code>、<code>.zip</code> 安装包，系统将自动匹配官方名称与安装说明。
+          </p>
+
+          <div class="empty-action-group">
+            <button class="empty-primary-btn" type="button" @click="emit('upload', '软件/')">
+              <i class="ph ph-upload-simple-bold"></i>
+              <span>立即上传发布</span>
+            </button>
+          </div>
+
+          <!-- Quick Inspiration Tag Pills -->
+          <div class="empty-suggestions">
+            <span class="sugg-label">💡 常见推荐软件：</span>
+            <div class="sugg-tags">
+              <span
+                v-for="sugg in (categorySuggestions[currentTab] || categorySuggestions.all)"
+                :key="sugg"
+                class="sugg-tag"
+                @click="emit('upload', '软件/')"
+              >
+                + {{ sugg }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🚀 4. Rich App Cards Grid -->
+        <div v-else class="store-apps-grid">
+          <article
+            v-for="app in filteredApps"
+            :key="app.key"
+            class="app-card"
+            @click="openDetail(app)"
+          >
+            <div class="app-card-top">
+              <!-- App Vector / System Icon (52x52 Squircle) -->
+              <div class="app-icon-frame">
+                <MacIcons name="apps" :size="52" />
+              </div>
+              <div class="app-info-block">
+                <h4 class="app-title" :title="app.title">{{ app.title }}</h4>
+                <div class="app-sub-row">
+                  <span class="app-ver">{{ app.version }}</span>
+                  <span class="app-dot">·</span>
+                  <span class="app-size">{{ formatSize(app.size) }}</span>
+                </div>
+                <div class="app-platform-tag" :title="app.platform">
+                  <i v-if="app.platform.includes('macOS')" class="ph ph-apple-logo-fill"></i>
+                  <i v-else-if="app.platform.includes('Windows')" class="ph ph-windows-logo-fill"></i>
+                  <i v-else-if="app.platform.includes('Android')" class="ph ph-android-logo-fill"></i>
+                  <i v-else class="ph ph-device-mobile-fill"></i>
+                  <span>{{ app.platform }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- One-Sentence Summary -->
+            <p class="app-summary-text">{{ app.summary }}</p>
+
+            <!-- Card Bottom Buttons -->
+            <div class="app-card-footer" @click.stop>
+              <button class="app-download-btn btn-showcase-open" type="button" title="查看软件介绍与极速下载" @click="openDetail(app)">
+                <i class="ph ph-sparkle-fill"></i>
+                <span>介绍 / 下载</span>
+              </button>
+              <button class="app-share-icon-btn" type="button" title="复制专属介绍与下载落地页分享链接" @click="copyShowcaseShareUrl(app)">
+                <i class="ph ph-share-network-bold"></i>
+              </button>
+              <button class="app-link-icon-btn" type="button" title="获取直链与扫码" @click="openGetLinks(app)">
+                <i class="ph ph-link-bold"></i>
+              </button>
+              <button class="app-meta-edit-btn" type="button" title="编辑软件简介与安装说明" @click="openEditor(app)">
+                <i class="ph ph-pencil-simple-bold"></i>
+              </button>
+              <button class="app-delete-icon-btn" type="button" title="从商店下架 / 彻底删除软件" @click="confirmDeleteApp(app)">
+                <i class="ph ph-trash-bold"></i>
+              </button>
+            </div>
+          </article>
+        </div>
+      </main>
+    </div>
+  </MacWindow>
+
+  <!-- 🪟 Global Teleported Modals (Mounted at root level for 100% reliable showcase view) -->
+  <!-- 🪟 Global Teleported Modals (Always centered & highest z-index) -->
+    <Teleport to="body">
+          <!-- 📖 5. macOS App Detail Full Modal (Atmospheric Apple Showcase) -->
+    <Transition name="fade-slide">
+      <div v-if="selectedApp" class="app-detail-overlay" @click.self="selectedApp = null">
+        <div class="app-detail-card grand-showcase-card">
+          
+          <!-- 🌟 1. 顶部 Hero 全景横幅与核心介绍区 (Hero Banner Showcase) -->
+          <header class="detail-hero-banner">
+            <div class="hero-glow-bg"></div>
+            
+            <div class="hero-top-bar">
+              <div class="hero-breadcrumb">
+                <span class="hero-cat-tag">
+                  <i class="ph ph-squares-four-fill"></i>
+                  <span>{{ categories.find(c => c.id === selectedApp.category)?.name || '软件应用' }}</span>
+                </span>
+                <span class="hero-sep">/</span>
+                <span class="hero-platform-tag">{{ selectedApp.platform }}</span>
+              </div>
+              <button class="hero-close-btn" type="button" @click="selectedApp = null" title="关闭并返回列表">
+                <span class="hero-close-cross">✕</span>
+              </button>
+            </div>
+
+            <div class="hero-content-row">
+              <!-- 大号发光 App 图标 -->
+              <div class="hero-icon-wrapper">
+                <div class="hero-icon-box">
+                  <MacIcons name="apps" :size="76" :extension="getFileExt(selectedApp.file || selectedApp.key)" />
+                </div>
+                <div class="hero-icon-glow"></div>
+              </div>
+
+              <!-- 软件大标题与一句话亮点 -->
+              <div class="hero-titles-col">
+                <div class="hero-title-line">
+                  <h2 class="hero-app-title">{{ selectedApp.title }}</h2>
+                  <span class="badge-official">
+                    <i class="ph ph-seal-check-fill"></i> 官方正版
+                  </span>
+                  <span class="badge-version">v{{ selectedApp.version }}</span>
+                </div>
+
+                <p class="hero-summary-lead">{{ selectedApp.summary || '官方完整安装包，由 Cloudflare Anycast 全球 CDN 边缘网络直连极速分发，安全纯净无捆绑。' }}</p>
+
+                <!-- 🌟 核心高能下载与操作按钮组 -->
+                <div class="hero-action-buttons">
+                  <button class="btn-hero-primary-download" type="button" @click="downloadDirectly(selectedApp)">
+                    <div class="btn-glow-layer"></div>
+                    <i class="ph ph-arrow-circle-down-fill"></i>
+                    <span class="btn-main-text">立即高速下载</span>
+                    <span class="btn-size-tag">({{ formatSize(selectedApp.size) }})</span>
+                  </button>
+
+                  <button class="btn-hero-secondary" type="button" @click="openGetLinks(selectedApp)">
+                    <i class="ph ph-qr-code-bold"></i>
+                    <span>扫码 / 多端直链</span>
+                  </button>
+
+                  <button class="btn-hero-secondary btn-hero-share" type="button" @click="copyShowcaseShareUrl(selectedApp)" title="复制此软件的独立落地介绍与下载页网址发给别人">
+                    <i class="ph ph-share-network-bold"></i>
+                    <span>分享此页面</span>
+                  </button>
+
+                  <button class="btn-hero-secondary" type="button" @click="copyText(fullDirectUrl(selectedApp.key), '原生极速直链已复制！')">
+                    <i class="ph ph-link-bold"></i>
+                    <span>复制直链</span>
+                  </button>
+
+                  <button class="btn-hero-secondary btn-hero-edit" type="button" @click="openEditor(selectedApp)" title="编辑软件介绍与使用指南">
+                    <i class="ph ph-pencil-simple-bold"></i>
+                    <span>编辑说明</span>
+                  </button>
+
+                  <button class="btn-hero-secondary btn-hero-delete-act" type="button" @click="confirmDeleteApp(selectedApp)" title="从商店下架或彻底删除此软件">
+                    <i class="ph ph-trash-bold"></i>
+                    <span>删除软件</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <!-- 🌟 2. 软件规格与信任指标横条 (Specs & Trust Strip) -->
+          <div class="detail-specs-strip">
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-laptop"></i> 适用平台</span>
+              <span class="spec-value text-blue">{{ selectedApp.platform }}</span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-tag"></i> 软件版本</span>
+              <span class="spec-value text-emerald">v{{ selectedApp.version }}</span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-hard-drive"></i> 安装包体积</span>
+              <span class="spec-value text-white-contrast">{{ formatSize(selectedApp.size) }}</span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-shield-check"></i> 安全保障</span>
+              <span class="spec-value text-green">
+                <i class="ph ph-check-circle-fill"></i> 纯净无毒 · 官方直发
+              </span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-clock"></i> 最近更新</span>
+              <span class="spec-value text-slate">{{ formatDate(selectedApp.uploaded) }}</span>
+            </div>
+          </div>
+
+          <!-- 🌟 3. 软件主体介绍与特性展示区 (Showcase Body Content) -->
+          <div class="detail-body-scrollable">
+            
+            <!-- 🌟 核心功能特色网格 (Core Highlights Grid) -->
+            <section class="showcase-section" v-if="selectedApp.features && selectedApp.features.length">
+              <div class="section-title-row">
+                <div class="title-with-icon">
+                  <div class="sec-icon-pill sec-icon-purple"><i class="ph ph-sparkle-fill"></i></div>
+                  <h3 class="sec-main-heading">核心功能特色与技术亮点</h3>
+                </div>
+                <span class="sec-badge">{{ selectedApp.features.length }} 大核心优势</span>
+              </div>
+
+              <div class="features-grand-grid">
+                <div v-for="(feat, idx) in selectedApp.features" :key="idx" class="feature-grand-card">
+                  <div class="feat-card-header">
+                    <span class="feat-index-dot">{{ String(idx + 1).padStart(2, '0') }}</span>
+                    <i class="ph ph-check-circle-fill feat-check-icon"></i>
+                  </div>
+                  <p class="feat-text-content">{{ feat }}</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- 🌟 安装与使用指南 (Installation & Setup Guide) -->
+            <section class="showcase-section" v-if="selectedApp.installGuide">
+              <div class="section-title-row">
+                <div class="title-with-icon">
+                  <div class="sec-icon-pill sec-icon-amber"><i class="ph ph-terminal-window-fill"></i></div>
+                  <h3 class="sec-main-heading">安装与使用指南 / 避坑备忘</h3>
+                </div>
+                <button
+                  class="btn-copy-guide-action"
+                  type="button"
+                  @click="copyText(selectedApp.installGuide, '安装指南已复制！')"
+                >
+                  <i class="ph ph-copy-simple-bold"></i>
+                  <span>一键复制指南</span>
+                </button>
+              </div>
+
+              <!-- macOS 终端样式容器 -->
+              <div class="terminal-mockup-wrapper">
+                <div class="terminal-mockup-header">
+                  <div class="terminal-traffic-lights">
+                    <span class="dot-red"></span>
+                    <span class="dot-yellow"></span>
+                    <span class="dot-green"></span>
+                  </div>
+                  <div class="terminal-title">Terminal · 指南与终端指令</div>
+                  <div class="terminal-placeholder"></div>
+                </div>
+                <div class="install-guide-container">
+                  <pre class="guide-formatted-pre">{{ selectedApp.installGuide }}</pre>
+                </div>
+              </div>
+            </section>
+
+            <!-- 🌟 极速分发与多端接入卡片 (Distribution Channels) -->
+            <section class="showcase-section">
+              <div class="section-title-row">
+                <div class="title-with-icon">
+                  <div class="sec-icon-pill sec-icon-cyan"><i class="ph ph-globe-hemisphere-east-fill"></i></div>
+                  <h3 class="sec-main-heading">全球 Anycast CDN 直连加速节点</h3>
+                </div>
+              </div>
+
+              <div class="distribution-info-card">
+                <div class="dist-icon-box">
+                  <i class="ph ph-lightning-fill"></i>
+                </div>
+                <div class="dist-info-text">
+                  <strong class="dist-heading">Cloudflare R2 0 出网流量极速通道</strong>
+                  <p class="dist-desc">本软件包已托管于 Cloudflare 全球分布式边缘存储网络，支持断点续传、多线程下载器（IDM / Aria2 / Downie）加速，国内秒级拉取。</p>
+                </div>
+                <button class="btn-dist-download" type="button" @click="downloadDirectly(selectedApp)">
+                  <i class="ph ph-download-simple-bold"></i> 立即下载
+                </button>
+              </div>
+            </section>
+
+          </div>
+
+          <!-- 🌟 4. 底部常驻精美下载操作栏 (Sticky Footer CTA Bar) -->
+          <footer class="detail-footer-bar">
+            <div class="footer-app-mini">
+              <div class="mini-app-icon">
+                <i class="ph" :class="getAppIcon(selectedApp.category)"></i>
+              </div>
+              <div class="mini-app-info">
+                <strong class="footer-title">{{ selectedApp.title }}</strong>
+                <span class="footer-meta">v{{ selectedApp.version }} · {{ formatSize(selectedApp.size) }}</span>
+              </div>
+            </div>
+
+            <div class="footer-actions">
+              <button class="btn-footer-link" type="button" @click="openGetLinks(selectedApp)">
+                <i class="ph ph-qr-code-bold"></i> 扫码 / 直链
+              </button>
+              <button class="btn-footer-download" type="button" @click="downloadDirectly(selectedApp)">
+                <i class="ph ph-arrow-circle-down-fill"></i> 立即高速下载 ({{ formatSize(selectedApp.size) }})
+              </button>
+            </div>
+          </footer>
+
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 🔗 6. Get Download Links & Multi-Link Picker Modal -->
+    <Transition name="fade-slide">
+      <div v-if="linkModalApp" class="app-links-overlay" @click.self="linkModalApp = null">
+        <div class="app-links-card">
+          <header class="links-header">
+            <div class="links-header-info">
+              <div class="links-app-icon">
+                <MacIcons name="apps" :size="46" />
+              </div>
+              <div class="links-titles">
+                <h3>获取「{{ linkModalApp.title }}」下载与链接</h3>
+                <div class="links-sub-meta">
+                  <span class="l-pill l-ver">{{ linkModalApp.version }}</span>
+                  <span class="l-pill l-plat">{{ linkModalApp.platform }}</span>
+                  <span class="l-pill l-size">{{ formatSize(linkModalApp.size) }}</span>
+                </div>
+              </div>
+            </div>
+            <button class="links-close-btn" type="button" @click="linkModalApp = null">×</button>
+          </header>
+
+          <div class="links-body">
+            <!-- 1. Direct Browser Download -->
+            <a :href="rawUrl(linkModalApp.key)" :download="linkModalApp.title" class="link-action-card primary-action" @click="linkModalApp = null">
+              <div class="action-left-icon icon-direct">
+                <i class="ph ph-arrow-circle-down-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🚀 本地极速直接下载</strong>
+                  <span class="action-tag">推荐</span>
+                </div>
+                <span class="action-subtext">通过 Cloudflare 全球边缘 CDN 极速下载原包体 ({{ formatSize(linkModalApp.size) }})</span>
+              </div>
+              <i class="ph ph-caret-right-bold action-arrow"></i>
+            </a>
+
+            <!-- 2. Copy Raw Direct Link -->
+            <button class="link-action-card" type="button" @click="copyText(fullDirectUrl(linkModalApp.key), '原生极速直链已复制！')">
+              <div class="action-left-icon icon-link">
+                <i class="ph ph-link-simple-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🔗 复制 Cloudflare R2 原生直链</strong>
+                </div>
+                <span class="action-subtext">可粘贴至迅雷、IDM、Downie 或浏览器地址栏直接开启多线程下载</span>
+              </div>
+              <span class="action-btn-pill">复制直链</span>
+            </button>
+
+            <!-- 3. Copy Web Share Link -->
+            <button class="link-action-card" type="button" @click="copyText(fullShareUrl(linkModalApp.key), '网盘分享链接已复制！')">
+              <div class="action-left-icon icon-share">
+                <i class="ph ph-share-network-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🌐 复制网盘分享/浏览页面链接</strong>
+                </div>
+                <span class="action-subtext">可发送给好友或团队，支持在带有 macOS 展厅界面的网盘中浏览</span>
+              </div>
+              <span class="action-btn-pill">复制分享</span>
+            </button>
+
+            <!-- 4. Terminal cURL Command -->
+            <button class="link-action-card" type="button" @click="copyText(curlCommand(linkModalApp), 'cURL 终端下载命令已复制！')">
+              <div class="action-left-icon icon-terminal">
+                <i class="ph ph-terminal-window-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>💻 复制终端 cURL 极速下载命令</strong>
+                </div>
+                <span class="action-subtext"><code>{{ curlCommand(linkModalApp) }}</code></span>
+              </div>
+              <span class="action-btn-pill">复制命令</span>
+            </button>
+
+            <!-- 5. macOS Quarantine Bypass (If macOS) -->
+            <button v-if="linkModalApp.platform.includes('macOS')" class="link-action-card" type="button" @click="copyText(quarantineCommand(linkModalApp), 'macOS 免隔离命令已复制！')">
+              <div class="action-left-icon icon-apple">
+                <i class="ph ph-shield-check-bold"></i>
+              </div>
+              <div class="action-text-col">
+                <div class="action-row-title">
+                  <strong>🍎 复制 macOS 终端绕过隔离命令</strong>
+                </div>
+                <span class="action-subtext">解决打开 DMG / APP 提示「文件已损坏」或「无法打开」报错</span>
+              </div>
+              <span class="action-btn-pill">复制指令</span>
+            </button>
+
+            <!-- 6. Mobile QR Code -->
+            <div class="qr-download-section">
+              <div class="qr-box">
+                <img :src="qrCodeUrl(linkModalApp.key)" alt="扫码下载" loading="lazy" />
+              </div>
+              <div class="qr-desc-col">
+                <strong>📱 手机扫码直连极速下载</strong>
+                <p>使用手机自带相机或扫一扫，即可直接在移动端下载并安装该应用包。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ✏️ 7. macOS App Metadata Editor Modal -->
+    <Transition name="fade-slide">
+      <div v-if="editingApp" class="app-editor-overlay" @click.self="editingApp = null">
+        <div class="app-editor-card">
+          <header class="editor-header">
+            <h3><i class="ph ph-pencil-simple-fill"></i> 编辑软件信息与简介</h3>
+            <button class="editor-close-btn" type="button" @click="editingApp = null">×</button>
+          </header>
+
+          <form class="editor-form" @submit.prevent="saveAppEditor">
+            <div class="form-row form-row-2">
+              <div class="form-group">
+                <label>🏷️ 软件名称 (Title)</label>
+                <input v-model="editingApp.title" type="text" required placeholder="如 Final Cut Pro" />
+              </div>
+              <div class="form-group">
+                <label>🔢 版本号 (Version)</label>
+                <input v-model="editingApp.version" type="text" required placeholder="如 v10.8.1" />
+              </div>
+            </div>
+
+            <div class="form-row form-row-2">
+              <div class="form-group">
+                <label>🗂️ 所属分类 (Category)</label>
+                <select v-model="editingApp.category">
+                  <option value="design">🎨 设计创意</option>
+                  <option value="productivity">⚡ 效率办公</option>
+                  <option value="developer">💻 开发工具</option>
+                  <option value="utilities">🛠️ 系统工具</option>
+                  <option value="entertainment">🎬 影音娱乐</option>
+                  <option value="network">🌐 网络通讯</option>
+                  <option value="mobile">📱 移动专属</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>💻 适用平台与架构 (Platform)</label>
+                <select v-model="editingApp.platform">
+                  <option value="Windows (x64)">🪟 Windows (x64)</option>
+                  <option value="Windows (ARM64)">🪟 Windows (ARM64)</option>
+                  <option value="macOS (Universal 通用)">🍎 macOS (Universal 通用)</option>
+                  <option value="macOS (Apple Silicon M系列)">🍎 macOS (Apple Silicon M系列)</option>
+                  <option value="macOS (Intel x86_64)">🍎 macOS (Intel x86_64)</option>
+                  <option value="Android (APK)">📱 Android (APK)</option>
+                  <option value="iOS (IPA)">📱 iOS (IPA)</option>
+                  <option value="Linux (Deb / AppImage)">🐧 Linux (Deb / AppImage)</option>
+                  <option value="跨平台通用">🌐 跨平台通用</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>📝 一句话亮点简介 (Summary)</label>
+              <input v-model="editingApp.summary" type="text" placeholder="如 Apple 旗舰级非线性视频剪辑生产力神器" />
+            </div>
+
+            <div class="form-group">
+              <label>🌟 核心功能亮点 (每行一条，换行分隔)</label>
+              <textarea v-model="editingApp.featuresText" rows="3" placeholder="支持 8K ProRes 实时剪辑&#10;全新 AI 智能对象跟踪&#10;极速硬件加速导出"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>🔑 安装与激活指南 / 终端指令 / 备忘</label>
+              <textarea v-model="editingApp.installGuide" rows="4" placeholder="1. 打开 DMG 拖入 Applications&#10;2. 如提示损坏请在终端运行: sudo xattr -rd com.apple.quarantine /Applications/xxx.app"></textarea>
+            </div>
+
+            <div class="editor-btn-row">
+              <button class="btn-cancel" type="button" @click="editingApp = null">取消</button>
+              <button class="btn-save" type="submit">
+                <i class="ph ph-floppy-disk-bold"></i>
+                <span>保存并同步到云端</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Toast Notification -->
+    <Transition name="fade">
+      <div v-if="copySuccessTip" class="store-toast">
+        <i class="ph ph-check-circle-fill"></i>
+        <span>{{ copySuccessTip }}</span>
+      </div>
+    </Transition>
+  
+
+    <!-- 🗂️ R2 网盘已有安装包/补丁文件一键关联拾取弹窗 -->
+    <div v-if="showDrivePickerModal" class="mac-modal-backdrop" @click.self="showDrivePickerModal = false">
+      <div class="drive-picker-window">
+        <div class="drive-picker-header">
+          <div class="picker-title">
+            <i class="ph ph-folder-open-fill"></i>
+            <span>选择要绑定的网盘文件 ({{ drivePickerTarget === 'patchUrl' ? '补丁/单文件包' : '全量安装包' }})</span>
+          </div>
+          <button type="button" class="btn-picker-close" @click="showDrivePickerModal = false">✕</button>
+        </div>
+
+        <div class="drive-picker-body">
+          <div class="drive-picker-top-upload">
+            <button type="button" class="btn-picker-local-upload" @click="triggerLocalUpload('drivePicker')">
+              <i class="ph ph-upload-simple-bold"></i>
+              <span>📤 从本地选择文件直接上传并选用</span>
+            </button>
+            <input type="file" ref="localDrivePickerInput" accept=".exe,.zip,.dmg,.7z,.rar,.tar.gz" style="display: none" @change="onLocalFileUpload($event, 'drivePicker')" />
+          </div>
+
+          <div v-if="driveInstallerFiles.length === 0" class="drive-picker-empty">
+            <p>网盘中暂无识别到的 .exe / .zip / .dmg 安装包或补丁文件。</p>
+            <p class="text-sub">请先上传文件至 R2 存储桶对应的 <code>apps/live/</code> 或 <code>apps/dy/</code> 目录。</p>
+          </div>
+
+          <div v-else class="drive-picker-list">
+            <div 
+              v-for="(file, fIdx) in driveInstallerFiles" 
+              :key="fIdx" 
+              class="drive-picker-item"
+              @click="selectDriveFile(file)"
+            >
+              <div class="picker-file-icon">
+                <i class="ph ph-file-zip-fill" v-if="/\.zip$/i.test(file.key)"></i>
+                <i class="ph ph-package-fill" v-else></i>
+              </div>
+              <div class="picker-file-info">
+                <div class="picker-file-name">{{ file.key }}</div>
+                <div class="picker-file-meta">
+                  <span>{{ (file.size / 1024 / 1024).toFixed(2) }} MB</span>
+                  <span v-if="file.uploaded">· {{ new Date(file.uploaded).toLocaleString() }}</span>
+                </div>
+              </div>
+              <button type="button" class="btn-picker-select">一键选用</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 🗑️ 7. Delete App Confirmation Modal -->
+    <Transition name="fade-slide">
+      <div v-if="deletingApp" class="mac-modal-backdrop" @click.self="!isDeletingApp && (deletingApp = null)">
+        <div class="delete-app-modal-card">
+          <div class="delete-modal-header">
+            <div class="delete-header-icon">
+              <i class="ph ph-warning-octagon-fill"></i>
+            </div>
+            <div class="delete-header-titles">
+              <h3>确认删除 / 下架软件</h3>
+              <p>您即将从软件中心移除此应用</p>
+            </div>
+            <button class="btn-del-close" type="button" @click="deletingApp = null" :disabled="isDeletingApp">✕</button>
+          </div>
+
+          <div class="delete-modal-body">
+            <div class="del-app-summary-box">
+              <div class="del-app-info-row">
+                <span class="del-info-label">软件名称:</span>
+                <span class="del-info-val text-bold">{{ deletingApp.title }}</span>
+              </div>
+              <div class="del-app-info-row">
+                <span class="del-info-label">软件版本:</span>
+                <span class="del-info-val text-emerald">v{{ deletingApp.version }}</span>
+              </div>
+              <div class="del-app-info-row">
+                <span class="del-info-label">文件路径:</span>
+                <span class="del-info-val font-mono text-slate">{{ deletingApp.key }}</span>
+              </div>
+              <div class="del-app-info-row">
+                <span class="del-info-label">安装包体积:</span>
+                <span class="del-info-val font-mono">{{ formatSize(deletingApp.size) }}</span>
+              </div>
+            </div>
+
+            <label class="del-checkbox-option">
+              <input type="checkbox" v-model="alsoDeleteR2File" class="del-checkbox-input" />
+              <div class="del-checkbox-text">
+                <strong>同时从 Cloudflare R2 存储桶中永久删除安装包文件</strong>
+                <span>勾选后将物理删除 R2 上的 <code>{{ deletingApp.key }}</code> 文件，释放存储空间。</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="delete-modal-footer">
+            <button class="btn-del-cancel" type="button" @click="deletingApp = null" :disabled="isDeletingApp">
+              取消
+            </button>
+            <button class="btn-del-confirm" type="button" @click="executeDeleteApp" :disabled="isDeletingApp">
+              <span v-if="!isDeletingApp"><i class="ph ph-trash-bold"></i> 确认彻底删除</span>
+              <span v-else>正在删除中...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    </Teleport>
+
+</template>
 
 <style scoped>
 /* Toolbar tools */
