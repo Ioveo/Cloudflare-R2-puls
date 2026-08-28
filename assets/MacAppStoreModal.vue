@@ -67,6 +67,51 @@ const releaseHistory = ref([]);
 const isPublishing = ref(false);
 const publishStatusMsg = ref('');
 const showDrivePickerModal = ref(false);
+const localPatchInput = ref(null);
+const localSetupInput = ref(null);
+const localDrivePickerInput = ref(null);
+
+function triggerLocalUpload(target) {
+  if (target === 'patchUrl' && localPatchInput.value) {
+    localPatchInput.value.click();
+  } else if (target === 'fullSetupUrl' && localSetupInput.value) {
+    localSetupInput.value.click();
+  } else if (target === 'drivePicker' && localDrivePickerInput.value) {
+    localDrivePickerInput.value.click();
+  }
+}
+
+function onLocalFileUpload(event, targetField) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const appSlug = releaseForm.value.app || 'live';
+  const targetDir = `apps/${appSlug}/`;
+  const fullPath = `/${targetDir}${file.name}`;
+
+  if (targetField === 'patchUrl') {
+    releaseForm.value.patchUrl = fullPath;
+    releaseForm.value.patchSize = file.size;
+  } else if (targetField === 'fullSetupUrl') {
+    releaseForm.value.fullSetupUrl = fullPath;
+  } else if (targetField === 'drivePicker') {
+    if (drivePickerTarget.value === 'patchUrl') {
+      releaseForm.value.patchUrl = fullPath;
+      releaseForm.value.patchSize = file.size;
+    } else {
+      releaseForm.value.fullSetupUrl = fullPath;
+    }
+    showDrivePickerModal.value = false;
+  }
+
+  // Emit upload event to parent
+  emit('upload-to-folder', { files: [file], targetFolder: targetDir });
+
+  copySuccessTip.value = `🎉 已添加「${file.name}」(${formatSize(file.size)}) 到上传队列并自动关联网盘路径！`;
+  setTimeout(() => (copySuccessTip.value = ''), 4500);
+
+  event.target.value = '';
+}
+
 const drivePickerTarget = ref('patchUrl'); // 'patchUrl' | 'fullSetupUrl'
 
 const driveInstallerFiles = computed(() => {
@@ -904,9 +949,15 @@ defineExpose({
               <div class="form-group">
                 <div class="label-with-actions">
                   <label>增量补丁 / 单文件更新包路径 (Patch URL)</label>
-                  <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('patchUrl')">
-                    <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
-                  </button>
+                  <div class="action-btn-group">
+                    <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('patchUrl')">
+                      <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
+                    </button>
+                    <button type="button" class="btn-local-upload" @click="triggerLocalUpload('patchUrl')">
+                      <i class="ph ph-upload-simple-bold"></i> 📤 本地上传
+                    </button>
+                  </div>
+                  <input type="file" ref="localPatchInput" accept=".exe,.zip,.dmg,.7z,.rar,.tar.gz" style="display: none" @change="onLocalFileUpload($event, 'patchUrl')" />
                 </div>
                 <input v-model="releaseForm.patchUrl" type="text" placeholder="例如 /apps/live/TianCaiMao.LiveAssistant.exe" />
               </div>
@@ -914,9 +965,15 @@ defineExpose({
               <div class="form-group">
                 <div class="label-with-actions">
                   <label>全量安装包路径 (Full Setup URL)</label>
-                  <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('fullSetupUrl')">
-                    <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
-                  </button>
+                  <div class="action-btn-group">
+                    <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('fullSetupUrl')">
+                      <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
+                    </button>
+                    <button type="button" class="btn-local-upload" @click="triggerLocalUpload('fullSetupUrl')">
+                      <i class="ph ph-upload-simple-bold"></i> 📤 本地上传
+                    </button>
+                  </div>
+                  <input type="file" ref="localSetupInput" accept=".exe,.zip,.dmg,.7z,.rar,.tar.gz" style="display: none" @change="onLocalFileUpload($event, 'fullSetupUrl')" />
                 </div>
                 <input v-model="releaseForm.fullSetupUrl" type="text" placeholder="例如 /apps/live/天才猫极速直播助手-Setup-v2.0.0.exe" />
               </div>
@@ -1086,9 +1143,12 @@ defineExpose({
 
             <!-- Card Bottom Buttons -->
             <div class="app-card-footer" @click.stop>
-              <button class="app-download-btn" type="button" title="获取下载链接与安装包" @click="openGetLinks(app)">
-                <i class="ph ph-download-simple-bold"></i>
-                <span>获取</span>
+              <button class="app-download-btn btn-showcase-open" type="button" title="查看软件介绍与极速下载" @click="openDetail(app)">
+                <i class="ph ph-sparkle-fill"></i>
+                <span>介绍 / 下载</span>
+              </button>
+              <button class="app-link-icon-btn" type="button" title="获取直链与扫码" @click="openGetLinks(app)">
+                <i class="ph ph-link-bold"></i>
               </button>
               <button class="app-meta-edit-btn" type="button" title="编辑软件简介与安装说明" @click="openEditor(app)">
                 <i class="ph ph-pencil-simple-bold"></i>
@@ -1099,7 +1159,10 @@ defineExpose({
       </main>
     </div>
 
-    <!-- 📖 5. macOS App Detail Full Modal -->
+    
+    <!-- 🪟 Global Teleported Modals (Always centered & highest z-index) -->
+    <Teleport to="body">
+      <!-- 📖 5. macOS App Detail Full Modal -->
     <Transition name="fade-slide">
       <div v-if="selectedApp" class="app-detail-overlay" @click.self="selectedApp = null">
         <div class="app-detail-card grand-showcase-card">
@@ -1504,6 +1567,14 @@ defineExpose({
         </div>
 
         <div class="drive-picker-body">
+          <div class="drive-picker-top-upload">
+            <button type="button" class="btn-picker-local-upload" @click="triggerLocalUpload('drivePicker')">
+              <i class="ph ph-upload-simple-bold"></i>
+              <span>📤 从本地选择文件直接上传并选用</span>
+            </button>
+            <input type="file" ref="localDrivePickerInput" accept=".exe,.zip,.dmg,.7z,.rar,.tar.gz" style="display: none" @change="onLocalFileUpload($event, 'drivePicker')" />
+          </div>
+
           <div v-if="driveInstallerFiles.length === 0" class="drive-picker-empty">
             <p>网盘中暂无识别到的 .exe / .zip / .dmg 安装包或补丁文件。</p>
             <p class="text-sub">请先上传文件至 R2 存储桶对应的 <code>apps/live/</code> 或 <code>apps/dy/</code> 目录。</p>
@@ -1533,6 +1604,7 @@ defineExpose({
         </div>
       </div>
     </div>
+    </Teleport>
 
 </template>
 
@@ -4109,6 +4181,117 @@ defineExpose({
 .btn-footer-download:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 122, 255, 0.55);
+}
+
+
+/* Global Fixed Fullscreen Modal Overlays */
+.mac-modal-backdrop,
+.app-detail-overlay,
+.app-links-overlay,
+.app-editor-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  padding: 24px !important;
+  margin: 0 !important;
+}
+
+.action-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-local-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-local-upload:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btn-showcase-open {
+  background: linear-gradient(135deg, #007aff 0%, #38bdf8 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  padding: 6px 14px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35) !important;
+}
+
+.btn-showcase-open:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.5) !important;
+}
+
+.app-link-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.1));
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.7));
+  color: var(--store-text-sub, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.app-link-icon-btn:hover {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  border-color: #0ea5e9;
+}
+
+/* Drive Picker Top Upload Banner */
+.drive-picker-top-upload {
+  padding: 12px 18px 6px;
+  border-bottom: 1px dashed var(--store-border, rgba(0, 0, 0, 0.1));
+}
+
+.btn-picker-local-upload {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1.5px dashed #0ea5e9;
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284c7;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-picker-local-upload:hover {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: #0284c7;
+  transform: translateY(-1px);
 }
 
 </style>

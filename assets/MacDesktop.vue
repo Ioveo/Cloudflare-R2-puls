@@ -1380,6 +1380,7 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
         @minimize="appStoreModal.minimized = true"
         @save-metadata="emit('save-apps-metadata', $event)"
         @upload="emit('upload', '软件/')"
+        @upload-to-folder="emit('upload-to-folder', $event)"
         @refresh="emit('refresh')"
       />
 
