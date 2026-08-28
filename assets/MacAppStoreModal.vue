@@ -27,22 +27,100 @@ const linkModalApp = ref(null); // For "获取下载链接" multi-link picker mo
 const copySuccessTip = ref("");
 
 // Release & Hot Update State
+const appPresets = {
+  live: {
+    name: '天才猫极速直播助手 (Go 2.0 极速版)',
+    slug: 'live',
+    defaultPatch: (v) => `/apps/live/TianCaiMao.LiveAssistant.exe`,
+    defaultSetup: (v) => `/apps/live/天才猫极速直播助手-Setup-v${v}.exe`,
+    defaultChangelog: '1. 升级原生 CDP 极速直控引擎；\n2. 优化价格与库存控制调度，毫秒级响应；\n3. 增强宏自动化蓝图库与自愈保护机制。',
+  },
+  dy: {
+    name: '天才猫直播助手 (C# 旗舰版)',
+    slug: 'dy',
+    defaultPatch: (v) => `/apps/dy/patch_v${v}.zip`,
+    defaultSetup: (v) => `/apps/dy/天才猫直播助手-Setup-v${v}.exe`,
+    defaultChangelog: '1. 优化商品讲解与开价监控；\n2. 升级弹幕捕获中枢与热敏标签打印；\n3. 修复已知交互问题。',
+  },
+  datacenter: {
+    name: '天才猫数据中心 2.0 (Go+Wails)',
+    slug: 'datacenter',
+    defaultPatch: (v) => `/apps/datacenter/TianCaiMao.DataCenter.exe`,
+    defaultSetup: (v) => `/apps/datacenter/天才猫数据中心-Setup-v${v}.exe`,
+    defaultChangelog: '1. 升级实时大屏与本地 SQLite 极速数据中枢；\n2. 增强多维度数据透视与报表导出；\n3. 优化内存占用与启动性能。',
+  },
+};
+
 const releaseForm = ref({
-  app: "dy",
-  version: "1.0.1",
-  minSupportedVersion: "1.0.0",
-  patchUrl: "/apps/dy/patch_v1.0.1.zip",
-  patchMd5: "",
-  patchSize: 229629,
-  fullSetupUrl: "/apps/dy/天才猫直播助手-Setup-v1.0.1.exe",
+  app: 'live',
+  version: '2.0.0',
+  minSupportedVersion: '2.0.0',
+  patchUrl: '/apps/live/TianCaiMao.LiveAssistant.exe',
+  patchMd5: '',
+  patchSize: 11985408,
+  fullSetupUrl: '/apps/live/天才猫极速直播助手-Setup-v2.0.0.exe',
   forceUpdate: false,
-  changelog: "1. 悬浮时钟增加双击鼠标右键快速退出功能；\n2. 首选项全景自适应排版优化；\n3. 启动防重复多开与原生机器码预编译支持。",
+  changelog: '1. 升级原生 CDP 极速直控引擎；\n2. 优化价格与库存控制调度，毫秒级响应；\n3. 增强宏自动化蓝图库与自愈保护机制。',
 });
 const currentLiveVersion = ref(null);
+const releaseHistory = ref([]);
 const isPublishing = ref(false);
-const publishStatusMsg = ref("");
+const publishStatusMsg = ref('');
+const showDrivePickerModal = ref(false);
+const drivePickerTarget = ref('patchUrl'); // 'patchUrl' | 'fullSetupUrl'
 
-async function fetchLiveVersion(app = "dy") {
+const driveInstallerFiles = computed(() => {
+  const map = new Map();
+  if (Array.isArray(props.files)) {
+    for (const f of props.files) {
+      if (f && f.key) map.set(f.key, f);
+    }
+  }
+  if (Array.isArray(props.allFiles)) {
+    for (const f of props.allFiles) {
+      if (f && f.key) map.set(f.key, f);
+    }
+  }
+  return Array.from(map.values()).filter(f => /\.(exe|zip|dmg|pkg|7z|apk|tar\.gz)$/i.test(f.key || ''));
+});
+
+function switchReleaseApp(appKey) {
+  releaseForm.value.app = appKey;
+  const preset = appPresets[appKey] || appPresets.live;
+  const v = releaseForm.value.version || '2.0.0';
+  releaseForm.value.patchUrl = preset.defaultPatch(v);
+  releaseForm.value.fullSetupUrl = preset.defaultSetup(v);
+  releaseForm.value.changelog = preset.defaultChangelog;
+  fetchLiveVersion(appKey);
+  fetchReleaseHistory(appKey);
+}
+
+function bumpVersion(type) {
+  let baseVer = releaseForm.value.version || currentLiveVersion.value?.version || '2.0.0';
+  const parts = baseVer.replace(/^v/i, '').split('.').map(x => parseInt(x, 10) || 0);
+  while (parts.length < 3) parts.push(0);
+
+  if (type === 'patch') {
+    parts[2] += 1;
+  } else if (type === 'minor') {
+    parts[1] += 1;
+    parts[2] = 0;
+  } else if (type === 'major') {
+    parts[0] += 1;
+    parts[1] = 0;
+    parts[2] = 0;
+  }
+  const newVer = parts.join('.');
+  releaseForm.value.version = newVer;
+
+  const preset = appPresets[releaseForm.value.app] || appPresets.live;
+  releaseForm.value.patchUrl = preset.defaultPatch(newVer);
+  releaseForm.value.fullSetupUrl = preset.defaultSetup(newVer);
+  copySuccessTip.value = `已自动自增版本号为 v${newVer}`;
+  setTimeout(() => (copySuccessTip.value = ''), 2500);
+}
+
+async function fetchLiveVersion(app = 'live') {
   try {
     const res = await fetch(`/api/update?app=${app}&_t=${Date.now()}`);
     if (res.ok) {
@@ -55,40 +133,94 @@ async function fetchLiveVersion(app = "dy") {
   }
 }
 
+async function fetchReleaseHistory(app = 'live') {
+  try {
+    const res = await fetch(`/api/update?app=${app}&action=history&_t=${Date.now()}`);
+    if (res.ok) {
+      releaseHistory.value = await res.json();
+    } else {
+      releaseHistory.value = [];
+    }
+  } catch (e) {
+    releaseHistory.value = [];
+  }
+}
+
+function loadHistoryItem(item) {
+  if (!item) return;
+  releaseForm.value = {
+    app: item.app || releaseForm.value.app,
+    version: item.version,
+    minSupportedVersion: item.minSupportedVersion || item.version,
+    patchUrl: item.patchUrl || '',
+    patchMd5: item.patchMd5 || '',
+    patchSize: Number(item.patchSize || 0),
+    fullSetupUrl: item.fullSetupUrl || '',
+    forceUpdate: Boolean(item.forceUpdate),
+    changelog: item.changelog || '',
+  };
+  copySuccessTip.value = `已载入历史版本 v${item.version} 的发版配置！`;
+  setTimeout(() => (copySuccessTip.value = ''), 2500);
+}
+
+function openDriveFilePicker(targetField) {
+  drivePickerTarget.value = targetField;
+  showDrivePickerModal.value = true;
+}
+
+function selectDriveFile(file) {
+  if (!file) return;
+  const path = file.key.startsWith('/') ? file.key : '/' + file.key;
+  if (drivePickerTarget.value === 'patchUrl') {
+    releaseForm.value.patchUrl = path;
+    if (file.size) {
+      releaseForm.value.patchSize = file.size;
+    }
+  } else if (drivePickerTarget.value === 'fullSetupUrl') {
+    releaseForm.value.fullSetupUrl = path;
+  }
+  showDrivePickerModal.value = false;
+  copySuccessTip.value = `已关联网盘文件: ${file.key}`;
+  setTimeout(() => (copySuccessTip.value = ''), 2500);
+}
+
 watch(currentTab, (newTab) => {
-  if (newTab === "releases") {
+  if (newTab === 'releases') {
     fetchLiveVersion(releaseForm.value.app);
+    fetchReleaseHistory(releaseForm.value.app);
   }
 });
 
 async function submitPublish() {
   if (!releaseForm.value.version) {
-    alert("请输入版本号！");
+    alert('请输入版本号！');
     return;
   }
   isPublishing.value = true;
-  publishStatusMsg.value = "正在发布至 Cloudflare R2 并刷新 CDN...";
+  publishStatusMsg.value = '正在发布至 Cloudflare R2 并刷新 CDN...';
   try {
-    const res = await fetch("/api/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(releaseForm.value),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      publishStatusMsg.value = "🎉 发布成功！所有在线客户端已可感知最新版本。";
-      copySuccessTip.value = "版本发布成功并已实时同步至 CDN！";
-      setTimeout(() => (copySuccessTip.value = ""), 3000);
+      publishStatusMsg.value = '🎉 发布成功！所有在线客户端已可感知最新版本。';
+      copySuccessTip.value = '版本发布成功并已实时同步至 CDN！';
+      setTimeout(() => (copySuccessTip.value = ''), 3000);
       await fetchLiveVersion(releaseForm.value.app);
+      await fetchReleaseHistory(releaseForm.value.app);
     } else {
-      publishStatusMsg.value = "❌ 发布失败: " + (data.error || "未知错误");
+      publishStatusMsg.value = '❌ 发布失败: ' + (data.error || '未知错误');
     }
   } catch (e) {
-    publishStatusMsg.value = "❌ 网络错误: " + e.message;
+    publishStatusMsg.value = '❌ 网络错误: ' + e.message;
   } finally {
     isPublishing.value = false;
   }
 }
+
 
 // Category definitions with rich, tactile multi-stop gradient color tokens & SF glyphs
 const categories = [
@@ -429,6 +561,19 @@ function rawUrl(key) {
   return props.storageId === "default" ? path : `${path}?storage=${encodeURIComponent(props.storageId)}`;
 }
 
+function downloadDirectly(app) {
+  if (!app || !app.key) return;
+  const url = fullDirectUrl(app.key);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = app.title || app.key.split("/").pop();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  copySuccessTip.value = `正在启动「${app.title}」极速下载...`;
+  setTimeout(() => (copySuccessTip.value = ""), 3000);
+}
+
 function fullDirectUrl(key) {
   const origin = window.location.origin;
   const path = `/raw/${key}`;
@@ -702,57 +847,105 @@ defineExpose({
               <h3>软件版本与热更新管理控制台</h3>
               <p>一键发布增量补丁（0.22MB）与全量安装包，秒级同步至 Cloudflare R2 全球 CDN 节点，客户端启动无感热更。</p>
             </div>
-            <div class="live-version-badge" v-if="currentLiveVersion">
+            <div class="live-version-badge" v-if="currentLiveVersion && currentLiveVersion.version">
               <span class="live-dot-pulse"></span>
               <span>当前线上版本：<strong>v{{ currentLiveVersion.version }}</strong></span>
             </div>
+            <div class="live-version-badge live-version-empty" v-else>
+              <span class="live-dot-pulse bg-amber-500"></span>
+              <span>暂未发布线上版本</span>
+            </div>
+          </div>
+
+          <!-- 应用快捷切换选择栏 -->
+          <div class="app-presets-row">
+            <button 
+              v-for="(p, k) in appPresets" 
+              :key="k" 
+              type="button"
+              class="app-preset-btn"
+              :class="{ active: releaseForm.app === k }"
+              @click="switchReleaseApp(k)"
+            >
+              <span class="preset-icon">{{ k === 'live' ? '⚡' : k === 'datacenter' ? '📊' : '💎' }}</span>
+              <span class="preset-name">{{ p.name }}</span>
+              <span class="preset-slug">({{ k }})</span>
+            </button>
           </div>
 
           <div class="releases-form-card">
             <div class="form-row-2col">
               <div class="form-group">
                 <label>软件标识 (App Slug)</label>
-                <select v-model="releaseForm.app" @change="fetchLiveVersion(releaseForm.app)">
-                  <option value="dy">天才猫直播助手 (dy)</option>
+                <select v-model="releaseForm.app" @change="switchReleaseApp(releaseForm.app)">
+                  <option value="live">⚡ 天才猫极速直播助手 (live - Go 极速版)</option>
+                  <option value="dy">💎 天才猫直播助手 (dy - C# 旗舰版)</option>
+                  <option value="datacenter">📊 天才猫数据中心 (datacenter - Go 2.0)</option>
                 </select>
               </div>
+
               <div class="form-group">
-                <label>发布版本号 (Version)</label>
-                <input v-model="releaseForm.version" type="text" placeholder="例如 1.0.1" />
+                <div class="label-with-actions">
+                  <label>发布版本号 (Version)</label>
+                  <div class="version-bump-group">
+                    <button type="button" class="btn-bump-pill" @click="bumpVersion('patch')" title="补丁自增 +0.0.1">+0.0.1 (Patch)</button>
+                    <button type="button" class="btn-bump-pill" @click="bumpVersion('minor')" title="特性自增 +0.1.0">+0.1.0 (Minor)</button>
+                    <button type="button" class="btn-bump-pill" @click="bumpVersion('major')" title="大版本 +1.0.0">+1.0.0 (Major)</button>
+                  </div>
+                </div>
+                <div class="input-with-prefix">
+                  <span class="input-prefix">v</span>
+                  <input v-model="releaseForm.version" type="text" placeholder="例如 2.0.1" />
+                </div>
               </div>
             </div>
 
             <div class="form-row-2col">
               <div class="form-group">
-                <label>增量补丁包路径 (Patch URL)</label>
-                <input v-model="releaseForm.patchUrl" type="text" placeholder="例如 /apps/dy/patch_v1.0.1.zip" />
+                <div class="label-with-actions">
+                  <label>增量补丁 / 单文件更新包路径 (Patch URL)</label>
+                  <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('patchUrl')">
+                    <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
+                  </button>
+                </div>
+                <input v-model="releaseForm.patchUrl" type="text" placeholder="例如 /apps/live/TianCaiMao.LiveAssistant.exe" />
               </div>
+
               <div class="form-group">
-                <label>全量安装包路径 (Full Setup URL)</label>
-                <input v-model="releaseForm.fullSetupUrl" type="text" placeholder="例如 /apps/dy/天才猫直播助手-Setup-v1.0.1.exe" />
+                <div class="label-with-actions">
+                  <label>全量安装包路径 (Full Setup URL)</label>
+                  <button type="button" class="btn-pick-drive" @click="openDriveFilePicker('fullSetupUrl')">
+                    <i class="ph ph-folder-open-fill"></i> 📂 从网盘选取
+                  </button>
+                </div>
+                <input v-model="releaseForm.fullSetupUrl" type="text" placeholder="例如 /apps/live/天才猫极速直播助手-Setup-v2.0.0.exe" />
               </div>
             </div>
 
-            <div class="form-row-2col">
+            <div class="form-row-3col">
+              <div class="form-group">
+                <label>最低兼容支持版本 (Min Supported)</label>
+                <input v-model="releaseForm.minSupportedVersion" type="text" placeholder="低于此版本将强制全量更新" />
+              </div>
               <div class="form-group">
                 <label>补丁 MD5 校验码 (可选)</label>
                 <input v-model="releaseForm.patchMd5" type="text" placeholder="留空则不校验 MD5" />
               </div>
               <div class="form-group">
-                <label>补丁大小 (字节数 Bytes)</label>
-                <input v-model="releaseForm.patchSize" type="number" placeholder="229629" />
+                <label>补丁文件大小 (字节数 Bytes: {{ (releaseForm.patchSize / 1024 / 1024).toFixed(2) }} MB)</label>
+                <input v-model.number="releaseForm.patchSize" type="number" placeholder="11985408" />
               </div>
             </div>
 
             <div class="form-group">
-              <label>更新说明 (Changelog，展示给用户)</label>
-              <textarea v-model="releaseForm.changelog" rows="4" placeholder="1. 修复已知问题；&#10;2. 新增便捷功能。"></textarea>
+              <label>更新说明 (Changelog，将直接展示给客户端用户)</label>
+              <textarea v-model="releaseForm.changelog" rows="4" placeholder="1. 升级原生 CDP 极速直控引擎；&#10;2. 优化开价与库存调度算法；&#10;3. 修复已知问题。"></textarea>
             </div>
 
             <div class="form-row-checkbox">
               <label class="checkbox-label">
                 <input v-model="releaseForm.forceUpdate" type="checkbox" />
-                <span>设为紧急强制更新 (客户端下次启动前必须更新)</span>
+                <span>⚠️ 设为紧急强制更新 (客户端检测到后必须完成更新方可使用)</span>
               </label>
             </div>
 
@@ -760,8 +953,47 @@ defineExpose({
               <div class="status-tip-text" v-if="publishStatusMsg">{{ publishStatusMsg }}</div>
               <button class="btn-publish-submit" type="button" :disabled="isPublishing" @click="submitPublish">
                 <i class="ph ph-paper-plane-tilt-fill"></i>
-                <span>{{ isPublishing ? '正在发布...' : '🚀 立即发布并推送更新' }}</span>
+                <span>{{ isPublishing ? '正在同步 CDN...' : '🚀 立即发布并推送更新' }}</span>
               </button>
+            </div>
+          </div>
+
+          <!-- 历史发版时间线与一键回滚 -->
+          <div class="releases-history-section" v-if="releaseHistory && releaseHistory.length > 0">
+            <div class="history-section-title">
+              <i class="ph ph-clock-counter-clockwise-fill"></i>
+              <span>历史发版审计与快速回滚 ({{ releaseHistory.length }} 个版本)</span>
+            </div>
+
+            <div class="history-cards-grid">
+              <div 
+                v-for="(item, hIdx) in releaseHistory" 
+                :key="hIdx" 
+                class="history-ver-card"
+                :class="{ 'is-current-active': currentLiveVersion && currentLiveVersion.version === item.version }"
+              >
+                <div class="history-ver-top">
+                  <div class="history-ver-badge">
+                    <span class="ver-tag">v{{ item.version }}</span>
+                    <span v-if="currentLiveVersion && currentLiveVersion.version === item.version" class="active-now-tag">当前线上</span>
+                    <span v-if="item.forceUpdate" class="force-tag">强制更新</span>
+                  </div>
+                  <span class="history-date">{{ item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '历史版本' }}</span>
+                </div>
+
+                <div class="history-ver-meta">
+                  <span>大小: {{ item.patchSize ? (item.patchSize / 1024 / 1024).toFixed(2) + ' MB' : '未记录' }}</span>
+                  <span class="history-meta-path truncate" :title="item.patchUrl">{{ item.patchUrl }}</span>
+                </div>
+
+                <p class="history-changelog">{{ item.changelog || '无更新说明' }}</p>
+
+                <div class="history-ver-actions">
+                  <button type="button" class="btn-load-history" @click="loadHistoryItem(item)">
+                    <i class="ph ph-arrow-counter-clockwise-bold"></i> 载入此版本配置
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -870,78 +1102,201 @@ defineExpose({
     <!-- 📖 5. macOS App Detail Full Modal -->
     <Transition name="fade-slide">
       <div v-if="selectedApp" class="app-detail-overlay" @click.self="selectedApp = null">
-        <div class="app-detail-card">
-          <header class="detail-header">
-            <div class="detail-top-info">
-              <div class="detail-icon-wrap">
-                <MacIcons name="apps" :size="68" />
+        <div class="app-detail-card grand-showcase-card">
+          
+          <!-- 🌟 1. 顶部 Hero 全景横幅与核心介绍区 (Hero Banner Showcase) -->
+          <header class="detail-hero-banner">
+            <div class="hero-glow-bg"></div>
+            
+            <div class="hero-top-bar">
+              <div class="hero-breadcrumb">
+                <span class="hero-cat-tag">
+                  <i class="ph ph-squares-four-fill"></i>
+                  <span>{{ categories.find(c => c.id === selectedApp.category)?.name || '软件应用' }}</span>
+                </span>
+                <span class="hero-sep">/</span>
+                <span class="hero-platform-tag">{{ selectedApp.platform }}</span>
               </div>
-              <div class="detail-titles">
-                <h2>{{ selectedApp.title }}</h2>
-                <p class="detail-summary-lead">{{ selectedApp.summary }}</p>
-                <div class="detail-pills">
-                  <span class="dpill dpill-platform"><i class="ph ph-laptop"></i> {{ selectedApp.platform }}</span>
-                  <span class="dpill dpill-ver"><i class="ph ph-tag"></i> {{ selectedApp.version }}</span>
-                  <span class="dpill dpill-size"><i class="ph ph-hard-drive"></i> {{ formatSize(selectedApp.size) }}</span>
-                  <span class="dpill dpill-date">更新于 {{ formatDate(selectedApp.uploaded) }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Top Actions -->
-            <div class="detail-actions">
-              <button class="detail-get-btn" type="button" @click="openGetLinks(selectedApp)">
-                <i class="ph ph-link-simple-bold"></i>
-                <span>获取下载链接 ({{ formatSize(selectedApp.size) }})</span>
-              </button>
-              <button class="detail-copy-btn" type="button" @click="copyText(fullDirectUrl(selectedApp.key), '原生极速直链已复制！')">
-                <i class="ph ph-link-bold"></i>
-                <span>复制直链</span>
-              </button>
-              <button class="detail-edit-btn" type="button" @click="openEditor(selectedApp)">
-                <i class="ph ph-pencil-simple-bold"></i>
-                <span>编辑信息</span>
-              </button>
-              <button class="detail-close-btn" type="button" @click="selectedApp = null">
+              <button class="hero-close-btn" type="button" @click="selectedApp = null" title="关闭详情">
                 <i class="ph ph-x-bold"></i>
               </button>
             </div>
+
+            <div class="hero-content-row">
+              <!-- 大号发光 App 图标 -->
+              <div class="hero-icon-wrapper">
+                <div class="hero-icon-box">
+                  <i class="ph" :class="getAppIcon(selectedApp.category)"></i>
+                </div>
+                <div class="hero-icon-glow"></div>
+              </div>
+
+              <!-- 软件大标题与一句话亮点 -->
+              <div class="hero-titles-col">
+                <div class="hero-title-line">
+                  <h2 class="hero-app-title">{{ selectedApp.title }}</h2>
+                  <span class="badge-official">
+                    <i class="ph ph-seal-check-fill"></i> 官方正版
+                  </span>
+                  <span class="badge-version">v{{ selectedApp.version }}</span>
+                </div>
+
+                <p class="hero-summary-lead">{{ selectedApp.summary || '官方完整安装包，由 Cloudflare Anycast 全球 CDN 边缘网络直连极速分发，安全纯净无捆绑。' }}</p>
+
+                <!-- 🌟 核心高能下载与操作按钮组 -->
+                <div class="hero-action-buttons">
+                  <button class="btn-hero-primary-download" type="button" @click="downloadDirectly(selectedApp)">
+                    <div class="btn-glow-layer"></div>
+                    <i class="ph ph-arrow-circle-down-fill"></i>
+                    <span class="btn-main-text">立即高速下载</span>
+                    <span class="btn-size-tag">({{ formatSize(selectedApp.size) }})</span>
+                  </button>
+
+                  <button class="btn-hero-secondary" type="button" @click="openGetLinks(selectedApp)">
+                    <i class="ph ph-link-simple-horizontal-bold"></i>
+                    <span>多端直链与扫码</span>
+                  </button>
+
+                  <button class="btn-hero-secondary" type="button" @click="copyText(fullDirectUrl(selectedApp.key), '原生极速直链已复制！')">
+                    <i class="ph ph-copy-simple-bold"></i>
+                    <span>复制直链</span>
+                  </button>
+
+                  <button class="btn-hero-icon-only" type="button" @click="openEditor(selectedApp)" title="编辑软件详情">
+                    <i class="ph ph-pencil-simple-bold"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
           </header>
 
-          <div class="detail-body">
-            <!-- 🌟 Highlights List -->
-            <section v-if="selectedApp.features && selectedApp.features.length" class="detail-section">
-              <h4 class="section-heading"><i class="ph ph-sparkle-fill"></i> 核心功能特色</h4>
-              <ul class="features-grid">
-                <li v-for="(feat, idx) in selectedApp.features" :key="idx" class="feature-item">
-                  <i class="ph ph-check-circle-fill"></i>
-                  <span>{{ feat }}</span>
-                </li>
-              </ul>
+          <!-- 🌟 2. 软件规格与信任指标横条 (Specs & Trust Strip) -->
+          <div class="detail-specs-strip">
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-laptop"></i> 适用平台</span>
+              <span class="spec-value text-blue">{{ selectedApp.platform }}</span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-tag"></i> 软件版本</span>
+              <span class="spec-value text-emerald">v{{ selectedApp.version }}</span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-hard-drive"></i> 安装包体积</span>
+              <span class="spec-value">{{ formatSize(selectedApp.size) }}</span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-shield-check"></i> 安全保障</span>
+              <span class="spec-value text-green">
+                <i class="ph ph-check-circle-fill"></i> 纯净无毒 / MD5 校验
+              </span>
+            </div>
+            <div class="spec-divider"></div>
+            <div class="spec-col">
+              <span class="spec-label"><i class="ph ph-clock"></i> 最近更新</span>
+              <span class="spec-value">{{ formatDate(selectedApp.uploaded) }}</span>
+            </div>
+          </div>
+
+          <!-- 🌟 3. 软件主体介绍与特性展示区 (Showcase Body Content) -->
+          <div class="detail-body-scrollable">
+            
+            <!-- 🌟 核心功能特色网格 (Core Highlights Grid) -->
+            <section class="showcase-section" v-if="selectedApp.features && selectedApp.features.length">
+              <div class="section-title-row">
+                <div class="title-with-icon">
+                  <div class="sec-icon-pill sec-icon-purple"><i class="ph ph-sparkle-fill"></i></div>
+                  <h3>核心功能特色与技术亮点</h3>
+                </div>
+                <span class="sec-badge">{{ selectedApp.features.length }} 大核心优势</span>
+              </div>
+
+              <div class="features-grand-grid">
+                <div v-for="(feat, idx) in selectedApp.features" :key="idx" class="feature-grand-card">
+                  <div class="feat-card-header">
+                    <span class="feat-index-dot">{{ idx + 1 }}</span>
+                    <i class="ph ph-check-circle-fill feat-check-icon"></i>
+                  </div>
+                  <p class="feat-text-content">{{ feat }}</p>
+                </div>
+              </div>
             </section>
 
-            <!-- 🔑 Installation & License Guide -->
-            <section class="detail-section">
-              <div class="section-heading-row">
-                <h4 class="section-heading"><i class="ph ph-terminal-window-fill"></i> 安装与激活指南 / 避坑备忘</h4>
+            <!-- 🌟 安装与使用指南 (Installation & Setup Guide) -->
+            <section class="showcase-section" v-if="selectedApp.installGuide">
+              <div class="section-title-row">
+                <div class="title-with-icon">
+                  <div class="sec-icon-pill sec-icon-amber"><i class="ph ph-terminal-window-fill"></i></div>
+                  <h3>安装与使用指南 / 避坑备忘</h3>
+                </div>
                 <button
-                  v-if="selectedApp.installGuide"
-                  class="copy-guide-btn"
+                  class="btn-copy-guide-action"
                   type="button"
                   @click="copyText(selectedApp.installGuide, '安装指南已复制！')"
                 >
                   <i class="ph ph-copy-simple-bold"></i>
-                  <span>复制说明</span>
+                  <span>一键复制指南</span>
                 </button>
               </div>
-              <div class="install-guide-box">
-                <pre class="guide-pre">{{ selectedApp.installGuide }}</pre>
+
+              <div class="install-guide-container">
+                <pre class="guide-formatted-pre">{{ selectedApp.installGuide }}</pre>
               </div>
             </section>
+
+            <!-- 🌟 极速分发与多端接入卡片 (Distribution Channels) -->
+            <section class="showcase-section">
+              <div class="section-title-row">
+                <div class="title-with-icon">
+                  <div class="sec-icon-pill sec-icon-cyan"><i class="ph ph-globe-hemisphere-east-fill"></i></div>
+                  <h3>全球 Anycast CDN 直连加速节点</h3>
+                </div>
+              </div>
+
+              <div class="distribution-info-card">
+                <div class="dist-icon-box">
+                  <i class="ph ph-lightning-fill"></i>
+                </div>
+                <div class="dist-info-text">
+                  <strong>Cloudflare R2 0 出网流量极速通道</strong>
+                  <p>本软件包已托管于 Cloudflare 全球分布式边缘存储网络，支持断点续传、多线程下载器（IDM / Aria2 / Downie）加速，国内秒级拉取。</p>
+                </div>
+                <button class="btn-dist-download" type="button" @click="downloadDirectly(selectedApp)">
+                  <i class="ph ph-download-simple-bold"></i> 立即下载
+                </button>
+              </div>
+            </section>
+
           </div>
+
+          <!-- 🌟 4. 底部常驻精美下载操作栏 (Sticky Footer CTA Bar) -->
+          <footer class="detail-footer-bar">
+            <div class="footer-app-mini">
+              <div class="mini-app-icon">
+                <i class="ph" :class="getAppIcon(selectedApp.category)"></i>
+              </div>
+              <div class="mini-app-info">
+                <strong>{{ selectedApp.title }}</strong>
+                <span>v{{ selectedApp.version }} · {{ formatSize(selectedApp.size) }}</span>
+              </div>
+            </div>
+
+            <div class="footer-actions">
+              <button class="btn-footer-link" type="button" @click="openGetLinks(selectedApp)">
+                <i class="ph ph-qr-code-bold"></i> 扫码 / 终端命令
+              </button>
+              <button class="btn-footer-download" type="button" @click="downloadDirectly(selectedApp)">
+                <i class="ph ph-arrow-circle-down-fill"></i> 立即高速下载 ({{ formatSize(selectedApp.size) }})
+              </button>
+            </div>
+          </footer>
+
         </div>
       </div>
-    </Transition>
+    
+</Transition>
 
     <!-- 🔗 6. Get Download Links & Multi-Link Picker Modal -->
     <Transition name="fade-slide">
@@ -1136,6 +1491,49 @@ defineExpose({
       </div>
     </Transition>
   </MacWindow>
+
+    <!-- 🗂️ R2 网盘已有安装包/补丁文件一键关联拾取弹窗 -->
+    <div v-if="showDrivePickerModal" class="mac-modal-backdrop" @click.self="showDrivePickerModal = false">
+      <div class="drive-picker-window">
+        <div class="drive-picker-header">
+          <div class="picker-title">
+            <i class="ph ph-folder-open-fill"></i>
+            <span>选择要绑定的网盘文件 ({{ drivePickerTarget === 'patchUrl' ? '补丁/单文件包' : '全量安装包' }})</span>
+          </div>
+          <button type="button" class="btn-picker-close" @click="showDrivePickerModal = false">✕</button>
+        </div>
+
+        <div class="drive-picker-body">
+          <div v-if="driveInstallerFiles.length === 0" class="drive-picker-empty">
+            <p>网盘中暂无识别到的 .exe / .zip / .dmg 安装包或补丁文件。</p>
+            <p class="text-sub">请先上传文件至 R2 存储桶对应的 <code>apps/live/</code> 或 <code>apps/dy/</code> 目录。</p>
+          </div>
+
+          <div v-else class="drive-picker-list">
+            <div 
+              v-for="(file, fIdx) in driveInstallerFiles" 
+              :key="fIdx" 
+              class="drive-picker-item"
+              @click="selectDriveFile(file)"
+            >
+              <div class="picker-file-icon">
+                <i class="ph ph-file-zip-fill" v-if="/\.zip$/i.test(file.key)"></i>
+                <i class="ph ph-package-fill" v-else></i>
+              </div>
+              <div class="picker-file-info">
+                <div class="picker-file-name">{{ file.key }}</div>
+                <div class="picker-file-meta">
+                  <span>{{ (file.size / 1024 / 1024).toFixed(2) }} MB</span>
+                  <span v-if="file.uploaded">· {{ new Date(file.uploaded).toLocaleString() }}</span>
+                </div>
+              </div>
+              <button type="button" class="btn-picker-select">一键选用</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 </template>
 
 <style scoped>
@@ -2753,4 +3151,964 @@ defineExpose({
   opacity: 0;
   transform: scale(0.96);
 }
+
+/* Enhanced Releases View Styling */
+.app-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.app-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.6));
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  color: var(--store-text, #1e293b);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.app-preset-btn:hover {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.4);
+}
+.app-preset-btn.active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+  border-color: #0ea5e9;
+  color: #0284c7;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+}
+.preset-slug {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.label-with-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.version-bump-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-bump-pill {
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-bump-pill:hover {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+.btn-pick-drive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+  color: #6366f1;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-pick-drive:hover {
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  font-weight: 700;
+  color: #64748b;
+  font-size: 13px;
+}
+.input-with-prefix input {
+  padding-left: 28px !important;
+}
+
+.form-row-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.live-version-empty {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #d97706;
+}
+
+/* History Section */
+.releases-history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+.history-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--store-text, #1e293b);
+}
+.history-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.history-ver-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.6));
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.history-ver-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+.history-ver-card.is-current-active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.04);
+}
+.history-ver-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.history-ver-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ver-tag {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0284c7;
+}
+.active-now-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #10b981;
+  color: #ffffff;
+}
+.force-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #f43f5e;
+  color: #ffffff;
+}
+.history-date {
+  font-size: 11px;
+  color: #94a3b8;
+}
+.history-ver-meta {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: #64748b;
+}
+.history-meta-path {
+  font-family: monospace;
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+.history-changelog {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--store-text, #334155);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  max-height: 60px;
+  overflow-y: auto;
+}
+.history-ver-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.btn-load-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-load-history:hover {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+/* Drive Picker Modal */
+.drive-picker-window {
+  width: 520px;
+  max-width: 90vw;
+  max-height: 75vh;
+  border-radius: 18px;
+  background: var(--store-bg, #ffffff);
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12));
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.drive-picker-header {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+}
+.picker-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--store-text, #1e293b);
+}
+.btn-picker-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: #94a3b8;
+}
+.drive-picker-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+}
+.drive-picker-empty {
+  text-align: center;
+  padding: 30px 10px;
+  color: #64748b;
+  font-size: 12.5px;
+}
+.drive-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drive-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.06));
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.5));
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.drive-picker-item:hover {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.06);
+}
+.picker-file-icon {
+  font-size: 22px;
+  color: #0284c7;
+}
+.picker-file-info {
+  flex: 1;
+  min-width: 0;
+}
+.picker-file-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--store-text, #1e293b);
+  word-break: break-all;
+}
+.picker-file-meta {
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+.btn-picker-select {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: none;
+  background: #0ea5e9;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
+/* ==========================================================================
+   🌟 Grand Atmospheric Software Showcase Page Styling
+   ========================================================================== */
+.grand-showcase-card {
+  width: 92vw !important;
+  max-width: 900px !important;
+  height: 88vh !important;
+  max-height: 820px !important;
+  border-radius: 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--store-bg, #ffffff) !important;
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12)) !important;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45) !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+[data-theme="dark"] .grand-showcase-card,
+:root.dark .grand-showcase-card {
+  background: #0f131a !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 1. Hero Banner */
+.detail-hero-banner {
+  position: relative;
+  padding: 24px 30px 22px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(99, 102, 241, 0.14) 50%, rgba(236, 72, 153, 0.08) 100%);
+  border-bottom: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.hero-glow-bg {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, rgba(99, 102, 241, 0) 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.hero-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.hero-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hero-cat-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(14, 165, 233, 0.15);
+  color: #0284c7;
+}
+
+.hero-sep {
+  color: #94a3b8;
+}
+
+.hero-platform-tag {
+  color: #64748b;
+}
+
+.hero-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--store-text, #1e293b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hero-close-btn:hover {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  transform: rotate(90deg);
+}
+
+.hero-content-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.hero-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.hero-icon-box {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  box-shadow: 0 12px 30px rgba(14, 165, 233, 0.45);
+  position: relative;
+  z-index: 2;
+}
+
+.hero-icon-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  opacity: 0.4;
+  filter: blur(12px);
+  z-index: 1;
+}
+
+.hero-titles-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-title-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.hero-app-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--store-text, #0f172a);
+  letter-spacing: -0.02em;
+}
+
+.badge-official {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.badge-version {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.hero-summary-lead {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--store-text-sub, #475569);
+  line-height: 1.5;
+  max-width: 680px;
+}
+
+/* Hero Action Buttons */
+.hero-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-hero-primary-download {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 26px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #007aff 0%, #38bdf8 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.45);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.btn-hero-primary-download:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 28px rgba(0, 122, 255, 0.6);
+}
+
+.btn-hero-primary-download:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-size-tag {
+  font-size: 12px;
+  opacity: 0.9;
+  font-weight: 600;
+}
+
+.btn-hero-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.8));
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12));
+  color: var(--store-text, #1e293b);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-hero-secondary:hover {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: #0ea5e9;
+  color: #0284c7;
+  transform: translateY(-1px);
+}
+
+.btn-hero-icon-only {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.8));
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12));
+  color: var(--store-text, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-hero-icon-only:hover {
+  color: #0ea5e9;
+  border-color: #0ea5e9;
+}
+
+/* 2. Specs Strip */
+.detail-specs-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 12px 24px;
+  background: var(--store-card-bg, rgba(248, 250, 252, 0.85));
+  border-bottom: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.spec-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.spec-label {
+  font-size: 11px;
+  color: var(--store-text-sub, #64748b);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spec-value {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--store-text, #1e293b);
+}
+
+.spec-value.text-blue { color: #0284c7; }
+.spec-value.text-emerald { color: #059669; }
+.spec-value.text-green { color: #10b981; }
+
+.spec-divider {
+  width: 1px;
+  height: 26px;
+  background: var(--store-border, rgba(0, 0, 0, 0.08));
+}
+
+/* 3. Body Scrollable Content */
+.detail-body-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 30px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.showcase-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sec-icon-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.sec-icon-purple { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+.sec-icon-amber { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+.sec-icon-cyan { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+
+.section-title-row h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--store-text, #0f172a);
+}
+
+.sec-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.features-grand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.feature-grand-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--store-card-bg, rgba(255, 255, 255, 0.6));
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.feature-grand-card:hover {
+  border-color: #0ea5e9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.15);
+}
+
+.feat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feat-index-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feat-check-icon {
+  color: #10b981;
+  font-size: 16px;
+}
+
+.feat-text-content {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--store-text, #334155);
+  line-height: 1.45;
+}
+
+/* Install Guide Box */
+.install-guide-container {
+  border-radius: 14px;
+  background: #181e29;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 18px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.guide-formatted-pre {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #38bdf8;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.btn-copy-guide-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-copy-guide-action:hover {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+/* Distribution Info Card */
+.distribution-info-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.dist-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.dist-info-text {
+  flex: 1;
+}
+
+.dist-info-text strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--store-text, #0f172a);
+  margin-bottom: 2px;
+}
+
+.dist-info-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--store-text-sub, #64748b);
+  line-height: 1.4;
+}
+
+.btn-dist-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  background: #0ea5e9;
+  color: #ffffff;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+  transition: all 0.15s ease;
+}
+
+.btn-dist-download:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+/* 4. Sticky Footer CTA Bar */
+.detail-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: var(--store-bg, #ffffff);
+  border-top: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .detail-footer-bar,
+:root.dark .detail-footer-bar {
+  background: #111620;
+}
+
+.footer-app-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mini-app-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.mini-app-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-app-info strong {
+  font-size: 13px;
+  color: var(--store-text, #0f172a);
+}
+
+.mini-app-info span {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  color: var(--store-text, #1e293b);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .btn-footer-link,
+:root.dark .btn-footer-link {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-footer-link:hover {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+
+.btn-footer-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #007aff 0%, #38bdf8 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.4);
+  transition: all 0.15s ease;
+}
+
+.btn-footer-download:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.55);
+}
+
 </style>
