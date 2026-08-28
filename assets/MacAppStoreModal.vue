@@ -1178,7 +1178,7 @@ defineExpose({
     
     <!-- 🪟 Global Teleported Modals (Always centered & highest z-index) -->
     <Teleport to="body">
-      <!-- 📖 5. macOS App Detail Full Modal -->
+          <!-- 📖 5. macOS App Detail Full Modal (Atmospheric Apple Showcase) -->
     <Transition name="fade-slide">
       <div v-if="selectedApp" class="app-detail-overlay" @click.self="selectedApp = null">
         <div class="app-detail-card grand-showcase-card">
@@ -1232,8 +1232,8 @@ defineExpose({
                   </button>
 
                   <button class="btn-hero-secondary" type="button" @click="openGetLinks(selectedApp)">
-                    <i class="ph ph-link-simple-horizontal-bold"></i>
-                    <span>多端直链与扫码</span>
+                    <i class="ph ph-qr-code-bold"></i>
+                    <span>扫码 / 多端直链</span>
                   </button>
 
                   <button class="btn-hero-secondary" type="button" @click="copyText(fullDirectUrl(selectedApp.key), '原生极速直链已复制！')">
@@ -1241,8 +1241,9 @@ defineExpose({
                     <span>复制直链</span>
                   </button>
 
-                  <button class="btn-hero-icon-only" type="button" @click="openEditor(selectedApp)" title="编辑软件详情">
+                  <button class="btn-hero-secondary btn-hero-edit" type="button" @click="openEditor(selectedApp)" title="编辑软件介绍与使用指南">
                     <i class="ph ph-pencil-simple-bold"></i>
+                    <span>编辑说明</span>
                   </button>
                 </div>
               </div>
@@ -1263,19 +1264,19 @@ defineExpose({
             <div class="spec-divider"></div>
             <div class="spec-col">
               <span class="spec-label"><i class="ph ph-hard-drive"></i> 安装包体积</span>
-              <span class="spec-value">{{ formatSize(selectedApp.size) }}</span>
+              <span class="spec-value text-white-contrast">{{ formatSize(selectedApp.size) }}</span>
             </div>
             <div class="spec-divider"></div>
             <div class="spec-col">
               <span class="spec-label"><i class="ph ph-shield-check"></i> 安全保障</span>
               <span class="spec-value text-green">
-                <i class="ph ph-check-circle-fill"></i> 纯净无毒 / MD5 校验
+                <i class="ph ph-check-circle-fill"></i> 纯净无毒 · 官方直发
               </span>
             </div>
             <div class="spec-divider"></div>
             <div class="spec-col">
               <span class="spec-label"><i class="ph ph-clock"></i> 最近更新</span>
-              <span class="spec-value">{{ formatDate(selectedApp.uploaded) }}</span>
+              <span class="spec-value text-slate">{{ formatDate(selectedApp.uploaded) }}</span>
             </div>
           </div>
 
@@ -1287,7 +1288,7 @@ defineExpose({
               <div class="section-title-row">
                 <div class="title-with-icon">
                   <div class="sec-icon-pill sec-icon-purple"><i class="ph ph-sparkle-fill"></i></div>
-                  <h3>核心功能特色与技术亮点</h3>
+                  <h3 class="sec-main-heading">核心功能特色与技术亮点</h3>
                 </div>
                 <span class="sec-badge">{{ selectedApp.features.length }} 大核心优势</span>
               </div>
@@ -1295,7 +1296,7 @@ defineExpose({
               <div class="features-grand-grid">
                 <div v-for="(feat, idx) in selectedApp.features" :key="idx" class="feature-grand-card">
                   <div class="feat-card-header">
-                    <span class="feat-index-dot">{{ idx + 1 }}</span>
+                    <span class="feat-index-dot">{{ String(idx + 1).padStart(2, '0') }}</span>
                     <i class="ph ph-check-circle-fill feat-check-icon"></i>
                   </div>
                   <p class="feat-text-content">{{ feat }}</p>
@@ -1308,7 +1309,7 @@ defineExpose({
               <div class="section-title-row">
                 <div class="title-with-icon">
                   <div class="sec-icon-pill sec-icon-amber"><i class="ph ph-terminal-window-fill"></i></div>
-                  <h3>安装与使用指南 / 避坑备忘</h3>
+                  <h3 class="sec-main-heading">安装与使用指南 / 避坑备忘</h3>
                 </div>
                 <button
                   class="btn-copy-guide-action"
@@ -1320,8 +1321,20 @@ defineExpose({
                 </button>
               </div>
 
-              <div class="install-guide-container">
-                <pre class="guide-formatted-pre">{{ selectedApp.installGuide }}</pre>
+              <!-- macOS 终端样式容器 -->
+              <div class="terminal-mockup-wrapper">
+                <div class="terminal-mockup-header">
+                  <div class="terminal-traffic-lights">
+                    <span class="dot-red"></span>
+                    <span class="dot-yellow"></span>
+                    <span class="dot-green"></span>
+                  </div>
+                  <div class="terminal-title">Terminal · 指南与终端指令</div>
+                  <div class="terminal-placeholder"></div>
+                </div>
+                <div class="install-guide-container">
+                  <pre class="guide-formatted-pre">{{ selectedApp.installGuide }}</pre>
+                </div>
               </div>
             </section>
 
@@ -1330,7 +1343,7 @@ defineExpose({
               <div class="section-title-row">
                 <div class="title-with-icon">
                   <div class="sec-icon-pill sec-icon-cyan"><i class="ph ph-globe-hemisphere-east-fill"></i></div>
-                  <h3>全球 Anycast CDN 直连加速节点</h3>
+                  <h3 class="sec-main-heading">全球 Anycast CDN 直连加速节点</h3>
                 </div>
               </div>
 
@@ -1339,8 +1352,8 @@ defineExpose({
                   <i class="ph ph-lightning-fill"></i>
                 </div>
                 <div class="dist-info-text">
-                  <strong>Cloudflare R2 0 出网流量极速通道</strong>
-                  <p>本软件包已托管于 Cloudflare 全球分布式边缘存储网络，支持断点续传、多线程下载器（IDM / Aria2 / Downie）加速，国内秒级拉取。</p>
+                  <strong class="dist-heading">Cloudflare R2 0 出网流量极速通道</strong>
+                  <p class="dist-desc">本软件包已托管于 Cloudflare 全球分布式边缘存储网络，支持断点续传、多线程下载器（IDM / Aria2 / Downie）加速，国内秒级拉取。</p>
                 </div>
                 <button class="btn-dist-download" type="button" @click="downloadDirectly(selectedApp)">
                   <i class="ph ph-download-simple-bold"></i> 立即下载
@@ -1357,14 +1370,14 @@ defineExpose({
                 <i class="ph" :class="getAppIcon(selectedApp.category)"></i>
               </div>
               <div class="mini-app-info">
-                <strong>{{ selectedApp.title }}</strong>
-                <span>v{{ selectedApp.version }} · {{ formatSize(selectedApp.size) }}</span>
+                <strong class="footer-title">{{ selectedApp.title }}</strong>
+                <span class="footer-meta">v{{ selectedApp.version }} · {{ formatSize(selectedApp.size) }}</span>
               </div>
             </div>
 
             <div class="footer-actions">
               <button class="btn-footer-link" type="button" @click="openGetLinks(selectedApp)">
-                <i class="ph ph-qr-code-bold"></i> 扫码 / 终端命令
+                <i class="ph ph-qr-code-bold"></i> 扫码 / 直链
               </button>
               <button class="btn-footer-download" type="button" @click="downloadDirectly(selectedApp)">
                 <i class="ph ph-arrow-circle-down-fill"></i> 立即高速下载 ({{ formatSize(selectedApp.size) }})
@@ -1374,8 +1387,7 @@ defineExpose({
 
         </div>
       </div>
-    
-</Transition>
+    </Transition>
 
     <!-- 🔗 6. Get Download Links & Multi-Link Picker Modal -->
     <Transition name="fade-slide">
@@ -3563,49 +3575,58 @@ defineExpose({
 
 
 /* ==========================================================================
-   🌟 Grand Atmospheric Software Showcase Page Styling
+   🌟 Grand Atmospheric Software Showcase Page (Apple VisionOS / macOS Sequoia Style)
    ========================================================================== */
 .grand-showcase-card {
   width: 92vw !important;
-  max-width: 900px !important;
-  height: 88vh !important;
-  max-height: 820px !important;
+  max-width: 920px !important;
+  height: 86vh !important;
+  max-height: 840px !important;
   border-radius: 24px !important;
   display: flex !important;
   flex-direction: column !important;
-  background: var(--store-bg, #ffffff) !important;
-  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12)) !important;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.45) !important;
   overflow: hidden !important;
   position: relative !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 [data-theme="dark"] .grand-showcase-card,
-:root.dark .grand-showcase-card {
-  background: #0f131a !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.8) !important;
+:root.dark .grand-showcase-card,
+body.dark .grand-showcase-card {
+  background: #0d1219 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 36px 100px rgba(0, 0, 0, 0.85), 0 0 1px rgba(255, 255, 255, 0.2) inset !important;
 }
 
 /* 1. Hero Banner */
 .detail-hero-banner {
   position: relative;
-  padding: 24px 30px 22px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(99, 102, 241, 0.14) 50%, rgba(236, 72, 153, 0.08) 100%);
-  border-bottom: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  padding: 24px 32px 22px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(99, 102, 241, 0.18) 50%, rgba(236, 72, 153, 0.1) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
   flex-shrink: 0;
 }
 
+[data-theme="dark"] .detail-hero-banner {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(99, 102, 241, 0.22) 50%, rgba(168, 85, 247, 0.14) 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
 .hero-glow-bg {
   position: absolute;
-  top: -80px;
-  right: -80px;
-  width: 260px;
-  height: 260px;
+  top: -90px;
+  right: -90px;
+  width: 320px;
+  height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, rgba(99, 102, 241, 0) 70%);
-  filter: blur(40px);
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.35) 0%, rgba(99, 102, 241, 0) 70%);
+  filter: blur(50px);
   pointer-events: none;
 }
 
@@ -3621,52 +3642,54 @@ defineExpose({
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .hero-cat-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  background: rgba(14, 165, 233, 0.15);
-  color: #0284c7;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.35);
 }
 
 .hero-sep {
-  color: #94a3b8;
-}
-
-.hero-platform-tag {
   color: #64748b;
 }
 
+.hero-platform-tag {
+  color: #94a3b8;
+}
+
 .hero-close-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: var(--store-text, #1e293b);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 15px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-close-btn:hover {
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(244, 63, 94, 0.25);
+  border-color: #f43f5e;
   color: #f43f5e;
-  transform: rotate(90deg);
+  transform: rotate(90deg) scale(1.08);
 }
 
 .hero-content-row {
   display: flex;
-  align-items: flex-start;
-  gap: 24px;
+  align-items: center;
+  gap: 26px;
 }
 
 .hero-icon-wrapper {
@@ -3675,16 +3698,17 @@ defineExpose({
 }
 
 .hero-icon-box {
-  width: 88px;
-  height: 88px;
+  width: 82px;
+  height: 82px;
   border-radius: 22px;
   background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 44px;
-  box-shadow: 0 12px 30px rgba(14, 165, 233, 0.45);
+  font-size: 42px;
+  box-shadow: 0 12px 30px rgba(14, 165, 233, 0.45), 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  border: 2px solid rgba(255, 255, 255, 0.2);
   position: relative;
   z-index: 2;
 }
@@ -3694,8 +3718,8 @@ defineExpose({
   inset: -6px;
   border-radius: 26px;
   background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
-  opacity: 0.4;
-  filter: blur(12px);
+  opacity: 0.45;
+  filter: blur(14px);
   z-index: 1;
 }
 
@@ -3709,55 +3733,64 @@ defineExpose({
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .hero-app-title {
   margin: 0;
   font-size: 26px;
-  font-weight: 800;
-  color: var(--store-text, #0f172a);
-  letter-spacing: -0.02em;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+}
+
+[data-theme="dark"] .hero-app-title {
+  color: #ffffff !important;
 }
 
 .badge-official {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  color: #10b981;
+  gap: 5px;
+  padding: 3px 11px;
+  border-radius: 20px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .badge-version {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
-  border-radius: 10px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #6366f1;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
   font-size: 11.5px;
-  font-weight: 700;
-  font-family: monospace;
+  font-weight: 800;
+  font-family: ui-monospace, monospace;
 }
 
 .hero-summary-lead {
-  margin: 0 0 16px;
+  margin: 0 0 18px;
   font-size: 13.5px;
-  color: var(--store-text-sub, #475569);
-  line-height: 1.5;
-  max-width: 680px;
+  color: #475569;
+  line-height: 1.55;
+  max-width: 700px;
+}
+
+[data-theme="dark"] .hero-summary-lead {
+  color: #94a3b8 !important;
 }
 
 /* Hero Action Buttons */
 .hero-action-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -3768,20 +3801,20 @@ defineExpose({
   gap: 8px;
   padding: 12px 26px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #007aff 0%, #38bdf8 100%);
+  background: linear-gradient(135deg, #007aff 0%, #00c6ff 100%);
   color: #ffffff;
   border: none;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 122, 255, 0.45);
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
 }
 
 .btn-hero-primary-download:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 28px rgba(0, 122, 255, 0.6);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 32px rgba(0, 122, 255, 0.65);
 }
 
 .btn-hero-primary-download:active {
@@ -3790,105 +3823,120 @@ defineExpose({
 
 .btn-size-tag {
   font-size: 12px;
-  opacity: 0.9;
-  font-weight: 600;
+  opacity: 0.92;
+  font-weight: 700;
+  font-family: monospace;
 }
 
 .btn-hero-secondary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   padding: 11px 18px;
   border-radius: 12px;
-  background: var(--store-card-bg, rgba(255, 255, 255, 0.8));
-  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12));
-  color: var(--store-text, #1e293b);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #1e293b;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
+[data-theme="dark"] .btn-hero-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f1f5f9 !important;
+}
+
 .btn-hero-secondary:hover {
-  background: rgba(14, 165, 233, 0.12);
-  border-color: #0ea5e9;
-  color: #0284c7;
+  background: rgba(14, 165, 233, 0.18) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
   transform: translateY(-1px);
 }
 
-.btn-hero-icon-only {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: var(--store-card-bg, rgba(255, 255, 255, 0.8));
-  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.12));
-  color: var(--store-text, #64748b);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.15s ease;
+.btn-hero-edit {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #d97706 !important;
+}
+[data-theme="dark"] .btn-hero-edit {
+  color: #fbbf24 !important;
 }
 
-.btn-hero-icon-only:hover {
-  color: #0ea5e9;
-  border-color: #0ea5e9;
-}
-
-/* 2. Specs Strip */
+/* 2. Specs Strip (Full dark/light high contrast) */
 .detail-specs-strip {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 12px 24px;
-  background: var(--store-card-bg, rgba(248, 250, 252, 0.85));
-  border-bottom: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  padding: 13px 28px;
+  background: #f8fafc;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
-  gap: 10px;
+  gap: 12px;
+}
+
+[data-theme="dark"] .detail-specs-strip {
+  background: #121822 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .spec-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   text-align: center;
 }
 
 .spec-label {
   font-size: 11px;
-  color: var(--store-text-sub, #64748b);
-  font-weight: 600;
+  color: #64748b;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 4px;
 }
+[data-theme="dark"] .spec-label {
+  color: #94a3b8 !important;
+}
 
 .spec-value {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--store-text, #1e293b);
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .spec-value.text-blue { color: #0284c7; }
+[data-theme="dark"] .spec-value.text-blue { color: #38bdf8 !important; }
+
 .spec-value.text-emerald { color: #059669; }
+[data-theme="dark"] .spec-value.text-emerald { color: #34d399 !important; }
+
+.spec-value.text-white-contrast { color: #0f172a; }
+[data-theme="dark"] .spec-value.text-white-contrast { color: #f1f5f9 !important; }
+
 .spec-value.text-green { color: #10b981; }
+.spec-value.text-slate { color: #64748b; }
+[data-theme="dark"] .spec-value.text-slate { color: #94a3b8 !important; }
 
 .spec-divider {
   width: 1px;
-  height: 26px;
-  background: var(--store-border, rgba(0, 0, 0, 0.08));
+  height: 28px;
+  background: rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .spec-divider {
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* 3. Body Scrollable Content */
 .detail-body-scrollable {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 30px 30px;
+  padding: 26px 32px 32px;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 28px;
 }
 
 .showcase-section {
@@ -3910,57 +3958,70 @@ defineExpose({
 }
 
 .sec-icon-pill {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 16px;
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .sec-icon-purple { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
 .sec-icon-amber { background: linear-gradient(135deg, #f59e0b, #ea580c); }
 .sec-icon-cyan { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
 
-.section-title-row h3 {
+.sec-main-heading {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  color: var(--store-text, #0f172a);
+  color: #0f172a;
+}
+
+[data-theme="dark"] .sec-main-heading {
+  color: #ffffff !important;
 }
 
 .sec-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(139, 92, 246, 0.12);
-  color: #8b5cf6;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #a78bfa;
 }
 
 .features-grand-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .feature-grand-card {
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: var(--store-card-bg, rgba(255, 255, 255, 0.6));
-  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  transition: all 0.15s ease;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .feature-grand-card {
+  background: #141a24 !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
 .feature-grand-card:hover {
-  border-color: #0ea5e9;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.15);
+  border-color: #38bdf8 !important;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.25) !important;
 }
 
 .feat-card-header {
@@ -3970,46 +4031,91 @@ defineExpose({
 }
 
 .feat-index-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: rgba(14, 165, 233, 0.12);
-  color: #0284c7;
-  font-size: 11px;
-  font-weight: 800;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  color: #38bdf8;
+  font-size: 11.5px;
+  font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: monospace;
 }
 
 .feat-check-icon {
   color: #10b981;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .feat-text-content {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--store-text, #334155);
-  line-height: 1.45;
+  color: #334155;
+  line-height: 1.5;
 }
 
-/* Install Guide Box */
+[data-theme="dark"] .feat-text-content {
+  color: #f1f5f9 !important;
+}
+
+/* macOS Terminal Mockup */
+.terminal-mockup-wrapper {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #080c12;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.terminal-mockup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #101620;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.terminal-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dot-red, .dot-yellow, .dot-green {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+
+.terminal-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.terminal-placeholder {
+  width: 40px;
+}
+
 .install-guide-container {
-  border-radius: 14px;
-  background: #181e29;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 16px 18px;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  padding: 16px 20px;
 }
 
 .guide-formatted-pre {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: 12.5px;
   color: #38bdf8;
-  line-height: 1.6;
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -4017,14 +4123,14 @@ defineExpose({
 .btn-copy-guide-action {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.1);
-  color: #d97706;
-  font-size: 11.5px;
-  font-weight: 700;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -4038,63 +4144,75 @@ defineExpose({
 .distribution-info-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
-  border: 1px solid rgba(14, 165, 233, 0.25);
+  gap: 18px;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+[data-theme="dark"] .distribution-info-card {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(99, 102, 241, 0.14) 100%) !important;
+  border-color: rgba(14, 165, 233, 0.4) !important;
 }
 
 .dist-icon-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #0ea5e9, #6366f1);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 24px;
   flex-shrink: 0;
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
 }
 
 .dist-info-text {
   flex: 1;
+  min-width: 0;
 }
 
-.dist-info-text strong {
+.dist-heading {
   display: block;
-  font-size: 13.5px;
-  color: var(--store-text, #0f172a);
-  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0284c7;
+  margin-bottom: 4px;
 }
 
-.dist-info-text p {
+[data-theme="dark"] .dist-heading {
+  color: #38bdf8 !important;
+}
+
+.dist-desc {
   margin: 0;
-  font-size: 12px;
-  color: var(--store-text-sub, #64748b);
-  line-height: 1.4;
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .dist-desc {
+  color: #94a3b8 !important;
 }
 
 .btn-dist-download {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
-  border-radius: 10px;
-  background: #0ea5e9;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: #0284c7;
   color: #ffffff;
   border: none;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
   transition: all 0.15s ease;
 }
 
 .btn-dist-download:hover {
-  background: #0284c7;
+  background: #0369a1;
   transform: translateY(-1px);
 }
 
@@ -4104,53 +4222,63 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
   padding: 14px 28px;
-  background: var(--store-bg, #ffffff);
-  border-top: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
+  background: #f1f5f9;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .detail-footer-bar,
-:root.dark .detail-footer-bar {
-  background: #111620;
+[data-theme="dark"] .detail-footer-bar {
+  background: #090d14 !important;
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .footer-app-mini {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .mini-app-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #0ea5e9, #6366f1);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .mini-app-info {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
-.mini-app-info strong {
-  font-size: 13px;
-  color: var(--store-text, #0f172a);
+.footer-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
 }
 
-.mini-app-info span {
+[data-theme="dark"] .footer-title {
+  color: #ffffff !important;
+}
+
+.footer-meta {
   font-size: 11px;
-  color: #94a3b8;
+  color: #64748b;
+}
+
+[data-theme="dark"] .footer-meta {
+  color: #94a3b8 !important;
 }
 
 .footer-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .btn-footer-link {
@@ -4158,45 +4286,46 @@ defineExpose({
   align-items: center;
   gap: 6px;
   padding: 9px 16px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid var(--store-border, rgba(0, 0, 0, 0.08));
-  color: var(--store-text, #1e293b);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #1e293b;
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-[data-theme="dark"] .btn-footer-link,
-:root.dark .btn-footer-link {
-  background: rgba(255, 255, 255, 0.06);
+[data-theme="dark"] .btn-footer-link {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f1f5f9 !important;
 }
 
 .btn-footer-link:hover {
-  background: rgba(14, 165, 233, 0.12);
-  color: #0284c7;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
 }
 
 .btn-footer-download {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #007aff 0%, #38bdf8 100%);
+  gap: 7px;
+  padding: 10px 22px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #007aff 0%, #00c6ff 100%);
   color: #ffffff;
   border: none;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.45);
   transition: all 0.15s ease;
 }
 
 .btn-footer-download:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.55);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(0, 122, 255, 0.6);
 }
 
 
