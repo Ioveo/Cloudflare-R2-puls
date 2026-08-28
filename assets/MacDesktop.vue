@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import MacWindow from "./MacWindow.vue";
 import MacTopBar from "./MacTopBar.vue";
 import MacDock from "./MacDock.vue";
