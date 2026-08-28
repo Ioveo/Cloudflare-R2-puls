@@ -585,6 +585,22 @@ const heroApp = computed(() => {
   };
 });
 
+function getAppIcon(category) {
+  const map = {
+    discover: "ph-compass-rose-fill",
+    releases: "ph-rocket-launch-fill",
+    design: "ph-palette-fill",
+    productivity: "ph-briefcase-fill",
+    developer: "ph-code-fill",
+    utilities: "ph-wrench-fill",
+    entertainment: "ph-film-strip-fill",
+    network: "ph-globe-hemisphere-east-fill",
+    mobile: "ph-device-mobile-camera-fill",
+    all: "ph-squares-four-fill",
+  };
+  return map[(category || "").toLowerCase()] || "ph-package-fill";
+}
+
 function formatSize(size) {
   if (!size || isNaN(size)) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
