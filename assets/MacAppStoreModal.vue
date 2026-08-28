@@ -926,6 +926,9 @@ defineExpose({
 </script>
 
 <template>
+  
+<div>
+  <!-- 🛍️ macOS App Store Main Window -->
   <MacWindow
     v-if="visible"
     title="App Store"
@@ -1336,9 +1339,10 @@ defineExpose({
         </div>
       </main>
     </div>
+  </MacWindow>
 
-    
-    <!-- 🪟 Global Teleported Modals (Always centered & highest z-index) -->
+  <!-- 🪟 Global Teleported Modals (Mounted at root level for 100% reliable showcase view) -->
+  <!-- 🪟 Global Teleported Modals (Always centered & highest z-index) -->
     <Teleport to="body">
           <!-- 📖 5. macOS App Detail Full Modal (Atmospheric Apple Showcase) -->
     <Transition name="fade-slide">
@@ -1753,7 +1757,7 @@ defineExpose({
         <span>{{ copySuccessTip }}</span>
       </div>
     </Transition>
-  </MacWindow>
+  
 
     <!-- 🗂️ R2 网盘已有安装包/补丁文件一键关联拾取弹窗 -->
     <div v-if="showDrivePickerModal" class="mac-modal-backdrop" @click.self="showDrivePickerModal = false">
@@ -4934,3 +4938,5 @@ body.dark .grand-showcase-card {
 .hero-close-btn:hover .hero-close-cross {
   color: #ffffff;
 }
+
+</div>

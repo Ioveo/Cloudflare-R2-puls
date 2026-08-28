@@ -246,6 +246,10 @@ const notesModal = ref({ visible: false, minimized: false });
 const appStoreModal = ref({ visible: false, minimized: false });
 const appStoreRef = ref(null);
 const selectedFileKey = ref("");
+const selectedFileObj = computed(() => {
+  if (!selectedFileKey.value) return null;
+  return props.files.find(f => f.key === selectedFileKey.value) || null;
+});
 
 const activeAppId = ref("finder");
 const topZIndex = ref(30);
@@ -1069,6 +1073,12 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
           <span class="icon-label">我的照片图库</span>
         </div>
 
+        <!-- App Store Software Hub -->
+        <div class="desktop-icon-item" @dblclick="launchApp('appstore')" @touchstart="onTouchStartItem('appstore', $event)" @touchmove="onTouchMoveItem" @touchend="launchApp('appstore')">
+          <MacIcons name="appstore" :size="56" />
+          <span class="icon-label">软件工坊 (App Store)</span>
+        </div>
+
         <!-- Video Cinema -->
         <div class="desktop-icon-item" @dblclick="launchApp('cinema')" @touchstart="onTouchStartItem('cinema', $event)" @touchmove="onTouchMoveItem" @touchend="launchApp('cinema')">
           <MacIcons name="cinema" :size="56" />
@@ -1201,7 +1211,19 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
                   <button class="path-btn" @click="emit('navigate', pathUntil(idx))">{{ part }}</button>
                 </template>
               </template>
-              <span class="finder-status-count">{{ files.length + folders.length }} 个项目</span>
+              <div class="finder-pathbar-actions">
+                <button 
+                  v-if="selectedFileObj && isSoftware(selectedFileObj)" 
+                  class="btn-pathbar-showcase" 
+                  type="button" 
+                  @click.stop="handleOpenFile(selectedFileObj)"
+                  title="查看该软件的大气介绍落地页与直连下载"
+                >
+                  <i class="ph ph-sparkle-fill"></i>
+                  <span>🚀 查看软件介绍与下载</span>
+                </button>
+                <span class="finder-status-count">{{ files.length + folders.length }} 个项目</span>
+              </div>
             </div>
 
             <!-- Files Grid / List Container (Right click on blank space triggers Finder folder upload/create actions) -->
@@ -2342,3 +2364,38 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
 }
 </style>
 
+
+
+.finder-pathbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-pathbar-showcase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+  animation: pulse-glow 2s infinite ease-in-out;
+  transition: all 0.2s ease;
+}
+
+.btn-pathbar-showcase:hover {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  transform: scale(1.04);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(14, 165, 233, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(14, 165, 233, 0.7); }
+}
