@@ -198,6 +198,14 @@ function handleDesktopKeydown(e) {
 }
 
 onMounted(() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const targetShowcase = params.get("showcase") || params.get("app");
+    if (targetShowcase) {
+      appStoreModal.value.visible = true;
+      bringToFront("appstore");
+    }
+  } catch (e) {}
   window.addEventListener("wallpaper-changed", (e) => {
     if (e.detail) customWallpaper.value = e.detail;
   });

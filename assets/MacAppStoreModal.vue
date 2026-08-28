@@ -26,6 +26,117 @@ const editingApp = ref(null); // For metadata editor modal
 const linkModalApp = ref(null); // For "获取下载链接" multi-link picker modal
 const copySuccessTip = ref("");
 
+// Software Deletion States
+const deletingApp = ref(null);
+const alsoDeleteR2File = ref(true);
+const isDeletingApp = ref(false);
+
+function getStorageHeaders() {
+  const headers = {};
+  if (props.storageId && props.storageId !== "default") {
+    headers["x-custom-storage"] = props.storageId;
+  }
+  if (props.authCredentials) {
+    headers["Authorization"] = `Basic ${props.authCredentials}`;
+  }
+  return headers;
+}
+
+function copyShowcaseShareUrl(app) {
+  if (!app) return;
+  const origin = window.location.origin;
+  let shareParam = "";
+  if (app.key && app.key.toLowerCase().includes("apps/live/")) {
+    shareParam = "app=live";
+  } else if (app.key && app.key.toLowerCase().includes("apps/dy/")) {
+    shareParam = "app=dy";
+  } else if (app.key && app.key.toLowerCase().includes("apps/datacenter/")) {
+    shareParam = "app=datacenter";
+  } else {
+    shareParam = `showcase=${encodeURIComponent(app.key || app.title)}`;
+  }
+  const fullUrl = `${origin}/?${shareParam}`;
+  copyText(fullUrl, `🎉「${app.title}」专属介绍与下载落地页链接已复制！`);
+}
+
+function confirmDeleteApp(app) {
+  if (!app) return;
+  deletingApp.value = app;
+  alsoDeleteR2File.value = true;
+}
+
+async function executeDeleteApp() {
+  if (!deletingApp.value) return;
+  isDeletingApp.value = true;
+  const target = deletingApp.value;
+  
+  try {
+    // 1. 如果勾选了物理删除云端文件，调用 R2 删除接口
+    if (alsoDeleteR2File.value && target.key) {
+      const delPath = `/api/write/items/${encodeURIComponent(target.key).replace(/%2F/g, "/")}`;
+      await axios.delete(delPath, { headers: getStorageHeaders() });
+    }
+
+    // 2. 清理元数据中的记录并同步
+    if (props.metadata && target.key) {
+      const newMeta = { ...(props.metadata || {}) };
+      delete newMeta[target.key];
+      emit("save-metadata", newMeta);
+    }
+
+    // 3. 触发刷新
+    emit("refresh");
+    
+    copySuccessTip.value = `🗑️「${target.title}」已成功删除下架！`;
+    setTimeout(() => (copySuccessTip.value = ""), 3000);
+
+    if (selectedApp.value && selectedApp.value.key === target.key) {
+      selectedApp.value = null;
+    }
+    if (editingApp.value && editingApp.value.key === target.key) {
+      editingApp.value = null;
+    }
+    deletingApp.value = null;
+  } catch (err) {
+    console.error("Delete app failed:", err);
+    alert("删除失败: " + (err.response?.data?.message || err.message || err));
+  } finally {
+    isDeletingApp.value = false;
+  }
+}
+
+// 自动检测 URL 参数唤起指定软件介绍展厅
+function checkUrlShowcaseParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("showcase") || params.get("app");
+    if (!target) return;
+
+    const list = softwareItems.value;
+    let found = null;
+    if (target.toLowerCase() === "live") {
+      found = list.find(a => (a.key && a.key.includes("/live/")) || a.title.includes("直播助手") || a.title.includes("Live"));
+    } else if (target.toLowerCase() === "dy") {
+      found = list.find(a => (a.key && a.key.includes("/dy/")) || a.title.includes("C#") || a.title.includes("旗舰版"));
+    } else if (target.toLowerCase() === "datacenter") {
+      found = list.find(a => (a.key && a.key.includes("/datacenter/")) || a.title.includes("数据中心") || a.title.includes("DataCenter"));
+    } else {
+      found = list.find(a => a.key === target || a.title === target || a.key.includes(target) || a.title.toLowerCase().includes(target.toLowerCase()));
+    }
+
+    if (found) {
+      selectedApp.value = found;
+    }
+  } catch (e) {}
+}
+
+watch(softwareItems, () => {
+  if (!selectedApp.value) {
+    checkUrlShowcaseParam();
+  }
+}, { immediate: true });
+
+
 // Release & Hot Update State
 const appPresets = {
   live: {
@@ -1163,11 +1274,17 @@ defineExpose({
                 <i class="ph ph-sparkle-fill"></i>
                 <span>介绍 / 下载</span>
               </button>
+              <button class="app-share-icon-btn" type="button" title="复制专属介绍与下载落地页分享链接" @click="copyShowcaseShareUrl(app)">
+                <i class="ph ph-share-network-bold"></i>
+              </button>
               <button class="app-link-icon-btn" type="button" title="获取直链与扫码" @click="openGetLinks(app)">
                 <i class="ph ph-link-bold"></i>
               </button>
               <button class="app-meta-edit-btn" type="button" title="编辑软件简介与安装说明" @click="openEditor(app)">
                 <i class="ph ph-pencil-simple-bold"></i>
+              </button>
+              <button class="app-delete-icon-btn" type="button" title="从商店下架 / 彻底删除软件" @click="confirmDeleteApp(app)">
+                <i class="ph ph-trash-bold"></i>
               </button>
             </div>
           </article>
@@ -1236,14 +1353,24 @@ defineExpose({
                     <span>扫码 / 多端直链</span>
                   </button>
 
+                  <button class="btn-hero-secondary btn-hero-share" type="button" @click="copyShowcaseShareUrl(selectedApp)" title="复制此软件的独立落地介绍与下载页网址发给别人">
+                    <i class="ph ph-share-network-bold"></i>
+                    <span>分享此页面</span>
+                  </button>
+
                   <button class="btn-hero-secondary" type="button" @click="copyText(fullDirectUrl(selectedApp.key), '原生极速直链已复制！')">
-                    <i class="ph ph-copy-simple-bold"></i>
+                    <i class="ph ph-link-bold"></i>
                     <span>复制直链</span>
                   </button>
 
                   <button class="btn-hero-secondary btn-hero-edit" type="button" @click="openEditor(selectedApp)" title="编辑软件介绍与使用指南">
                     <i class="ph ph-pencil-simple-bold"></i>
                     <span>编辑说明</span>
+                  </button>
+
+                  <button class="btn-hero-secondary btn-hero-delete-act" type="button" @click="confirmDeleteApp(selectedApp)" title="从商店下架或彻底删除此软件">
+                    <i class="ph ph-trash-bold"></i>
+                    <span>删除软件</span>
                   </button>
                 </div>
               </div>
@@ -1632,6 +1759,64 @@ defineExpose({
         </div>
       </div>
     </div>
+    
+    <!-- 🗑️ 7. Delete App Confirmation Modal -->
+    <Transition name="fade-slide">
+      <div v-if="deletingApp" class="mac-modal-backdrop" @click.self="!isDeletingApp && (deletingApp = null)">
+        <div class="delete-app-modal-card">
+          <div class="delete-modal-header">
+            <div class="delete-header-icon">
+              <i class="ph ph-warning-octagon-fill"></i>
+            </div>
+            <div class="delete-header-titles">
+              <h3>确认删除 / 下架软件</h3>
+              <p>您即将从软件中心移除此应用</p>
+            </div>
+            <button class="btn-del-close" type="button" @click="deletingApp = null" :disabled="isDeletingApp">✕</button>
+          </div>
+
+          <div class="delete-modal-body">
+            <div class="del-app-summary-box">
+              <div class="del-app-info-row">
+                <span class="del-info-label">软件名称:</span>
+                <span class="del-info-val text-bold">{{ deletingApp.title }}</span>
+              </div>
+              <div class="del-app-info-row">
+                <span class="del-info-label">软件版本:</span>
+                <span class="del-info-val text-emerald">v{{ deletingApp.version }}</span>
+              </div>
+              <div class="del-app-info-row">
+                <span class="del-info-label">文件路径:</span>
+                <span class="del-info-val font-mono text-slate">{{ deletingApp.key }}</span>
+              </div>
+              <div class="del-app-info-row">
+                <span class="del-info-label">安装包体积:</span>
+                <span class="del-info-val font-mono">{{ formatSize(deletingApp.size) }}</span>
+              </div>
+            </div>
+
+            <label class="del-checkbox-option">
+              <input type="checkbox" v-model="alsoDeleteR2File" class="del-checkbox-input" />
+              <div class="del-checkbox-text">
+                <strong>同时从 Cloudflare R2 存储桶中永久删除安装包文件</strong>
+                <span>勾选后将物理删除 R2 上的 <code>{{ deletingApp.key }}</code> 文件，释放存储空间。</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="delete-modal-footer">
+            <button class="btn-del-cancel" type="button" @click="deletingApp = null" :disabled="isDeletingApp">
+              取消
+            </button>
+            <button class="btn-del-confirm" type="button" @click="executeDeleteApp" :disabled="isDeletingApp">
+              <span v-if="!isDeletingApp"><i class="ph ph-trash-bold"></i> 确认彻底删除</span>
+              <span v-else>正在删除中...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     </Teleport>
 
 </template>
@@ -4440,3 +4625,253 @@ body.dark .grand-showcase-card {
 }
 
 </style>
+
+
+
+/* Share & Delete Action Buttons */
+.btn-hero-share {
+  background: rgba(14, 165, 233, 0.18) !important;
+  border-color: rgba(14, 165, 233, 0.4) !important;
+  color: #38bdf8 !important;
+}
+.btn-hero-share:hover {
+  background: rgba(14, 165, 233, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.3) !important;
+}
+
+.btn-hero-delete-act {
+  border-color: rgba(244, 63, 94, 0.35) !important;
+  color: #f43f5e !important;
+}
+.btn-hero-delete-act:hover {
+  background: rgba(244, 63, 94, 0.2) !important;
+  border-color: #f43f5e !important;
+}
+
+.app-share-icon-btn,
+.app-delete-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .app-share-icon-btn,
+[data-theme="dark"] .app-delete-icon-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #94a3b8 !important;
+}
+
+.app-share-icon-btn:hover {
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  transform: translateY(-1px);
+}
+
+.app-delete-icon-btn:hover {
+  background: rgba(244, 63, 94, 0.2) !important;
+  border-color: #f43f5e !important;
+  color: #f43f5e !important;
+  transform: translateY(-1px);
+}
+
+/* Delete Modal Styling */
+.delete-app-modal-card {
+  width: 90vw;
+  max-width: 480px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme="dark"] .delete-app-modal-card {
+  background: #101622 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85) !important;
+}
+
+.delete-modal-header {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.15), rgba(239, 68, 68, 0.05));
+  border-bottom: 1px solid rgba(244, 63, 94, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+.delete-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.delete-header-titles {
+  flex: 1;
+}
+
+.delete-header-titles h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #e11d48;
+}
+[data-theme="dark"] .delete-header-titles h3 {
+  color: #fb7185 !important;
+}
+
+.delete-header-titles p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.btn-del-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.delete-modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.del-app-summary-box {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-theme="dark"] .del-app-summary-box {
+  background: #090d14 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.del-app-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.del-info-label {
+  color: #64748b;
+}
+.del-info-val {
+  font-weight: 700;
+}
+
+.del-checkbox-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  cursor: pointer;
+}
+
+.del-checkbox-input {
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.del-checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.del-checkbox-text strong {
+  color: #e11d48;
+}
+[data-theme="dark"] .del-checkbox-text strong {
+  color: #fb7185;
+}
+
+.del-checkbox-text span {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.delete-modal-footer {
+  padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.03);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+[data-theme="dark"] .delete-modal-footer {
+  background: #090d14 !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.btn-del-cancel {
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+[data-theme="dark"] .btn-del-cancel {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #94a3b8 !important;
+}
+
+.btn-del-confirm {
+  padding: 8px 20px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-del-confirm:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
