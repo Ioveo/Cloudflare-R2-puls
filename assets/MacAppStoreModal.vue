@@ -105,36 +105,7 @@ async function executeDeleteApp() {
   }
 }
 
-// 自动检测 URL 参数唤起指定软件介绍展厅
-function checkUrlShowcaseParam() {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const target = params.get("showcase") || params.get("app");
-    if (!target) return;
 
-    const list = softwareItems.value;
-    let found = null;
-    if (target.toLowerCase() === "live") {
-      found = list.find(a => (a.key && a.key.includes("/live/")) || a.title.includes("直播助手") || a.title.includes("Live"));
-    } else if (target.toLowerCase() === "dy") {
-      found = list.find(a => (a.key && a.key.includes("/dy/")) || a.title.includes("C#") || a.title.includes("旗舰版"));
-    } else if (target.toLowerCase() === "datacenter") {
-      found = list.find(a => (a.key && a.key.includes("/datacenter/")) || a.title.includes("数据中心") || a.title.includes("DataCenter"));
-    } else {
-      found = list.find(a => a.key === target || a.title === target || a.key.includes(target) || a.title.toLowerCase().includes(target.toLowerCase()));
-    }
-
-    if (found) {
-      selectedApp.value = found;
-    }
-  } catch (e) {}
-}
-
-watch(softwareItems, () => {
-  if (!selectedApp.value) {
-    checkUrlShowcaseParam();
-  }
-}, { immediate: true });
 
 
 // Release & Hot Update State
@@ -653,6 +624,38 @@ const softwareItems = computed(() => {
     };
   });
 });
+
+// 自动检测 URL 参数唤起指定软件介绍展厅
+function checkUrlShowcaseParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("showcase") || params.get("app");
+    if (!target) return;
+
+    const list = softwareItems.value;
+    let found = null;
+    if (target.toLowerCase() === "live") {
+      found = list.find(a => (a.key && a.key.includes("/live/")) || a.title.includes("直播助手") || a.title.includes("Live"));
+    } else if (target.toLowerCase() === "dy") {
+      found = list.find(a => (a.key && a.key.includes("/dy/")) || a.title.includes("C#") || a.title.includes("旗舰版"));
+    } else if (target.toLowerCase() === "datacenter") {
+      found = list.find(a => (a.key && a.key.includes("/datacenter/")) || a.title.includes("数据中心") || a.title.includes("DataCenter"));
+    } else {
+      found = list.find(a => a.key === target || a.title === target || a.key.includes(target) || a.title.toLowerCase().includes(target.toLowerCase()));
+    }
+
+    if (found) {
+      selectedApp.value = found;
+    }
+  } catch (e) {}
+}
+
+watch(softwareItems, () => {
+  if (!selectedApp.value) {
+    checkUrlShowcaseParam();
+  }
+});
+
 
 // Filtered apps based on tab, platform, and search
 const filteredApps = computed(() => {
