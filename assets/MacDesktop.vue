@@ -201,8 +201,10 @@ onMounted(() => {
   try {
     const params = new URLSearchParams(window.location.search);
     const targetShowcase = params.get("showcase") || params.get("app");
-    if (targetShowcase) {
+    const p = params.get("p") || "";
+    if (targetShowcase || p.includes("apps/") || p.includes("软件/")) {
       appStoreModal.value.visible = true;
+      appStoreModal.value.minimized = false;
       bringToFront("appstore");
     }
   } catch (e) {}
@@ -396,17 +398,9 @@ function launchApp(appId) {
       };
     }
   } else if (appId === "appstore" || appId === "apps") {
-    if (appStoreModal.value.minimized) {
-      appStoreModal.value.minimized = false;
-      appStoreModal.value.visible = true;
-      bringToFront("appstore");
-    } else if (appStoreModal.value.visible && activeAppId.value === "appstore") {
-      appStoreModal.value.minimized = true;
-    } else {
-      appStoreModal.value.visible = true;
-      appStoreModal.value.minimized = false;
-      bringToFront("appstore");
-    }
+    appStoreModal.value.minimized = false;
+    appStoreModal.value.visible = true;
+    bringToFront("appstore");
   } else if (appId === "archive") {
     emit("update:filterCategory", "archive");
     bringToFront("finder");

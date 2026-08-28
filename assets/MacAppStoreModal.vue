@@ -926,9 +926,8 @@ defineExpose({
 </script>
 
 <template>
-  <!-- 🛍️ macOS App Store Main Window -->
+  <!-- 🛍️ macOS App Store Main Window (Permanently mounted with instant v-show) -->
   <MacWindow
-    v-if="visible"
     title="App Store"
     icon="ph-app-store-logo-fill"
     :visible="visible"
