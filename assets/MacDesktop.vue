@@ -614,13 +614,12 @@ function getSoftwarePlatformPill(file) {
 }
 
 function openAppStoreDetail(fileOrKey) {
-  const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
   bringToFront("appstore");
   appStoreModal.value.visible = true;
   appStoreModal.value.minimized = false;
   setTimeout(() => {
-    appStoreRef.value?.openDetailByKey(key);
-  }, 60);
+    appStoreRef.value?.openDetailByKey(fileOrKey);
+  }, 40);
 }
 
 function openAppStoreEditor(fileOrKey) {

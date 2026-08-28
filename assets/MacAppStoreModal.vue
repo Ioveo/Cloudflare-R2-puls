@@ -712,6 +712,13 @@ function getAppIcon(category) {
   return map[(category || "").toLowerCase()] || "ph-package-fill";
 }
 
+function getFileExt(file) {
+  if (!file) return "";
+  const key = typeof file === "string" ? file : file.key || "";
+  const ext = key.split(".").pop();
+  return ext ? `.${ext.toLowerCase()}` : "";
+}
+
 function formatSize(size) {
   if (!size || isNaN(size)) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -864,9 +871,47 @@ onMounted(() => {
 });
 
 defineExpose({
-  openDetailByKey(key) {
-    const item = softwareItems.value.find(a => a.key === key);
-    if (item) selectedApp.value = item;
+  openDetailByKey(fileOrKey) {
+    if (!fileOrKey) return;
+    const key = typeof fileOrKey === "string" ? fileOrKey : fileOrKey?.key;
+    
+    // 1. 在已加载的软件列表中查找
+    let item = softwareItems.value.find(a => 
+      a.key === key || 
+      (a.file && a.file.key === key) ||
+      (key && a.key && (a.key.endsWith(key) || key.endsWith(a.key)))
+    );
+    
+    // 2. 若列表尚未准备好或未匹配，实时动态构建
+    if (!item && key) {
+      const fileObj = (typeof fileOrKey === "object" && fileOrKey) ? fileOrKey : { key };
+      const custom = getAppMetadata(props.metadata, key);
+      const def = parseDefaultMeta(fileObj);
+      item = {
+        file: fileObj,
+        key: fileObj.key,
+        size: fileObj.size || 0,
+        uploaded: fileObj.uploaded || "",
+        title: custom.title || def.title,
+        version: custom.version || def.version,
+        category: custom.category || def.category,
+        platform: custom.platform || def.platform,
+        summary: custom.summary || def.summary,
+        features: custom.features && custom.features.length ? custom.features : def.features,
+        installGuide: custom.installGuide || def.installGuide,
+        appName: def.appName,
+        icon: custom.icon || "",
+        screenshots: custom.screenshots || [],
+        custom: !!(custom && custom.title),
+      };
+    }
+    
+    if (item) {
+      selectedApp.value = item;
+    }
+  },
+  openDetail(app) {
+    if (app) selectedApp.value = app;
   },
   openEditorByKey(key) {
     const item = softwareItems.value.find(a => a.key === key);
@@ -1313,8 +1358,8 @@ defineExpose({
                 <span class="hero-sep">/</span>
                 <span class="hero-platform-tag">{{ selectedApp.platform }}</span>
               </div>
-              <button class="hero-close-btn" type="button" @click="selectedApp = null" title="关闭详情">
-                <i class="ph ph-x-bold"></i>
+              <button class="hero-close-btn" type="button" @click="selectedApp = null" title="关闭并返回列表">
+                <span class="hero-close-cross">✕</span>
               </button>
             </div>
 
@@ -1322,7 +1367,7 @@ defineExpose({
               <!-- 大号发光 App 图标 -->
               <div class="hero-icon-wrapper">
                 <div class="hero-icon-box">
-                  <i class="ph" :class="getAppIcon(selectedApp.category)"></i>
+                  <MacIcons name="apps" :size="76" :extension="getFileExt(selectedApp.file || selectedApp.key)" />
                 </div>
                 <div class="hero-icon-glow"></div>
               </div>
@@ -4874,4 +4919,17 @@ body.dark .grand-showcase-card {
 .btn-del-confirm:hover {
   background: #b91c1c;
   transform: translateY(-1px);
+}
+
+
+.hero-close-cross {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  color: #f1f5f9;
+  display: inline-block;
+  user-select: none;
+}
+.hero-close-btn:hover .hero-close-cross {
+  color: #ffffff;
 }
