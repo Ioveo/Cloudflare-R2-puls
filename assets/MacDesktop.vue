@@ -613,13 +613,39 @@ function getSoftwarePlatformPill(file) {
   return "App";
 }
 
+let lastFinderClickTime = 0;
+let lastFinderClickFile = null;
+
+function onFinderFileClick(file) {
+  selectedFileKey.value = file.key;
+  const now = Date.now();
+  if (now - lastFinderClickTime < 380 && lastFinderClickFile === file.key) {
+    // Desktop double-click detected
+    handleOpenFile(file);
+    lastFinderClickTime = 0;
+    lastFinderClickFile = null;
+  } else {
+    lastFinderClickTime = now;
+    lastFinderClickFile = file.key;
+  }
+}
+
 function openAppStoreDetail(fileOrKey) {
-  bringToFront("appstore");
-  appStoreModal.value.visible = true;
   appStoreModal.value.minimized = false;
-  setTimeout(() => {
-    appStoreRef.value?.openDetailByKey(fileOrKey);
-  }, 40);
+  appStoreModal.value.visible = true;
+  bringToFront("appstore");
+
+  const run = () => {
+    if (appStoreRef.value?.openDetailByKey) {
+      appStoreRef.value.openDetailByKey(fileOrKey);
+    }
+  };
+
+  run();
+  nextTick(run);
+  setTimeout(run, 40);
+  setTimeout(run, 120);
+  setTimeout(run, 300);
 }
 
 function openAppStoreEditor(fileOrKey) {
@@ -1228,8 +1254,8 @@ defineExpose({ handleOpenFile, bringToFront, launchApp, openAppStoreDetail, open
                 :key="file.key"
                 class="finder-file-item"
                 :class="[{ 'is-selected': selectedFileKey === file.key }]"
-                @click="selectedFileKey = file.key"
-                @dblclick="handleOpenFile(file)"
+                @click="onFinderFileClick(file)"
+                @dblclick.prevent.stop="handleOpenFile(file)"
                 @touchstart="onTouchStartItem(file, $event)"
                 @touchmove="onTouchMoveItem"
                 @touchend="onTouchEndItem(file, false)"
