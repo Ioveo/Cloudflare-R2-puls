@@ -34,10 +34,21 @@ const isDeletingApp = ref(false);
 function getStorageHeaders() {
   const headers = {};
   if (props.storageId && props.storageId !== "default") {
-    headers["x-custom-storage"] = props.storageId;
+    headers["x-storage-id"] = props.storageId;
   }
-  if (props.authCredentials) {
-    headers["Authorization"] = `Basic ${props.authCredentials}`;
+  let creds = props.authCredentials;
+  if (!creds) {
+    try {
+      const saved = localStorage.getItem("drive-auth") || sessionStorage.getItem("drive-auth");
+      if (saved) creds = JSON.parse(saved);
+    } catch (e) {}
+  }
+  if (creds) {
+    if (typeof creds === "string") {
+      headers["Authorization"] = creds.startsWith("Basic ") ? creds : `Basic ${creds}`;
+    } else if (creds.username && creds.password) {
+      headers["Authorization"] = `Basic ${btoa(`${creds.username}:${creds.password}`)}`;
+    }
   }
   return headers;
 }
@@ -73,8 +84,47 @@ async function executeDeleteApp() {
   try {
     // 1. 如果勾选了物理删除云端文件，调用 R2 删除接口
     if (alsoDeleteR2File.value && target.key) {
+      let headers = getStorageHeaders();
+      
+      // 如果未登录，先提示输入管理密码
+      if (!headers["Authorization"]) {
+        const u = prompt("🔒 该操作需要管理员权限\n请输入管理员用户名 (默认 admin):", "admin");
+        if (!u) {
+          isDeletingApp.value = false;
+          return;
+        }
+        const p = prompt("请输入管理员密码:");
+        if (!p) {
+          isDeletingApp.value = false;
+          return;
+        }
+        const creds = { username: u, password: p };
+        localStorage.setItem("drive-auth", JSON.stringify(creds));
+        sessionStorage.setItem("drive-auth", JSON.stringify(creds));
+        headers["Authorization"] = `Basic ${btoa(`${u}:${p}`)}`;
+      }
+
       const delPath = `/api/write/items/${encodeURIComponent(target.key).replace(/%2F/g, "/")}`;
-      await axios.delete(delPath, { headers: getStorageHeaders() });
+      try {
+        await axios.delete(delPath, { headers });
+      } catch (e) {
+        if (e.response?.status === 401) {
+          localStorage.removeItem("drive-auth");
+          sessionStorage.removeItem("drive-auth");
+          const p = prompt("❌ 密码错误或未授权，请重新输入管理员密码:");
+          if (p) {
+            const creds = { username: "admin", password: p };
+            localStorage.setItem("drive-auth", JSON.stringify(creds));
+            sessionStorage.setItem("drive-auth", JSON.stringify(creds));
+            headers["Authorization"] = `Basic ${btoa(`admin:${p}`)}`;
+            await axios.delete(delPath, { headers });
+          } else {
+            throw e;
+          }
+        } else {
+          throw e;
+        }
+      }
     }
 
     // 2. 清理元数据中的记录并同步
