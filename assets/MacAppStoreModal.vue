@@ -926,8 +926,6 @@ defineExpose({
 </script>
 
 <template>
-  
-<div>
   <!-- 🛍️ macOS App Store Main Window -->
   <MacWindow
     v-if="visible"
